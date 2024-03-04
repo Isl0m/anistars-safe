@@ -15,7 +15,7 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
       <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-        Фан карты
+        AniStars
       </h1>
 
       <Suspense fallback={<CardsViewSkeleton />}>
