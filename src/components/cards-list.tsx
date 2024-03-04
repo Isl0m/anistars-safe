@@ -79,7 +79,6 @@ export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
                   src={card.image}
                   width={255}
                   height={320}
-                  className="rounded-[18px]"
                   alt={card.slug}
                 />
               </li>
