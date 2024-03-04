@@ -40,7 +40,7 @@ export default function CardsFilter({
             <SelectContent>
               <SelectGroup>
                 {items.map(({ id, slug, name }) => (
-                  <SelectItem value={id} key={id}>
+                  <SelectItem value={id.toString()} key={id}>
                     {capitalize(name)}
                   </SelectItem>
                 ))}

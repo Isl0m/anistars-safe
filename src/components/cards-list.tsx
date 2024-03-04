@@ -42,7 +42,7 @@ export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
         if (filter.size <= 0) return true;
         for (let [key, value] of filter) {
           if (isKey(card, key)) {
-            if (card[key] !== value) {
+            if (card[key] !== Number(value)) {
               return false;
             }
           }
@@ -50,10 +50,12 @@ export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
         return true;
       })
     );
+    setPage(1);
   };
   const handleFilterReset = () => {
     setFilter(new Map());
     setFilteredCards(cards);
+    setPage(1);
   };
 
   const handleChangePage = (page: number) => {
