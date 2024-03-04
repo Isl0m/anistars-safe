@@ -1,0 +1,97 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+
+import { isKey } from "@/lib/utils";
+
+import { FilterOption } from "@/app/page";
+import { Card } from "@/db/schema/card";
+
+import CardsFilter from "./cards-filter";
+import CardsPagination from "./pagination";
+
+type Props = {
+  cards: Card[];
+  filterOptions: FilterOption[];
+  cardsPerPage: number;
+};
+
+const defaultFilters = {
+  rarityId: undefined,
+  classId: undefined,
+  universeId: undefined,
+};
+
+export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
+  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<Map<string, string>>(new Map());
+  const [filteredCards, setFilteredCards] = useState<Card[]>(cards);
+
+  const cardsCount = cards.length;
+  const cardsLeft = filteredCards.length - page * cardsPerPage;
+
+  const skip = (page - 1) * cardsPerPage;
+  const pageCards = filteredCards.slice(skip, skip + cardsPerPage);
+
+  const handleFilterSelect = (key: string, value: string) => {
+    setFilter((prev) => prev.set(key, value));
+
+    setFilteredCards(() =>
+      cards.filter((card) => {
+        if (filter.size <= 0) return true;
+        for (let [key, value] of filter) {
+          if (isKey(card, key)) {
+            if (card[key] !== value) {
+              return false;
+            }
+          }
+        }
+        return true;
+      })
+    );
+  };
+  const handleFilterReset = () => {
+    setFilter(new Map());
+    setFilteredCards(cards);
+  };
+
+  const handleChangePage = (page: number) => {
+    setPage(page);
+  };
+
+  return (
+    <section className="flex flex-col gap-12 md:flex-row">
+      <CardsFilter
+        filterOptions={filterOptions}
+        onFilterSelect={handleFilterSelect}
+        onFiltersReset={handleFilterReset}
+      />
+
+      {pageCards.length > 0 ? (
+        <div className="space-y-8">
+          <ul className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+            {pageCards.map((card) => (
+              <li key={card.id}>
+                <Image
+                  src={card.image}
+                  width={255}
+                  height={320}
+                  className="rounded-[18px]"
+                  alt={card.slug}
+                />
+              </li>
+            ))}
+          </ul>
+          <CardsPagination
+            page={page}
+            cardsLeft={cardsLeft}
+            handleChangePage={handleChangePage}
+          />
+        </div>
+      ) : (
+        <h1>No cards to show</h1>
+      )}
+    </section>
+  );
+}
