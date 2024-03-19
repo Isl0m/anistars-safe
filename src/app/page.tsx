@@ -49,7 +49,7 @@ async function CardsView() {
     },
     {
       key: "classId",
-      name: "Стихия",
+      name: "Класс",
       items: classes,
     },
     {
