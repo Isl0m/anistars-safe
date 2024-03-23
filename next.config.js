@@ -9,6 +9,11 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "dlrfohlfddqdbrguzwbc.supabase.co",
+        port: "",
+      },
+      {
+        protocol: "https",
         hostname: "anistars-photos.s3.eu-north-1.amazonaws.com",
         port: "",
       },
