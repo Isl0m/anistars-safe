@@ -1,14 +1,14 @@
 "use client";
 
-import { capitalize } from "@/lib/utils";
+import { useForm } from "react-hook-form";
 
-import { FilterOption } from "@/app/page";
+import { FilterOption, FilterOptionKey } from "@/app/page";
 
 import { Button } from "./ui/button";
+import { Form, FormControl, FormField, FormItem } from "./ui/form";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -20,36 +20,66 @@ type Props = {
   onFiltersReset: () => void;
 };
 
+type Inputs = Record<FilterOptionKey, string>;
 export default function CardsFilter({
   filterOptions,
   onFilterSelect,
   onFiltersReset,
 }: Props) {
+  const form = useForm<Inputs>({
+    defaultValues: {
+      authorId: "",
+      classId: "",
+      rarityId: "",
+      universeId: "",
+    },
+  });
+  const onSubmit = (data: Inputs) => {
+    Object.entries(data).forEach(([key, value]) => {
+      onFilterSelect(key, value);
+    });
+  };
   return (
-    <div>
-      <h2 className="mb-4 text-2xl font-semibold tracking-tight">Фильтры</h2>
-      <div className="flex flex-col gap-4">
-        {filterOptions.map(({ key, name, items }) => (
-          <Select
-            onValueChange={(value) => onFilterSelect(key, value)}
-            key={key}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full basis-1/6">
+        <h2 className="mb-4 text-2xl font-semibold tracking-tight">Фильтры</h2>
+        <div className="flex flex-col gap-4">
+          {filterOptions.map(({ key, name, items }) => (
+            <FormField
+              control={form.control}
+              name={key}
+              key={key}
+              render={({ field }) => (
+                <FormItem>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={name} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {items.map(({ id, name }) => (
+                        <SelectItem value={id.toString()} key={id}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          ))}
+          <Button type="submit">Применить</Button>
+          <Button
+            onClick={() => {
+              form.reset();
+              onFiltersReset();
+            }}
           >
-            <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder={name} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {items.map(({ id, slug, name }) => (
-                  <SelectItem value={id.toString()} key={id}>
-                    {capitalize(name)}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        ))}
-        <Button onClick={onFiltersReset}>Перезагрузить</Button>
-      </div>
-    </div>
+            Перезагрузить
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

@@ -35,6 +35,7 @@ export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
   const pageCards = filteredCards.slice(skip, skip + cardsPerPage);
 
   const handleFilterSelect = (key: string, value: string) => {
+    if (!value) return;
     setFilter((prev) => prev.set(key, value));
 
     setFilteredCards(() =>
