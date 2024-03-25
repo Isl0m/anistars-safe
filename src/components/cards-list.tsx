@@ -92,7 +92,7 @@ export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
           />
         </div>
       ) : (
-        <h1>No cards to show</h1>
+        <h1>Нет подходящих карт</h1>
       )}
     </section>
   );
