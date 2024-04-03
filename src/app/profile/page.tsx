@@ -12,7 +12,7 @@ function ProfilePage() {
 
   useEffect(() => {
     if (tgUser) {
-      fetch(`${process.env.URL}/api/user?id=${tgUser.id}`)
+      fetch(`${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser.id}`)
         .then((res) => res.json())
         .then((data) => setUser(data))
         .catch((err) => setError(err));
@@ -30,9 +30,6 @@ function ProfilePage() {
       ) : (
         <div>
           Make sure web app is opened from telegram client {tgUser?.first_name}
-          {tgUser?.id}
-          <p>{JSON.stringify(user, null, 2)}</p>
-          <p>{JSON.stringify(error, null, 2)}</p>
         </div>
       )}
     </div>
