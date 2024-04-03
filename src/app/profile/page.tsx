@@ -17,7 +17,7 @@ function ProfilePage() {
         .then((data) => setUser(data))
         .catch((err) => setError(err));
     }
-  }, []);
+  }, [tgUser]);
 
   return (
     <div>
@@ -30,6 +30,7 @@ function ProfilePage() {
       ) : (
         <div>
           Make sure web app is opened from telegram client {tgUser?.first_name}
+          <pre>{JSON.stringify(error, null, 2)}</pre>
         </div>
       )}
     </div>
