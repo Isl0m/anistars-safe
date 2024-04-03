@@ -25,7 +25,7 @@ const config = {
       },
       colors: {
         border: "var(--tg-theme-text-color, hsl(var(--border)))",
-        input: "hsl(var(--input))",
+        input: "var(--tg-theme-text-color, hsl(var(--input)))",
         ring: "hsl(var(--ring))",
         background: "var(--tg-theme-bg-color,hsl(var(--background)))",
         foreground: "var(--tg-theme-text-color, hsl(var(--foreground)))",

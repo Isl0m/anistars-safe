@@ -70,17 +70,15 @@ export default function CardsFilter({
               )}
             />
           ))}
-          <div className="flex flex-row gap-4 md:flex-col">
-            <Button type="submit">Применить</Button>
-            <Button
-              onClick={() => {
-                form.reset();
-                onFiltersReset();
-              }}
-            >
-              Перезагрузить
-            </Button>
-          </div>
+          <Button type="submit">Применить</Button>
+          <Button
+            onClick={() => {
+              form.reset();
+              onFiltersReset();
+            }}
+          >
+            Перезагрузить
+          </Button>
         </div>
       </form>
     </Form>
