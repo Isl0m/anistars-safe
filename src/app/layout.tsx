@@ -25,7 +25,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <Script src="https://telegram.org/js/telegram-web-app.js" />
+      <Script
+        src="https://telegram.org/js/telegram-web-app.js"
+        strategy="beforeInteractive"
+      />
 
       <SpeedInsights />
       <body
