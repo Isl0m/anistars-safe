@@ -26,7 +26,10 @@ function ProfilePage() {
           <pre>{JSON.stringify(user, null, 2)}</pre>
         </div>
       ) : (
-        <div>Make sure web app is opened from telegram client</div>
+        <div>
+          Make sure web app is opened from telegram client {tgUser?.first_name}
+          {tgUser?.id}
+        </div>
       )}
     </div>
   );
