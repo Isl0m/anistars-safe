@@ -30,8 +30,9 @@ const config = {
         background: "var(--tg-theme-bg-color,hsl(var(--background)))",
         foreground: "var(--tg-theme-text-color, hsl(var(--foreground)))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--tg-theme-button-text-color, hsl(var(--primary)))",
+          foreground:
+            "var(--tg-theme-button-color, hsl(var(--primary-foreground)))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -50,8 +51,9 @@ const config = {
           foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--tg-theme-secondary-bg-color, hsl(var(--popover)))",
+          foreground:
+            "var(--tg-theme-text-color, hsl(var(--popover-foreground)))",
         },
         card: {
           DEFAULT: "hsl(var(--card))",
