@@ -1,38 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { TelegramProvider, useTelegram } from "@/components/telegram-provider";
 
-import { WebApp } from "@/lib/types";
-
-import { User } from "@/db/schema/user";
-
-export default function Profile() {
-  const [user, setUser] = useState<User>();
-  const [userId, setUserId] = useState<string>();
-
-  useEffect(() => {
-    const app: WebApp = (window as any).Telegram?.WebApp;
-    const userId = app?.initDataUnsafe.user.id;
-    setUserId(String(userId));
-    if (app && userId) {
-      fetch(`${process.env.URL}/api/user?id=${userId}`)
-        .then((res) => res.json())
-        .then((data) => setUser(data));
-    }
-  }, []);
-
-  if (!user)
-    return (
-      <div>
-        <h1>Profile {userId}</h1>
-        <p>Loading...</p>
-      </div>
-    );
+function ProfilePage() {
+  const { user, webApp } = useTelegram();
+  console.log(user);
 
   return (
     <div>
-      <h1>Profile: ${user.name}</h1>
-      <p>ID: {user.id}</p>
+      {user ? (
+        <div>
+          <h1>Welcome {user?.username}</h1>
+          User data:
+          <pre>{JSON.stringify(user, null, 2)}</pre>
+          Eniter Web App data:
+          <pre>{JSON.stringify(webApp, null, 2)}</pre>
+        </div>
+      ) : (
+        <div>Make sure web app is opened from telegram client</div>
+      )}
     </div>
   );
 }
+
+const ProfilePageWithProvider = () => {
+  return (
+    <TelegramProvider>
+      <ProfilePage />
+    </TelegramProvider>
+  );
+};
+
+export default ProfilePageWithProvider;

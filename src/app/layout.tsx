@@ -4,8 +4,6 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
 
-import Script from "next/script";
-
 import { cn } from "@/lib/utils";
 
 const fontSans = Inter({
@@ -25,11 +23,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <Script
-        src="https://telegram.org/js/telegram-web-app.js"
-        strategy="beforeInteractive"
-      />
-
       <SpeedInsights />
       <body
         className={cn(
