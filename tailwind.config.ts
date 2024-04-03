@@ -30,9 +30,9 @@ const config = {
         background: "var(--tg-theme-bg-color,hsl(var(--background)))",
         foreground: "var(--tg-theme-text-color, hsl(var(--foreground)))",
         primary: {
-          DEFAULT: "var(--tg-theme-button-text-color, hsl(var(--primary)))",
+          DEFAULT: "var(--tg-theme-button-color, hsl(var(--primary)))",
           foreground:
-            "var(--tg-theme-button-color, hsl(var(--primary-foreground)))",
+            "var(--tg-theme-button-text-color, hsl(var(--primary-foreground)))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
