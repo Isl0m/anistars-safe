@@ -6,6 +6,8 @@ import "./globals.css";
 
 import { cn } from "@/lib/utils";
 
+import { Providers } from "@/components/providers";
+
 const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -22,16 +24,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <SpeedInsights />
-      <body
-        className={cn(
-          "min-h-screen bg-background font-sans antialiased",
-          fontSans.variable
-        )}
-      >
-        {children}
-      </body>
-    </html>
+    <Providers>
+      <html lang="en" className="dark">
+        <SpeedInsights />
+        <body
+          className={cn(
+            "min-h-screen bg-background font-sans antialiased",
+            fontSans.variable
+          )}
+        >
+          {children}
+        </body>
+      </html>
+    </Providers>
   );
 }
