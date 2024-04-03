@@ -43,7 +43,8 @@ export default function CardsFilter({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full basis-1/6">
         <h2 className="mb-4 text-2xl font-semibold tracking-tight">Фильтры</h2>
-        <div className="flex flex-col gap-4">
+        {/* <div className="flex flex-col gap-4"> */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-1">
           {filterOptions.map(({ key, name, items }) => (
             <FormField
               control={form.control}
@@ -69,15 +70,17 @@ export default function CardsFilter({
               )}
             />
           ))}
-          <Button type="submit">Применить</Button>
-          <Button
-            onClick={() => {
-              form.reset();
-              onFiltersReset();
-            }}
-          >
-            Перезагрузить
-          </Button>
+          <div className="flex flex-row gap-4 md:flex-col">
+            <Button type="submit">Применить</Button>
+            <Button
+              onClick={() => {
+                form.reset();
+                onFiltersReset();
+              }}
+            >
+              Перезагрузить
+            </Button>
+          </div>
         </div>
       </form>
     </Form>
