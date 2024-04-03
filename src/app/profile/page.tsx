@@ -8,10 +8,12 @@ import { User } from "@/db/schema/user";
 
 export default function Profile() {
   const [user, setUser] = useState<User>();
+  const [userId, setUserId] = useState<string>();
 
   useEffect(() => {
     const app: WebApp = (window as any).Telegram?.WebApp;
     const userId = app?.initDataUnsafe.user.id;
+    setUserId(String(userId));
     if (app && userId) {
       fetch(`${process.env.URL}/api/user?id=${userId}`)
         .then((res) => res.json())
@@ -22,7 +24,7 @@ export default function Profile() {
   if (!user)
     return (
       <div>
-        <h1>Profile</h1>
+        <h1>Profile {userId}</h1>
         <p>Loading...</p>
       </div>
     );
