@@ -4,9 +4,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
 
-import { cn } from "@/lib/utils";
+import Script from "next/script";
 
-import { Providers } from "@/components/providers";
+import { cn } from "@/lib/utils";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -24,18 +24,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Providers>
-      <html lang="en" className="dark">
-        <SpeedInsights />
-        <body
-          className={cn(
-            "min-h-screen bg-background font-sans antialiased",
-            fontSans.variable
-          )}
-        >
-          {children}
-        </body>
-      </html>
-    </Providers>
+    <html lang="en" className="dark">
+      <Script src="https://telegram.org/js/telegram-web-app.js" />
+
+      <SpeedInsights />
+      <body
+        className={cn(
+          "min-h-screen bg-background font-sans antialiased",
+          fontSans.variable
+        )}
+      >
+        {children}
+      </body>
+    </html>
   );
 }

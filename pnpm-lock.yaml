@@ -29,9 +29,6 @@ dependencies:
   '@vercel/speed-insights':
     specifier: ^1.0.10
     version: 1.0.10(next@14.0.4)(react@18.2.0)
-  '@vkruglikov/react-telegram-web-app':
-    specifier: ^2.1.9
-    version: 2.1.9(react-dom@18.2.0)(react@18.2.0)
   bcrypt:
     specifier: ^5.1.1
     version: 5.1.1
@@ -1630,16 +1627,6 @@ packages:
     dependencies:
       next: 14.0.4(@babel/core@7.23.9)(react-dom@18.2.0)(react@18.2.0)
       react: 18.2.0
-    dev: false
-
-  /@vkruglikov/react-telegram-web-app@2.1.9(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-m8D5oUuSQN1z8xiG3ufh7tBbWpmp4zLtZv2rNsC2LP0Rp5vJI/hwZNk65h7wLDE740wPlE2R6bOSikm6FdUTtQ==}
-    peerDependencies:
-      react: ^18
-      react-dom: ^18
-    dependencies:
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
     dev: false
 
   /abbrev@1.1.1:

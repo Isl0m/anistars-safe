@@ -9,7 +9,6 @@ import {
 } from "@/lib/queries";
 
 import { CardsList } from "@/components/cards-list";
-import { WebApps } from "@/components/webapps";
 import { Skeleton } from "@/ui/skeleton";
 
 export type FilterOptionKey =
@@ -30,7 +29,6 @@ export default async function Home() {
       <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
         AniStars
       </h1>
-      <WebApps />
       <Suspense fallback={<CardsViewSkeleton />}>
         <CardsView />
       </Suspense>
