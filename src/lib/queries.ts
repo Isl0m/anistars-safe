@@ -1,11 +1,12 @@
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
 import { tCards, tClasses, tRarities, tUniverses } from "@/db/schema/card";
+import { tgUsers } from "@/db/schema/user";
 
 export async function getRarities() {
-  return db.select().from(tRarities);
+  return db.select().from(tRarities).orderBy(tRarities.chance);
 }
 
 export async function getClasses() {
@@ -22,4 +23,12 @@ export async function getCards() {
 
 export async function getAuthors() {
   return db.select().from(tAuthors);
+}
+
+export async function getUser(id: string) {
+  return db
+    .select()
+    .from(tgUsers)
+    .where(eq(tgUsers.id, id))
+    .then((res) => res[0] ?? null);
 }
