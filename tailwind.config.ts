@@ -27,7 +27,7 @@ const config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: "hsl(var(--tg-theme-bg-color,var(--background)))",
+        background: "var(--tg-theme-bg-color,hsl(var(--background)))",
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
