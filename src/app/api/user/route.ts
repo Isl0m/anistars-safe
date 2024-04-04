@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/queries";
+import { getUser, getUserCards } from "@/lib/queries";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,5 +9,11 @@ export async function GET(request: Request) {
     });
   const user = await getUser(id);
   if (!user) return new Response("user not found", { status: 404 });
-  return new Response(JSON.stringify(user));
+  const cards = await getUserCards(id);
+  return new Response(
+    JSON.stringify({
+      user,
+      cards,
+    })
+  );
 }

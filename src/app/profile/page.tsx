@@ -1,48 +1,49 @@
-"use client";
+import {
+  getAuthors,
+  getClasses,
+  getRarities,
+  getUniverses,
+} from "@/lib/queries";
 
-import { useEffect, useState } from "react";
+import { ProfileWithProvider } from "@/components/profile";
 
-import { TelegramProvider, useTelegram } from "@/components/telegram-provider";
-import { User } from "@/db/schema/user";
+import { FilterOption } from "../page";
 
-function ProfilePage() {
-  const { user: tgUser } = useTelegram();
-  const [user, setUser] = useState<User>();
-  const [error, setError] = useState();
-
-  useEffect(() => {
-    if (tgUser) {
-      fetch(`${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser.id}`)
-        .then((res) => res.json())
-        .then((data) => setUser(data))
-        .catch((err) => setError(err));
-    }
-  }, [tgUser]);
-
-  return (
-    <div>
-      {user ? (
-        <div>
-          <h1>Welcome {user?.name}</h1>
-          User data:
-          <pre>{JSON.stringify(user, null, 2)}</pre>
-        </div>
-      ) : (
-        <div>
-          Make sure web app is opened from telegram client {tgUser?.first_name}
-          <pre>{JSON.stringify(error, null, 2)}</pre>
-        </div>
-      )}
-    </div>
-  );
+export default async function ProfilePage() {
+  const rarities = await getRarities();
+  const classes = await getClasses();
+  const universes = await getUniverses();
+  const authors = await getAuthors();
+  if (!rarities || !classes || !universes || !authors) {
+    return (
+      <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
+        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
+          Something went wrong with fetching data
+        </h1>
+      </main>
+    );
+  }
+  const filterOptions: FilterOption[] = [
+    {
+      key: "rarityId",
+      name: "Редкость",
+      items: rarities,
+    },
+    {
+      key: "classId",
+      name: "Класс",
+      items: classes,
+    },
+    {
+      key: "universeId",
+      name: "Вселенная",
+      items: universes,
+    },
+    {
+      key: "authorId",
+      name: "Автор",
+      items: authors.map(({ id, username }) => ({ id, name: username })),
+    },
+  ];
+  return <ProfileWithProvider filterOptions={filterOptions} />;
 }
-
-const ProfilePageWithProvider = () => {
-  return (
-    <TelegramProvider>
-      <ProfilePage />
-    </TelegramProvider>
-  );
-};
-
-export default ProfilePageWithProvider;

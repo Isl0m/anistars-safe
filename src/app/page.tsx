@@ -37,7 +37,6 @@ export default async function Home() {
 }
 
 async function CardsView() {
-  const cardsPerPage = 8;
   const rarities = await getRarities();
   const classes = await getClasses();
   const universes = await getUniverses();
@@ -76,24 +75,18 @@ async function CardsView() {
     },
   ];
 
-  return (
-    <CardsList
-      cards={cards}
-      cardsPerPage={cardsPerPage}
-      filterOptions={filterOptions}
-    />
-  );
+  return <CardsList cards={cards} filterOptions={filterOptions} />;
 }
 
 function CardsViewSkeleton() {
   return (
-    <div className="flex flex-col gap-12 md:flex-row">
-      <Skeleton className="h-[250px] w-full md:w-[180px]" />
-      <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
-        {new Array(8).fill(0).map((_, idx) => (
+    <div className="flex flex-col gap-8 md:flex-row">
+      <Skeleton className="h-[200px] w-full md:w-[220px]" />
+      <div className="grid grid-cols-3 gap-4 md:gap-8 lg:grid-cols-4">
+        {new Array(9).fill(0).map((_, idx) => (
           <Skeleton
             key={"skeleton" + idx}
-            className="h-[240px] w-[190px] rounded-[18px] md:h-[320px] md:w-[255px]"
+            className="h-[160px] w-[122px] rounded-[10px] md:h-[320px] md:w-[255px] md:rounded-[12px]"
           />
         ))}
       </div>

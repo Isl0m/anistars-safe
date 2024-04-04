@@ -14,21 +14,14 @@ import CardsPagination from "./pagination";
 type Props = {
   cards: Card[];
   filterOptions: FilterOption[];
-  cardsPerPage: number;
 };
 
-const defaultFilters = {
-  rarityId: undefined,
-  classId: undefined,
-  universeId: undefined,
-};
-
-export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
+export function CardsList({ cards, filterOptions }: Props) {
+  let cardsPerPage = 12;
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<Map<string, string>>(new Map());
   const [filteredCards, setFilteredCards] = useState<Card[]>(cards);
 
-  const cardsCount = cards.length;
   const cardsLeft = filteredCards.length - page * cardsPerPage;
 
   const skip = (page - 1) * cardsPerPage;
@@ -73,7 +66,7 @@ export function CardsList({ cards, cardsPerPage, filterOptions }: Props) {
 
       {pageCards.length > 0 ? (
         <div className="space-y-8">
-          <ul className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+          <ul className="grid grid-cols-3 gap-2 md:grid-cols-3 md:gap-8 lg:grid-cols-4">
             {pageCards.map((card) => (
               <li key={card.id}>
                 <Image
