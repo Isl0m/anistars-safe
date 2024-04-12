@@ -4,17 +4,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "vlgeowyxhyugmqyhrmyq.supabase.co",
-        port: "",
-      },
-      {
-        protocol: "https",
-        hostname: "dlrfohlfddqdbrguzwbc.supabase.co",
-        port: "",
-      },
-      {
-        protocol: "https",
-        hostname: "anistars-photos.s3.eu-north-1.amazonaws.com",
+        hostname: "storage.googleapis.com",
         port: "",
       },
     ],
