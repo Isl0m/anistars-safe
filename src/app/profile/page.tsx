@@ -5,7 +5,7 @@ import {
   getUniverses,
 } from "@/lib/queries";
 
-import { ProfileWithProvider } from "@/components/profile";
+import { Profile } from "@/components/profile";
 
 import { FilterOption } from "../page";
 
@@ -45,5 +45,5 @@ export default async function ProfilePage() {
       items: authors.map(({ id, username }) => ({ id, name: username })),
     },
   ];
-  return <ProfileWithProvider filterOptions={filterOptions} />;
+  return <Profile filterOptions={filterOptions} />;
 }

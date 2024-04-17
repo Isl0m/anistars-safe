@@ -13,7 +13,7 @@ type Props = {
   filterOptions: FilterOption[];
 };
 
-function Profile({ filterOptions }: Props) {
+export function Profile({ filterOptions }: Props) {
   const { user: tgUser } = useTelegram();
   const [user, setUser] = useState<User>();
   const [cards, setCards] = useState<Card[]>();
@@ -50,11 +50,3 @@ function Profile({ filterOptions }: Props) {
     </main>
   );
 }
-
-export const ProfileWithProvider = (props: Props) => {
-  return (
-    <TelegramProvider>
-      <Profile {...props} />
-    </TelegramProvider>
-  );
-};

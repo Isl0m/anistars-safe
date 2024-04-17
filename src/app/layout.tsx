@@ -6,6 +6,8 @@ import "./globals.css";
 
 import { cn } from "@/lib/utils";
 
+import { TelegramProvider } from "@/components/telegram-provider";
+
 const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -30,7 +32,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        {children}
+        <TelegramProvider>{children}</TelegramProvider>
       </body>
     </html>
   );
