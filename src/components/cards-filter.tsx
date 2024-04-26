@@ -1,5 +1,6 @@
 "use client";
 
+import { useDeferredValue, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { FilterOption, FilterOptionKey } from "@/app/page";
@@ -26,6 +27,8 @@ export default function CardsFilter({
   onFilterSelect,
   onFiltersReset,
 }: Props) {
+  const [isOptionOpen, setIsOptionOpen] = useState(false);
+  const isDisabled = useDeferredValue(isOptionOpen);
   const form = useForm<Inputs>({
     defaultValues: {
       authorId: "",
@@ -39,7 +42,6 @@ export default function CardsFilter({
       onFilterSelect(key, value);
     });
   };
-  // opm
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full basis-1/6">
@@ -52,7 +54,11 @@ export default function CardsFilter({
               key={key}
               render={({ field }) => (
                 <FormItem>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select
+                    onOpenChange={setIsOptionOpen}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder={name} />
@@ -70,8 +76,11 @@ export default function CardsFilter({
               )}
             />
           ))}
-          <Button type="submit">Применить</Button>
+          <Button disabled={isDisabled} type="submit">
+            Применить
+          </Button>
           <Button
+            disabled={isDisabled}
             onClick={() => {
               form.reset();
               onFiltersReset();
