@@ -5,10 +5,10 @@ import Image from "next/image";
 
 import { isKey } from "@/lib/utils";
 
-import { FilterOption } from "@/app/page";
 import { Card } from "@/db/schema/card";
 
 import CardsFilter from "./cards-filter";
+import { FilterOption } from "./get-filte-options";
 import CardsPagination from "./pagination";
 
 type Props = {

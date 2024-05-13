@@ -3,8 +3,7 @@
 import { useDeferredValue, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { FilterOption, FilterOptionKey } from "@/app/page";
-
+import { FilterOption, FilterOptionKey } from "./get-filte-options";
 import { Button } from "./ui/button";
 import { Form, FormControl, FormField, FormItem } from "./ui/form";
 import {
