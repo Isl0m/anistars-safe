@@ -36,7 +36,7 @@ export function CardsList({ cards, filterOptions }: Props) {
         if (filter.size <= 0) return true;
         for (let [key, value] of filter) {
           if (isKey(card, key)) {
-            if (card[key] !== Number(value)) {
+            if (String(card[key]) !== value) {
               return false;
             }
           }

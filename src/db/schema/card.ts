@@ -21,6 +21,10 @@ export const tCards = pgTable("Card", {
   stamina: integer("stamina").notNull(),
   image: text("image").notNull(),
   droppable: boolean("droppable").default(true).notNull(),
+  type: text("type")
+    .$type<"full" | "pre-full" | "basic">()
+    .default("basic")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
 
   authorId: integer("authorId")

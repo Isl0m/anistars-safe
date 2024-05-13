@@ -35,6 +35,8 @@ export default function CardsFilter({
       classId: "",
       rarityId: "",
       universeId: "",
+      type: "",
+      droppable: "",
     },
   });
   const onSubmit = (data: Inputs) => {
