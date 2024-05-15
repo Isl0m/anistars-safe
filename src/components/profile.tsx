@@ -29,18 +29,15 @@ export function Profile({ filterOptions }: ProfileProps) {
   const [cards, setCards] = useState<Card[]>();
 
   useEffect(() => {
-    // if (tgUser) {
-    fetch(
-      `${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser?.id || "378779106"}`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setUser(data.user);
-        setCards(data.cards);
-      });
-    // }
-  }, []);
-  // }, [tgUser]);
+    if (tgUser) {
+      fetch(`${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser?.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setUser(data.user);
+          setCards(data.cards);
+        });
+    }
+  }, [tgUser]);
 
   if (!user) {
     return (
