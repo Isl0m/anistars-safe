@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <SpeedInsights />
+      <Analytics />
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",

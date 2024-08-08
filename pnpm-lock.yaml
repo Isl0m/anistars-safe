@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@auth/prisma-adapter':
-    specifier: ^1.0.15
-    version: 1.2.0(@prisma/client@5.9.1)
+    specifier: ^1.2.0
+    version: 1.2.0(@prisma/client@5.18.0)
   '@hookform/resolvers':
     specifier: ^3.3.4
     version: 3.3.4(react-hook-form@7.50.0)
@@ -26,6 +26,9 @@ dependencies:
   '@supabase/supabase-js':
     specifier: ^2.39.3
     version: 2.39.3
+  '@vercel/analytics':
+    specifier: ^1.3.1
+    version: 1.3.1(next@14.0.4)(react@18.2.0)
   '@vercel/speed-insights':
     specifier: ^1.0.10
     version: 1.0.10(next@14.0.4)(react@18.2.0)
@@ -60,16 +63,16 @@ dependencies:
     specifier: ^3.4.3
     version: 3.4.3
   react:
-    specifier: ^18
+    specifier: ^18.2.0
     version: 18.2.0
   react-dom:
-    specifier: ^18
+    specifier: ^18.2.0
     version: 18.2.0(react@18.2.0)
   react-hook-form:
-    specifier: ^7.49.3
+    specifier: ^7.50.0
     version: 7.50.0(react@18.2.0)
   tailwind-merge:
-    specifier: ^2.2.0
+    specifier: ^2.2.1
     version: 2.2.1
   tailwindcss-animate:
     specifier: ^1.0.7
@@ -89,13 +92,13 @@ devDependencies:
     specifier: ^20.11.16
     version: 20.11.16
   '@types/react':
-    specifier: ^18
+    specifier: ^18.2.51
     version: 18.2.51
   '@types/react-dom':
-    specifier: ^18
+    specifier: ^18.2.18
     version: 18.2.18
   autoprefixer:
-    specifier: ^10.0.1
+    specifier: ^10.4.17
     version: 10.4.17(postcss@8.4.33)
   drizzle-kit:
     specifier: ^0.20.14
@@ -104,7 +107,7 @@ devDependencies:
     specifier: ^8.11.3
     version: 8.11.3
   postcss:
-    specifier: ^8
+    specifier: ^8.4.33
     version: 8.4.33
   prettier:
     specifier: ^3.2.4
@@ -113,10 +116,10 @@ devDependencies:
     specifier: ^0.5.11
     version: 0.5.11(@ianvs/prettier-plugin-sort-imports@4.1.1)(prettier@3.2.4)
   tailwindcss:
-    specifier: ^3.3.0
+    specifier: ^3.4.1
     version: 3.4.1
   typescript:
-    specifier: ^5
+    specifier: ^5.3.3
     version: 5.3.3
 
 packages:
@@ -166,13 +169,13 @@ packages:
       preact-render-to-string: 5.2.3(preact@10.11.3)
     dev: false
 
-  /@auth/prisma-adapter@1.2.0(@prisma/client@5.9.1):
+  /@auth/prisma-adapter@1.2.0(@prisma/client@5.18.0):
     resolution: {integrity: sha512-yn1ZHX/a57x8hhU+rwi+GL1IHx8k92Fhqk5w9R5toAtO9PxAr9xD+sNjD0OgrAMrO7GttKyW/mac6t8G0NYDEg==}
     peerDependencies:
       '@prisma/client': '>=2.26.0 || >=3 || >=4 || >=5'
     dependencies:
       '@auth/core': 0.25.0
-      '@prisma/client': 5.9.1
+      '@prisma/client': 5.18.0
     transitivePeerDependencies:
       - nodemailer
     dev: false
@@ -1022,8 +1025,8 @@ packages:
     requiresBuild: true
     optional: true
 
-  /@prisma/client@5.9.1:
-    resolution: {integrity: sha512-caSOnG4kxcSkhqC/2ShV7rEoWwd3XrftokxJqOCMVvia4NYV/TPtJlS9C2os3Igxw/Qyxumj9GBQzcStzECvtQ==}
+  /@prisma/client@5.18.0:
+    resolution: {integrity: sha512-BWivkLh+af1kqC89zCJYkHsRcyWsM8/JHpsDMM76DjP3ZdEquJhXa4IeX+HkWPnwJ5FanxEJFZZDTWiDs/Kvyw==}
     engines: {node: '>=16.13'}
     requiresBuild: true
     peerDependencies:
@@ -1601,6 +1604,22 @@ packages:
       '@types/node': 20.11.16
     dev: false
 
+  /@vercel/analytics@1.3.1(next@14.0.4)(react@18.2.0):
+    resolution: {integrity: sha512-xhSlYgAuJ6Q4WQGkzYTLmXwhYl39sWjoMA3nHxfkvG+WdBT25c563a7QhwwKivEOZtPJXifYHR1m2ihoisbWyA==}
+    peerDependencies:
+      next: '>= 13'
+      react: ^18 || ^19
+    peerDependenciesMeta:
+      next:
+        optional: true
+      react:
+        optional: true
+    dependencies:
+      next: 14.0.4(@babel/core@7.23.9)(react-dom@18.2.0)(react@18.2.0)
+      react: 18.2.0
+      server-only: 0.0.1
+    dev: false
+
   /@vercel/speed-insights@1.0.10(next@14.0.4)(react@18.2.0):
     resolution: {integrity: sha512-4uzdKB0RW6Ff2FkzshzjZ+RlJfLPxgm/00i0XXgxfMPhwnnsk92YgtqsxT9OcPLdJUyVU1DqFlSWWjIQMPkh0g==}
     requiresBuild: true
@@ -1706,7 +1725,7 @@ packages:
       postcss: ^8.1.0
     dependencies:
       browserslist: 4.22.3
-      caniuse-lite: 1.0.30001583
+      caniuse-lite: 1.0.30001651
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.0.0
@@ -1756,7 +1775,7 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
     dependencies:
-      caniuse-lite: 1.0.30001583
+      caniuse-lite: 1.0.30001651
       electron-to-chromium: 1.4.655
       node-releases: 2.0.14
       update-browserslist-db: 1.0.13(browserslist@4.22.3)
@@ -1785,8 +1804,8 @@ packages:
     engines: {node: '>=14.16'}
     dev: true
 
-  /caniuse-lite@1.0.30001583:
-    resolution: {integrity: sha512-acWTYaha8xfhA/Du/z4sNZjHUWjkiuoAi2LM+T/aL+kemKQgPT1xBb/YKjlQ0Qo8gvbHsGNplrEJ+9G3gL7i4Q==}
+  /caniuse-lite@1.0.30001651:
+    resolution: {integrity: sha512-9Cf+Xv1jJNe1xPZLGuUXLNkE1BoDkqRqYyFJ9TDYSqhduqA4hu4oR9HluGoWYQC/aj8WHjsGVV+bwkh0+tegRg==}
 
   /chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -2701,7 +2720,7 @@ packages:
       '@next/env': 14.0.4
       '@swc/helpers': 0.5.2
       busboy: 1.6.0
-      caniuse-lite: 1.0.30001583
+      caniuse-lite: 1.0.30001651
       graceful-fs: 4.2.11
       postcss: 8.4.31
       react: 18.2.0
@@ -3202,6 +3221,10 @@ packages:
     hasBin: true
     dependencies:
       lru-cache: 6.0.0
+
+  /server-only@0.0.1:
+    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
+    dev: false
 
   /set-blocking@2.0.0:
     resolution: {integrity: sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==}
