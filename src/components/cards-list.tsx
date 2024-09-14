@@ -117,14 +117,19 @@ export function CardsList({ title, cards, filterOptions }: Props) {
           <h1>Нет подходящих карт</h1>
         )}
       </section>
-      <Drawer open={!!selectedCard} onClose={() => setSelectedCard(null)}>
-        <DrawerContent>
+      <Drawer
+        open={selectedCard !== null}
+        onClose={() => setSelectedCard(null)}
+      >
+        <DrawerContent aria-describedby="Карта">
           <DrawerHeader>
             <DrawerTitle className="text-2xl font-bold">
-              {selectedCard ? `${pageCards[selectedCard].name}` : "🎴 Карта"}
+              {selectedCard !== null
+                ? `${pageCards[selectedCard].name}`
+                : "🎴 Карта"}
             </DrawerTitle>
           </DrawerHeader>
-          {selectedCard && (
+          {selectedCard !== null && (
             <div className="space-y-4 p-4">
               <Tabs defaultValue="image" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -142,8 +147,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                       src={pageCards[selectedCard].image}
                       alt={pageCards[selectedCard].name}
                       layout="fill"
-                      objectFit="contain"
-                      className="rounded-lg"
+                      className="rounded-lg object-contain"
                     />
                   </div>
                 </TabsContent>

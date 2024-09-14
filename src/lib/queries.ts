@@ -18,7 +18,7 @@ export async function getRarities() {
 }
 
 export async function getClasses() {
-  return db.select().from(tClasses);
+  return db.select().from(tClasses).orderBy(tClasses.id);
 }
 
 export async function getUniverses() {
