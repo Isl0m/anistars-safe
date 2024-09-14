@@ -9,12 +9,12 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { useTelegram } from "@/components/telegram-provider";
 import { FullCard } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
 
 import { CardsList } from "./cards-list";
 import { FilterOption } from "./get-filte-options";
+import { useTelegram } from "./telegram-provider";
 import { Input } from "./ui/input";
 
 type ProfileProps = {
@@ -23,6 +23,7 @@ type ProfileProps = {
 
 export function Profile({ filterOptions }: ProfileProps) {
   const { user: tgUser } = useTelegram();
+
   const [user, setUser] = useState<User>();
   const [cards, setCards] = useState<FullCard[]>();
 
@@ -47,7 +48,7 @@ export function Profile({ filterOptions }: ProfileProps) {
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
+    <main className="flex min-h-screen flex-col gap-4 p-4 md:container">
       {cards?.length ? (
         <CardsList
           title={user.name}
@@ -92,7 +93,7 @@ export function SearchProfile({
     }
   };
   return (
-    <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
+    <main className="flex min-h-screen flex-col gap-4 p-4  md:container">
       {!user && (
         <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
           Пользователь не найден

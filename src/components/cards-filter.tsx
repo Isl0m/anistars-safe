@@ -65,10 +65,9 @@ export default function CardsFilter({
         <Button
           onClick={() => setShowFilters(!showFilters)}
           variant="outline"
-          className="h-auto px-4 py-2 text-lg"
           aria-label="Show filters"
         >
-          <Filter className="mr-2 h-5 w-5" />
+          <Filter className="mr-2 h-4 w-4" />
           Фильтры
         </Button>
 
