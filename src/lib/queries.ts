@@ -1,12 +1,14 @@
-import { desc, eq, notInArray } from "drizzle-orm";
+import { desc, eq, getTableColumns, notInArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
 import {
   cardToTgUser,
+  FullCard,
   tCards,
   tClasses,
   tRarities,
+  tTechniques,
   tUniverses,
 } from "@/db/schema/card";
 import { tgUsers } from "@/db/schema/user";
@@ -27,6 +29,28 @@ export async function getCards() {
   return db.select().from(tCards).orderBy(desc(tCards.createdAt));
 }
 
+export async function getCardsFull(): Promise<FullCard[]> {
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
+  return db
+    .select({
+      ...cardBase,
+      rarity: tRarities.name,
+      universe: tUniverses.name,
+      class: tClasses.name,
+      author: tAuthors.username,
+      technique: techniqueColums,
+    })
+    .from(tCards)
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+    .orderBy(desc(tCards.createdAt));
+}
+
 export async function getAuthors() {
   return db.select().from(tAuthors);
 }
@@ -40,29 +64,33 @@ export async function getUser(id: string) {
 }
 
 export async function getUserCards(id: string) {
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
   return db
     .select({
-      id: tCards.id,
-      name: tCards.name,
-      slug: tCards.slug,
-      image: tCards.image,
-      power: tCards.power,
-      stamina: tCards.stamina,
-      droppable: tCards.droppable,
-      type: tCards.type,
-      rarityId: tCards.rarityId,
-      classId: tCards.classId,
-      universeId: tCards.universeId,
-      authorId: tCards.authorId,
-      createdAt: tCards.createdAt,
+      ...cardBase,
+      rarity: tRarities.name,
+      universe: tUniverses.name,
+      class: tClasses.name,
+      author: tAuthors.username,
+      technique: techniqueColums,
     })
     .from(cardToTgUser)
     .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
     .where(eq(cardToTgUser.tgUserId, id))
     .orderBy(desc(tCards.power), desc(tCards.stamina));
 }
 
 export async function getUserMissingCards(id: string) {
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
   const userCards = await db
     .select({ cardId: cardToTgUser.cardId })
     .from(cardToTgUser)
@@ -75,12 +103,22 @@ export async function getUserMissingCards(id: string) {
     return db
       .select()
       .from(tCards)
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .where(notInArray(tCards.id, userCardIds))
       .orderBy(desc(tCards.power), desc(tCards.stamina));
   } else {
     return db
       .select()
       .from(tCards)
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .orderBy(desc(tCards.power), desc(tCards.stamina));
   }
 }

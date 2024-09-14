@@ -1,6 +1,5 @@
 import {
   getAuthors,
-  getCards,
   getClasses,
   getRarities,
   getUniverses,
@@ -12,7 +11,8 @@ export type FilterOptionKey =
   | "universeId"
   | "authorId"
   | "type"
-  | "droppable";
+  | "droppable"
+  | "technique";
 
 export type FilterOption = {
   key: FilterOptionKey;
@@ -62,6 +62,15 @@ export async function getFilterOptions() {
         { id: "full", name: "Фулл" },
         { id: "pre-full", name: "Пре-Фулл" },
         { id: "basic", name: "Базовый" },
+      ],
+    },
+    {
+      key: "technique",
+      name: "Техника",
+      items: [
+        { id: "power", name: "Урон" },
+        { id: "heal", name: "Хил" },
+        { id: "dodge", name: "Уклонение" },
       ],
     },
   ];

@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 
-import { Card } from "@/db/schema/card";
+import { FullCard } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
 
 import { CardsList } from "./cards-list";
 import { FilterOption } from "./get-filte-options";
+import { useTelegram } from "./telegram-provider";
 
 type MissingProps = {
   filterOptions: FilterOption[];
 };
 
 export function Missing({ filterOptions }: MissingProps) {
-  // const { user: tgUser } = useTelegram();
-  const tgUser = { id: "6718135090" };
+  const { user: tgUser } = useTelegram();
   const [user, setUser] = useState<User>();
-  const [cards, setCards] = useState<Card[]>();
+  const [cards, setCards] = useState<FullCard[]>();
 
   useEffect(() => {
     if (tgUser) {
@@ -44,7 +44,11 @@ export function Missing({ filterOptions }: MissingProps) {
         {user?.name}
       </h1>
       {cards?.length ? (
-        <CardsList cards={cards} filterOptions={filterOptions} />
+        <CardsList
+          title="Отсуствующие карты"
+          cards={cards}
+          filterOptions={filterOptions}
+        />
       ) : null}
     </main>
   );

@@ -11,7 +11,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useTelegram } from "@/components/telegram-provider";
-import { Card } from "@/db/schema/card";
+import { FullCard } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
 
 import { CardsList } from "./cards-list";
@@ -26,7 +26,7 @@ type ProfileProps = {
 export function Profile({ filterOptions }: ProfileProps) {
   const { user: tgUser } = useTelegram();
   const [user, setUser] = useState<User>();
-  const [cards, setCards] = useState<Card[]>();
+  const [cards, setCards] = useState<FullCard[]>();
 
   useEffect(() => {
     if (tgUser) {
@@ -54,7 +54,11 @@ export function Profile({ filterOptions }: ProfileProps) {
         {user?.name}
       </h1>
       {cards?.length ? (
-        <CardsList cards={cards} filterOptions={filterOptions} />
+        <CardsList
+          title="Твои карты"
+          cards={cards}
+          filterOptions={filterOptions}
+        />
       ) : null}
       <Link
         href="/profile/search"
@@ -71,7 +75,7 @@ export function Profile({ filterOptions }: ProfileProps) {
 type SearchProfileProps = {
   userId: string;
   filterOptions: FilterOption[];
-  cards: Card[];
+  cards: FullCard[];
   user: User | null;
 };
 export function SearchProfile({
@@ -106,7 +110,7 @@ export function SearchProfile({
         {user ? user.name : "Пользователь не найден"}
       </h1>
       <Input
-        className="w-96"
+        className="w-full max-w-96"
         value={searchId}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
@@ -114,7 +118,7 @@ export function SearchProfile({
       />
 
       {cards?.length ? (
-        <CardsList cards={cards} filterOptions={filterOptions} />
+        <CardsList title="Карты" cards={cards} filterOptions={filterOptions} />
       ) : null}
     </main>
   );
@@ -148,7 +152,7 @@ export function SearchFirstProfile() {
         Введите ID пользователь
       </h1>
       <Input
-        className="w-96"
+        className="w-full max-w-96"
         value={searchId}
         onChange={handleInput}
         onKeyDown={handleKeyDown}

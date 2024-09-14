@@ -7,8 +7,6 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import { createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
 
 import { tAuthors } from "./author";
 import { tgUsers } from "./user";
@@ -29,7 +27,7 @@ export const tCards = pgTable("Card", {
 
   createdAt: timestamp("createdAt").defaultNow(),
 
-  techniqueId: integer("techniqueId").references(() => techniques.id, {
+  techniqueId: integer("techniqueId").references(() => tTechniques.id, {
     onDelete: "set null",
   }),
   authorId: integer("authorId")
@@ -80,27 +78,32 @@ export const tRarities = pgTable("Rarity", {
   rank: integer("rank").default(1).notNull(),
 });
 
-const insertCardSchema = createSelectSchema(tCards);
-export type Card = z.infer<typeof insertCardSchema>;
-
-const insertRaritySchema = createSelectSchema(tRarities);
-export type Rarity = z.infer<typeof insertRaritySchema>;
-
-const insertClassSchema = createSelectSchema(tClasses, {
-  beats: z.array(z.string()),
+export const tTechniques = pgTable("Technique", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull(),
+  text: text("text").notNull(),
+  heal: real("heal").default(0),
+  power: real("power").default(0),
+  dodge: boolean("dodge").default(false),
+  chance: real("chance").default(0.15).notNull(),
 });
-export type Element = z.infer<typeof insertClassSchema>;
 
-const insertUniverseSchema = createSelectSchema(tUniverses);
-export type Universe = z.infer<typeof insertUniverseSchema>;
+export type Technique = typeof tTechniques.$inferSelect;
 
-const insertAuthorSchema = createSelectSchema(tAuthors);
-export type Author = z.infer<typeof insertAuthorSchema>;
+export type Card = typeof tCards.$inferSelect;
 
-export type FullCard = {
-  Card: Card;
-  Rarity: Rarity | null;
-  Element: Element | null;
-  Universe: Universe | null;
-  Author: Author | null;
+export type Rarity = typeof tRarities.$inferSelect;
+
+export type Class = typeof tClasses.$inferSelect;
+
+export type Universe = typeof tUniverses.$inferSelect;
+
+export type Author = typeof tAuthors.$inferSelect;
+
+export type FullCard = Card & {
+  rarity: string;
+  universe: string;
+  class: string;
+  author: string;
+  technique: Technique | null;
 };

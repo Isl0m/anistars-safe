@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { getCards } from "@/lib/queries";
+import { getCardsFull } from "@/lib/queries";
 
 import { CardsList } from "@/components/cards-list";
 import { getFilterOptions } from "@/components/get-filte-options";
@@ -8,10 +8,7 @@ import { Skeleton } from "@/ui/skeleton";
 
 export default async function Home() {
   return (
-    <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-      <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-        AniStars
-      </h1>
+    <main className="flex min-h-screen flex-col gap-4 p-4 md:container">
       <Suspense fallback={<CardsViewSkeleton />}>
         <CardsView />
       </Suspense>
@@ -20,11 +17,13 @@ export default async function Home() {
 }
 
 async function CardsView() {
-  const cards = await getCards();
+  const cards = await getCardsFull();
 
   const filterOptions = await getFilterOptions();
 
-  return <CardsList cards={cards} filterOptions={filterOptions} />;
+  return (
+    <CardsList title="Все карты" cards={cards} filterOptions={filterOptions} />
+  );
 }
 
 function CardsViewSkeleton() {

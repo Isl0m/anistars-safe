@@ -7,6 +7,7 @@ import "./globals.css";
 
 import { cn } from "@/lib/utils";
 
+import { Header } from "@/components/header";
 import { TelegramProvider } from "@/components/telegram-provider";
 
 const fontSans = Inter({
@@ -34,6 +35,7 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
+        <Header />
         <TelegramProvider>{children}</TelegramProvider>
       </body>
     </html>
