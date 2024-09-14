@@ -24,15 +24,14 @@ const config = {
         sans: ["var(--font-sans)", ...fontFamily.sans],
       },
       colors: {
-        border: "var(--tg-theme-text-color, hsl(var(--border)))",
-        input: "var(--tg-theme-text-color, hsl(var(--input)))",
+        border: "hsl(var(--border)))",
+        input: "hsl(var(--input)))",
         ring: "hsl(var(--ring))",
-        background: "var(--tg-theme-bg-color,hsl(var(--background)))",
-        foreground: "var(--tg-theme-text-color, hsl(var(--foreground)))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "var(--tg-theme-button-color, hsl(var(--primary)))",
-          foreground:
-            "var(--tg-theme-button-text-color, hsl(var(--primary-foreground)))",
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -51,9 +50,8 @@ const config = {
           foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
-          DEFAULT: "var(--tg-theme-secondary-bg-color, hsl(var(--popover)))",
-          foreground:
-            "var(--tg-theme-text-color, hsl(var(--popover-foreground)))",
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
         card: {
           DEFAULT: "hsl(var(--card))",

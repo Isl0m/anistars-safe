@@ -94,7 +94,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
       </div>
       <section className="flex flex-col gap-12 md:flex-row">
         {pageCards.length > 0 ? (
-          <div className="space-y-8">
+          <div className="container space-y-8">
             <ul className="grid grid-cols-3 gap-2 md:grid-cols-3 md:gap-8 lg:grid-cols-4">
               {pageCards.map((card, idx) => (
                 <li key={card.id} onClick={() => setSelectedCard(idx)}>
