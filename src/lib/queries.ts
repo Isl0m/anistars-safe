@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, notInArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
@@ -59,5 +59,28 @@ export async function getUserCards(id: string) {
     .from(cardToTgUser)
     .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
     .where(eq(cardToTgUser.tgUserId, id))
-    .orderBy(desc(tCards.power), desc(tCards.power));
+    .orderBy(desc(tCards.power), desc(tCards.stamina));
+}
+
+export async function getUserMissingCards(id: string) {
+  const userCards = await db
+    .select({ cardId: cardToTgUser.cardId })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+    .where(eq(cardToTgUser.tgUserId, id));
+
+  const userCardIds = userCards.map((c) => c.cardId);
+
+  if (userCardIds.length > 0) {
+    return db
+      .select()
+      .from(tCards)
+      .where(notInArray(tCards.id, userCardIds))
+      .orderBy(desc(tCards.power), desc(tCards.stamina));
+  } else {
+    return db
+      .select()
+      .from(tCards)
+      .orderBy(desc(tCards.power), desc(tCards.stamina));
+  }
 }

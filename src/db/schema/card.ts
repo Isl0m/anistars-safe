@@ -13,6 +13,8 @@ import { z } from "zod";
 import { tAuthors } from "./author";
 import { tgUsers } from "./user";
 
+export type CardTypes = "full" | "pre-full" | "basic";
+
 export const tCards = pgTable("Card", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -20,13 +22,16 @@ export const tCards = pgTable("Card", {
   power: integer("power").notNull(),
   stamina: integer("stamina").notNull(),
   image: text("image").notNull(),
+  gif: text("gif"),
   droppable: boolean("droppable").default(true).notNull(),
-  type: text("type")
-    .$type<"full" | "pre-full" | "basic">()
-    .default("basic")
-    .notNull(),
+  type: text("type").$type<CardTypes>().default("basic").notNull(),
+  collection: text("collection"),
+
   createdAt: timestamp("createdAt").defaultNow(),
 
+  techniqueId: integer("techniqueId").references(() => techniques.id, {
+    onDelete: "set null",
+  }),
   authorId: integer("authorId")
     .notNull()
     .references(() => tAuthors.id, { onDelete: "cascade" }),
@@ -48,6 +53,8 @@ export const cardToTgUser = pgTable("CardToTgUser", {
   tgUserId: text("tgUserId")
     .notNull()
     .references(() => tgUsers.id, { onDelete: "cascade" }),
+  isLocked: boolean("isLocked").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
 });
 
 export const tUniverses = pgTable("Universe", {
@@ -69,6 +76,8 @@ export const tRarities = pgTable("Rarity", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   chance: real("chance").default(0.1).notNull(),
+  cashback: integer("cashback").default(5).notNull(),
+  rank: integer("rank").default(1).notNull(),
 });
 
 const insertCardSchema = createSelectSchema(tCards);
