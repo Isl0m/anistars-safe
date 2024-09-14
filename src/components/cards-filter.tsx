@@ -4,6 +4,8 @@ import { useDeferredValue, useRef, useState } from "react";
 import { ChevronUp, Filter, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 
+import { cn } from "@/lib/utils";
+
 import { FilterOption, FilterOptionKey } from "./get-filte-options";
 import { Button } from "./ui/button";
 import { Form, FormControl, FormField, FormItem } from "./ui/form";
@@ -50,7 +52,7 @@ export default function CardsFilter({
   };
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (
-      !isOptionOpen &&
+      !(isOptionOpen || isDisabled) &&
       drawerRef.current &&
       !drawerRef.current.contains(e.target as Node)
     ) {
@@ -101,13 +103,13 @@ export default function CardsFilter({
               </Button>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {filterOptions.map(({ key, name, items }) => (
+              {filterOptions.map(({ key, name, items, span }) => (
                 <FormField
                   control={form.control}
                   name={key}
                   key={key}
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className={cn(span && `col-span-${span}`)}>
                       <Label>{name}</Label>
                       <Select
                         onOpenChange={setIsOptionOpen}

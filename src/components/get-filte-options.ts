@@ -18,6 +18,7 @@ export type FilterOption = {
   key: FilterOptionKey;
   name: string;
   items: { id: number | string; name: string }[];
+  span?: number;
 };
 
 export async function getFilterOptions() {
@@ -41,11 +42,16 @@ export async function getFilterOptions() {
       key: "universeId",
       name: "Вселенная",
       items: universes,
+      span: 2,
     },
     {
-      key: "authorId",
-      name: "Автор",
-      items: authors.map(({ id, username }) => ({ id, name: username })),
+      key: "type",
+      name: "Характеристики",
+      items: [
+        { id: "full", name: "Фулл" },
+        { id: "pre-full", name: "Пре-Фулл" },
+        { id: "basic", name: "Базовый" },
+      ],
     },
     {
       key: "droppable",
@@ -56,13 +62,9 @@ export async function getFilterOptions() {
       ],
     },
     {
-      key: "type",
-      name: "Характеристики",
-      items: [
-        { id: "full", name: "Фулл" },
-        { id: "pre-full", name: "Пре-Фулл" },
-        { id: "basic", name: "Базовый" },
-      ],
+      key: "authorId",
+      name: "Автор",
+      items: authors.map(({ id, username }) => ({ id, name: username })),
     },
     {
       key: "technique",
