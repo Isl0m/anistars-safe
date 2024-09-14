@@ -7,7 +7,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useTelegram } from "@/components/telegram-provider";
@@ -16,7 +15,6 @@ import { User } from "@/db/schema/user";
 
 import { CardsList } from "./cards-list";
 import { FilterOption } from "./get-filte-options";
-import { buttonVariants } from "./ui/button";
 import { Input } from "./ui/input";
 
 type ProfileProps = {
@@ -50,24 +48,13 @@ export function Profile({ filterOptions }: ProfileProps) {
   }
   return (
     <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-      <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-        {user?.name}
-      </h1>
       {cards?.length ? (
         <CardsList
-          title="Твои карты"
+          title={user.name}
           cards={cards}
           filterOptions={filterOptions}
         />
       ) : null}
-      <Link
-        href="/profile/search"
-        className={buttonVariants({
-          variant: "secondary",
-        })}
-      >
-        Посмотреть карты других
-      </Link>
     </main>
   );
 }
@@ -106,9 +93,11 @@ export function SearchProfile({
   };
   return (
     <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-      <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-        {user ? user.name : "Пользователь не найден"}
-      </h1>
+      {!user && (
+        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
+          Пользователь не найден
+        </h1>
+      )}
       <Input
         className="w-full max-w-96"
         value={searchId}
@@ -117,8 +106,12 @@ export function SearchProfile({
         placeholder="Enter user ID..."
       />
 
-      {cards?.length ? (
-        <CardsList title="Карты" cards={cards} filterOptions={filterOptions} />
+      {cards?.length && user ? (
+        <CardsList
+          title={user.name}
+          cards={cards}
+          filterOptions={filterOptions}
+        />
       ) : null}
     </main>
   );

@@ -101,7 +101,14 @@ export async function getUserMissingCards(id: string) {
 
   if (userCardIds.length > 0) {
     return db
-      .select()
+      .select({
+        ...cardBase,
+        rarity: tRarities.name,
+        universe: tUniverses.name,
+        class: tClasses.name,
+        author: tAuthors.username,
+        technique: techniqueColums,
+      })
       .from(tCards)
       .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
@@ -112,7 +119,14 @@ export async function getUserMissingCards(id: string) {
       .orderBy(desc(tCards.power), desc(tCards.stamina));
   } else {
     return db
-      .select()
+      .select({
+        ...cardBase,
+        rarity: tRarities.name,
+        universe: tUniverses.name,
+        class: tClasses.name,
+        author: tAuthors.username,
+        technique: techniqueColums,
+      })
       .from(tCards)
       .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
