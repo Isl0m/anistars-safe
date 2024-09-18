@@ -81,7 +81,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
     const dodge = technique.dodge && `Уклонение`;
     return `${technique.slug} | ${power || heal || dodge} 🎰${chance}%\n`;
   };
-
+  const closeDrawer = () => setSelectedCard(null);
   return (
     <>
       <div className="flex items-center justify-between gap-4">
@@ -117,10 +117,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
           <h1>Нет подходящих карт</h1>
         )}
       </section>
-      <Drawer
-        open={selectedCard !== null}
-        onClose={() => setSelectedCard(null)}
-      >
+      <Drawer open={selectedCard !== null} onClose={closeDrawer}>
         <DrawerContent aria-describedby="Карта">
           <DrawerHeader>
             <DrawerTitle className="text-2xl font-bold">
@@ -191,7 +188,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
             </div>
           )}
           <DrawerFooter>
-            <DrawerClose asChild>
+            <DrawerClose asChild onClick={closeDrawer}>
               <Button variant="outline">Закрыть</Button>
             </DrawerClose>
           </DrawerFooter>
