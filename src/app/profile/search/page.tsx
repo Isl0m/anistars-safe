@@ -1,7 +1,7 @@
 import { getUser, getUserCards } from "@/lib/queries";
 
-import { getFilterOptions } from "@/components/get-filte-options";
-import { SearchFirstProfile, SearchProfile } from "@/components/profile";
+import { getUserFilterOptions } from "@/components/get-filte-options";
+import { SearchFirstProfile, SearchProfile } from "@/components/pages/profile";
 
 export default async function Profile({
   searchParams,
@@ -12,9 +12,10 @@ export default async function Profile({
   if (!userId) return <SearchFirstProfile />;
 
   const user = await getUser(userId);
+  if (!user) return <SearchFirstProfile />;
   const userCards = await getUserCards(userId);
 
-  const filterOptions = await getFilterOptions();
+  const filterOptions = await getUserFilterOptions(userId);
   return (
     <SearchProfile
       userId={userId}

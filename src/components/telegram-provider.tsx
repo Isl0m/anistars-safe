@@ -1,13 +1,16 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import Script from "next/script";
-
-import { TelegramUser, WebApp } from "@/lib/types";
+import {
+  init,
+  postEvent,
+  retrieveLaunchParams,
+  swipeBehavior,
+  User as TelegramUser,
+} from "@telegram-apps/sdk-react";
 
 export interface ITelegramContext {
-  webApp?: WebApp;
-  user?: TelegramUser;
+  tgUser?: TelegramUser;
 }
 
 export const TelegramContext = createContext<ITelegramContext>({});
@@ -17,32 +20,28 @@ export const TelegramProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [webApp, setWebApp] = useState<WebApp | null>(null);
-
+  const [tgUser, setTgUser] = useState<TelegramUser | undefined>(undefined);
   useEffect(() => {
-    const app = (window as any).Telegram?.WebApp;
-    if (app) {
-      app.ready();
-      setWebApp(app);
+    try {
+      init();
+      swipeBehavior.mount();
+      swipeBehavior.disableVertical();
+      postEvent("web_app_set_header_color", { color: "#020817" });
+      const { initData } = retrieveLaunchParams();
+      if (initData && initData.user) {
+        setTgUser(initData.user);
+      }
+    } catch (e) {
+      setTgUser(undefined);
     }
   }, []);
 
   const value = useMemo(() => {
-    return webApp
-      ? {
-          webApp,
-          unsafeData: webApp.initDataUnsafe,
-          user: webApp.initDataUnsafe.user,
-        }
-      : {};
-  }, [webApp]);
+    return { tgUser };
+  }, [tgUser]);
 
   return (
     <TelegramContext.Provider value={value}>
-      <Script
-        src="https://telegram.org/js/telegram-web-app.js"
-        strategy="beforeInteractive"
-      />
       {children}
     </TelegramContext.Provider>
   );

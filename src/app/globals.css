@@ -71,7 +71,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply fixed h-screen w-full overflow-hidden bg-background text-foreground md:static md:overflow-auto;
   }
   :focus {
     @apply outline-none ring-0 ring-offset-0;
