@@ -123,7 +123,6 @@ export function AcceptTradePageContent({
       },
       body: JSON.stringify(data),
     });
-    console.log(res);
 
     setIsLoading(false);
     resetSelectedCards();

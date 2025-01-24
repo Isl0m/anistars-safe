@@ -1,7 +1,6 @@
-import { InlineKeyboard } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { z } from "zod";
 
-import { bot } from "@/lib/bot";
 import { addTradeCards, updateTrade } from "@/lib/queries";
 
 const updateTradeSchema = z.object({
@@ -22,6 +21,7 @@ export async function POST(request: Request) {
   try {
     const [trade] = await updateTrade(data.tradeId, { cost: data.cost });
     await addTradeCards(trade.id, data.cardIds, false);
+    const bot = new Bot(process.env.TG_BOT_TOKEN!);
     await bot.api.sendMessage(
       trade.senderId,
       `${trade.receiverId} предлогает вам трейд`,

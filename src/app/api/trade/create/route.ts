@@ -1,7 +1,6 @@
-import { InlineKeyboard } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { z } from "zod";
 
-import { bot } from "@/lib/bot";
 import { addTradeCards, createTrade, getUser } from "@/lib/queries";
 
 const createTradeSchema = z.object({
@@ -23,8 +22,8 @@ export async function POST(request: Request) {
   if (!receiver) return new Response("Receiver not found", { status: 404 });
   try {
     const [trade] = await createTrade(data);
-    console.log(trade);
     await addTradeCards(trade.id, data.cardIds, true);
+    const bot = new Bot(process.env.TG_BOT_TOKEN!);
     const msg = await bot.api.sendMessage(
       trade.receiverId,
       `${trade.senderId} предлогает вам трейд`,

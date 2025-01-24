@@ -7,7 +7,6 @@ export default async function Trade({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const receiver = searchParams.receiver;
-  console.log(receiver);
   if (receiver && !Array.isArray(receiver))
     return <TradePage receiver={receiver} />;
   return <TradeReceiverPage />;
