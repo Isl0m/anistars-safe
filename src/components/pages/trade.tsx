@@ -47,7 +47,7 @@ export default function TradePage({ receiver }: { receiver: string }) {
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 p-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4 md:container">
       <TradePageContent
         user={user}
         cards={cards}

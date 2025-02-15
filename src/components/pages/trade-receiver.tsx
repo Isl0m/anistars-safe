@@ -37,7 +37,7 @@ export default function TradeReceiverPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col gap-4 p-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4 md:container">
       <TradePageContent user={user} />
     </main>
   );

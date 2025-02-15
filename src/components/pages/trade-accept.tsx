@@ -70,7 +70,7 @@ export default function AcceptTradePage({
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 p-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4 md:container">
       <AcceptTradePageContent
         trade={trade}
         cards={cards}
