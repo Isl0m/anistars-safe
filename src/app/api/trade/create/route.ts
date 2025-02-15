@@ -1,6 +1,6 @@
-import { Bot, InlineKeyboard } from "grammy";
 import { z } from "zod";
 
+import { sendTelegramMessage } from "@/lib/bot";
 import { addTradeCards, createTrade, getUser } from "@/lib/queries";
 
 const createTradeSchema = z.object({
@@ -23,16 +23,19 @@ export async function POST(request: Request) {
   try {
     const [trade] = await createTrade(data);
     await addTradeCards(trade.id, data.cardIds, true);
-    const bot = new Bot(process.env.TG_BOT_TOKEN!);
-    const msg = await bot.api.sendMessage(
+    await sendTelegramMessage(
       trade.receiverId,
       `${trade.senderId} предлогает вам трейд`,
-      {
-        reply_markup: new InlineKeyboard().webApp(
-          "Посмотреть",
-          `${process.env.HOST_URL}/trade/accept?tradeId=${trade.id}`
-        ),
-      }
+      [
+        [
+          {
+            text: "Посмотреть",
+            web_app: {
+              url: `${process.env.HOST_URL}/trade/accept?tradeId=${trade.id}`,
+            },
+          },
+        ],
+      ]
     );
     return new Response(JSON.stringify(trade));
   } catch (e) {
