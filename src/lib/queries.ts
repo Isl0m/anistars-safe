@@ -185,13 +185,19 @@ export async function getUserCardsDifference(id: string, secondId: string) {
         author: tAuthors.username,
         technique: techniqueColums,
       })
-      .from(tCards)
+      .from(cardToTgUser)
+      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
       .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
       .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
       .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-      .where(notInArray(tCards.id, secondUserCardIds))
+      .where(
+        and(
+          notInArray(tCards.id, secondUserCardIds),
+          eq(cardToTgUser.tgUserId, id)
+        )
+      )
       .orderBy(desc(tCards.power), desc(tCards.stamina));
   } else {
     return db
@@ -203,12 +209,14 @@ export async function getUserCardsDifference(id: string, secondId: string) {
         author: tAuthors.username,
         technique: techniqueColums,
       })
-      .from(tCards)
+      .from(cardToTgUser)
+      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
       .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
       .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
       .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+      .where(eq(cardToTgUser.tgUserId, id))
       .orderBy(desc(tCards.power), desc(tCards.stamina));
   }
 }
