@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import { isKey } from "@/lib/utils";
+import { isKey, prettyNumbers } from "@/lib/utils";
 
 import { FullCard, Technique } from "@/db/schema/card";
 
@@ -165,14 +165,10 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                   </div>
                 </TabsContent>
               </Tabs>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                   <p className="font-semibold">💎 Редкость:</p>
                   <p>{pageCards[selectedCard].rarity}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">🪐 Вселенная:</p>
-                  <p>{pageCards[selectedCard].universe}</p>
                 </div>
                 <div>
                   <p className="font-semibold">⚜️ Класс:</p>
@@ -182,8 +178,16 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                   <p className="font-semibold">👤 Автор:</p>
                   <p>{pageCards[selectedCard].author}</p>
                 </div>
+                <div>
+                  <p className="font-semibold">🪐 Вселенная:</p>
+                  <p>{pageCards[selectedCard].universe}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">💰 Цена:</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].price)}🪙</p>
+                </div>
                 {pageCards[selectedCard].technique !== null && (
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <p className="font-semibold">🦾 Техника:</p>
                     <p>{parseTechnique(pageCards[selectedCard].technique!)}</p>
                   </div>

@@ -5,11 +5,13 @@ import {
   eq,
   getTableColumns,
   notInArray,
+  or,
 } from "drizzle-orm";
 
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
 import {
+  Card,
   cardToTgUser,
   FullCard,
   tCards,
@@ -23,8 +25,9 @@ import {
   multiTradeCards,
   multiTrades,
   SelectMultiTrade,
+  tradeLogs,
 } from "@/db/schema/trade";
-import { tgUsers } from "@/db/schema/user";
+import { tgUsers, User, userPasses } from "@/db/schema/user";
 
 export async function getRarities() {
   return db.select().from(tRarities).orderBy(tRarities.chance);
@@ -82,10 +85,15 @@ export async function getAuthors() {
 }
 
 export async function getUser(id: string) {
+  const userColumns = getTableColumns(tgUsers);
   return db
-    .select()
+    .select({
+      ...userColumns,
+      isPremium: userPasses.isPremium,
+    })
     .from(tgUsers)
     .where(eq(tgUsers.id, id))
+    .innerJoin(userPasses, eq(userPasses.id, tgUsers.id))
     .then((res) => res[0] ?? null);
 }
 
@@ -355,4 +363,122 @@ export function addTradeCards(
   return db
     .insert(multiTradeCards)
     .values(cardIds.map((cardId) => ({ tradeId, cardId, isSenderCard })));
+}
+
+export type TradeHistory = {
+  id: number;
+  sender: User;
+  receiver: User;
+  senderCards: Card[];
+  receiverCards: Card[];
+  createdAt: Date;
+  cost: number;
+};
+async function getMultiTradeUserHistory(id: string) {
+  const cardColumns = getTableColumns(tCards);
+  const sender = aliasedTable(tgUsers, "sender");
+  const receiver = aliasedTable(tgUsers, "receiver");
+
+  const senderColumns = getTableColumns(sender);
+  const receiverColumns = getTableColumns(receiver);
+
+  const trades = await db
+    .select({
+      id: multiTrades.id,
+      sender: senderColumns,
+      receiver: receiverColumns,
+      card: cardColumns,
+      isSenderCard: multiTradeCards.isSenderCard,
+      createdAt: multiTrades.createdAt,
+      cost: multiTrades.cost,
+    })
+    .from(multiTrades)
+    .innerJoin(sender, eq(multiTrades.senderId, sender.id))
+    .innerJoin(receiver, eq(multiTrades.receiverId, receiver.id))
+    .innerJoin(multiTradeCards, eq(multiTradeCards.tradeId, multiTrades.id))
+    .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
+    .where(
+      and(
+        or(eq(multiTrades.senderId, id), eq(multiTrades.receiverId, id)),
+        eq(multiTrades.status, "completed")
+      )
+    );
+
+  const tradesHistory = trades.reduce<TradeHistory[]>((acc, trade) => {
+    let existingTrade = acc.find((t) => t.id === trade.id);
+    if (!existingTrade) {
+      existingTrade = {
+        id: trade.id,
+        sender: trade.sender,
+        receiver: trade.receiver,
+        senderCards: [],
+        receiverCards: [],
+        createdAt: trade.createdAt!,
+        cost: trade.cost,
+      };
+      acc.push(existingTrade);
+    }
+
+    if (trade.card) {
+      const card = trade.card;
+      if (trade.isSenderCard) {
+        existingTrade.senderCards.push(card);
+      } else {
+        existingTrade.receiverCards.push(card);
+      }
+    }
+
+    return acc;
+  }, []);
+
+  return tradesHistory;
+}
+
+async function getSingleTradeUserHistory(id: string) {
+  const fromUser = aliasedTable(tgUsers, "fromUser");
+  const toUser = aliasedTable(tgUsers, "toUser");
+  const fromCard = aliasedTable(tCards, "fromCard");
+  const toCard = aliasedTable(tCards, "toCard");
+
+  const fromUserColumns = getTableColumns(fromUser);
+  const toUserColumns = getTableColumns(toUser);
+  const fromCardColumns = getTableColumns(fromCard);
+  const toCardColumns = getTableColumns(toCard);
+
+  const trades = await db
+    .select({
+      id: tradeLogs.id,
+      fromUser: fromUserColumns,
+      toUser: toUserColumns,
+      fromCard: fromCardColumns,
+      toCard: toCardColumns,
+      cost: tradeLogs.cost,
+      createdAt: tradeLogs.createdAt,
+    })
+    .from(tradeLogs)
+    .innerJoin(fromUser, eq(fromUser.id, tradeLogs.fromUserId))
+    .innerJoin(toUser, eq(toUser.id, tradeLogs.toUserId))
+    .innerJoin(fromCard, eq(fromCard.id, tradeLogs.fromCardId))
+    .innerJoin(toCard, eq(toCard.id, tradeLogs.toCardId))
+    .where(or(eq(tradeLogs.fromUserId, id), eq(tradeLogs.toUserId, id)));
+
+  const tradesHistory: TradeHistory[] = trades.map((trade) => ({
+    id: trade.id,
+    sender: trade.fromUser,
+    receiver: trade.toUser,
+    senderCards: [trade.fromCard],
+    receiverCards: [trade.toCard],
+    createdAt: trade.createdAt!,
+    cost: trade.cost,
+  }));
+
+  return tradesHistory;
+}
+
+export async function userTradeHistory(userId: string) {
+  const singleTrades = await getSingleTradeUserHistory(userId);
+  const multiTrades = await getMultiTradeUserHistory(userId);
+  return [...singleTrades, ...multiTrades].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 }

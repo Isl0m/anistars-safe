@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { removeTrade } from "@/lib/queries";
+import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
+import { getUser, updateTrade } from "@/lib/queries";
 
 const deleteTradeSchema = z.object({
   id: z.number(),
@@ -15,7 +16,13 @@ export async function DELETE(request: Request) {
     });
   const { data } = parsedData;
   try {
-    const [trade] = await removeTrade(data.id);
+    const [trade] = await updateTrade(data.id, { status: "cancelled" });
+    const receiver = await getUser(trade.receiverId);
+    const me = await getMe();
+    await sendTelegramMessage(
+      trade.senderId,
+      `⚠️ Трейд с ${getProfileLink(me.result.username, receiver.id, receiver.name)} был отменен`
+    );
     return new Response(JSON.stringify(trade));
   } catch (e) {
     console.log(e);

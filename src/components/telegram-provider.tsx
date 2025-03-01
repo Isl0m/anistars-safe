@@ -7,6 +7,7 @@ import {
   retrieveLaunchParams,
   swipeBehavior,
   User as TelegramUser,
+  viewport,
 } from "@telegram-apps/sdk-react";
 
 export interface ITelegramContext {
@@ -21,19 +22,25 @@ export const TelegramProvider = ({
   children: React.ReactNode;
 }) => {
   const [tgUser, setTgUser] = useState<TelegramUser | undefined>(undefined);
+
   useEffect(() => {
-    try {
-      init();
-      swipeBehavior.mount();
-      swipeBehavior.disableVertical();
-      postEvent("web_app_set_header_color", { color: "#020817" });
-      const { initData } = retrieveLaunchParams();
-      if (initData && initData.user) {
-        setTgUser(initData.user);
+    const fetchData = async () => {
+      try {
+        init();
+        swipeBehavior.mount();
+        swipeBehavior.disableVertical();
+        postEvent("web_app_set_header_color", { color: "#020817" });
+        await viewport.requestFullscreen();
+        const { initData } = retrieveLaunchParams();
+        if (initData && initData.user) {
+          setTgUser(initData.user);
+        }
+      } catch (e) {
+        setTgUser(undefined);
       }
-    } catch (e) {
-      setTgUser(undefined);
-    }
+    };
+
+    fetchData();
   }, []);
 
   const value = useMemo(() => {

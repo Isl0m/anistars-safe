@@ -21,13 +21,15 @@ export default function TradeShowPage({
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
       <Header title="Трейд" />
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg">Вы отдаете</h3>
-        <Badge>Стоимость: {trade.cost}🪙</Badge>
+      <div className="flex min-h-screen flex-col gap-4 px-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg">Вы отдаете</h3>
+          <Badge>Стоимость: {trade.cost}🪙</Badge>
+        </div>
+        <SuggestedCardsList cards={trade.senderCards} />
+        <h3 className="text-lg">Вы получите</h3>
+        <SuggestedCardsList cards={trade.receiverCards} />
       </div>
-      <SuggestedCardsList cards={trade.senderCards} />
-      <h3 className="text-lg">Вы получите</h3>
-      <SuggestedCardsList cards={trade.receiverCards} />
     </main>
   );
 }

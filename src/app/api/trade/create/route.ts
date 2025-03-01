@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { sendTelegramMessage } from "@/lib/bot";
+import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
 import { addTradeCards, createTrade, getUser } from "@/lib/queries";
 
 const createTradeSchema = z.object({
@@ -19,13 +19,16 @@ export async function POST(request: Request) {
     });
   const { data } = parsedData;
   const receiver = await getUser(data.receiverId);
-  if (!receiver) return new Response("Receiver not found", { status: 404 });
+  const sender = await getUser(data.senderId);
+  if (!receiver || !sender)
+    return new Response("Receiver or sender not found", { status: 404 });
   try {
     const [trade] = await createTrade(data);
     await addTradeCards(trade.id, data.cardIds, true);
+    const me = await getMe();
     await sendTelegramMessage(
       trade.receiverId,
-      `${trade.senderId} предлогает вам трейд`,
+      `${getProfileLink(me.result.username, sender.id, sender.name)} предлогает вам трейд`,
       [
         [
           {

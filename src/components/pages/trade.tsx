@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { CheckIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { CreateTradeType } from "@/app/api/trade/create/route";
 import { FullCard } from "@/db/schema/card";
-import { User } from "@/db/schema/user";
+import { UserExtended } from "@/db/schema/user";
 
 import CardsFilter from "../cards-filter";
 import { FilterOption } from "../get-filte-options";
@@ -20,7 +21,7 @@ import { useCardsFilter } from "../use-cards-filer";
 
 export default function TradePage({ receiver }: { receiver: string }) {
   const { tgUser } = useTelegram();
-  const [user, setUser] = useState<User>();
+  const [user, setUser] = useState<UserExtended>();
   const [cards, setCards] = useState<FullCard[]>();
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>();
 
@@ -66,7 +67,7 @@ function TradePageContent({
   filterOptions,
   receiver,
 }: {
-  user: User;
+  user: UserExtended;
   cards: FullCard[];
   filterOptions: FilterOption[];
   receiver: string;
@@ -77,34 +78,31 @@ function TradePageContent({
   });
 
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
+  const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
+  const maxCardsPerTrade = user.isPremium ? 10 : 5;
 
   const handleTrade = async () => {
     setIsLoading(true);
     if (selectedCards.length === 0) {
       toast({
-        title: "Error",
-        description: "Please select at least one card to trade.",
+        title: "Ошибка",
+        description: "Пожалуйста, выберите хотя бы одну карту для обмена.",
         variant: "destructive",
       });
       setIsLoading(false);
       return;
     }
-    if (selectedCards.length > 10) {
+    if (selectedCards.length > maxCardsPerTrade) {
       toast({
-        title: "Error",
-        description: "Maxsimum number of selectable cards is 10.",
+        title: "Ошибка",
+        description: `Максимальное количество выбираемых карт - ${maxCardsPerTrade}.`,
         variant: "destructive",
       });
       setIsLoading(false);
       return;
     }
-
-    toast({
-      title: "Trade Initiated",
-      description: `Trading ${selectedCards.length} cards to ${receiver}`,
-    });
 
     const data: CreateTradeType = {
       senderId: user.id,
@@ -120,15 +118,14 @@ function TradePageContent({
       body: JSON.stringify(data),
     });
 
-    // Reset the form
-    resetSelectedCards();
-    setStep("select");
-    setIsLoading(false);
-  };
+    toast({
+      title: "Трейд отправлен",
+      description: `Трейд ${selectedCards.length} карт отправлен ${receiver}`,
+    });
 
-  const resetSelectedCards = () => {
-    resetSelected();
-    setStep("select");
+    // Reset the form
+    router.push(`/trade`);
+    setIsLoading(false);
   };
 
   const headerSection: Record<Steps, JSX.Element> = {
@@ -210,7 +207,7 @@ function TradePageContent({
     <>
       {headerSection[step]}
 
-      {mainSection[step]}
+      <div className="px-2">{mainSection[step]}</div>
 
       {footerSection[step]}
     </>

@@ -22,6 +22,18 @@ export default async function Trade({
       </div>
     );
   }
+  const statusMapper = {
+    fulfilled: "заполнен",
+    cancelled: "отменен",
+    completed: "завершен",
+  };
+  if (trade.status !== "pending") {
+    return (
+      <div>
+        <h1>Трейд {statusMapper[trade.status]}</h1>
+      </div>
+    );
+  }
 
   if (!trade.senderCards.length) {
     return (

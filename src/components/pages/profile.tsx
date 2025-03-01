@@ -18,6 +18,7 @@ import { toast } from "@/ui/use-toast";
 
 import { CardsList } from "../cards-list";
 import { FilterOption } from "../get-filte-options";
+import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 
 export function Profile() {
@@ -134,20 +135,23 @@ export function SearchFirstProfile() {
     }
   };
   return (
-    <main className="flex min-h-screen flex-col gap-4 px-4 py-12 md:container">
-      <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-        Введите ID пользователь
-      </h1>
-      <Input
-        className="w-full max-w-96"
-        value={searchId}
-        onChange={handleInput}
-        onKeyDown={handleKeyDown}
-        placeholder="00000000000"
-      />
-      <Button onClick={handleSubmit} disabled={!searchId || isLoading}>
-        Посмотреть
-      </Button>
-    </main>
+    <>
+      <Header title="AniStars" />
+      <main className="flex min-h-screen flex-col gap-4 px-4 py-12 md:container">
+        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
+          Введите ID пользователь
+        </h1>
+        <Input
+          className="w-full max-w-96"
+          value={searchId}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          placeholder="00000000000"
+        />
+        <Button onClick={handleSubmit} disabled={!searchId || isLoading}>
+          Посмотреть
+        </Button>
+      </main>
+    </>
   );
 }

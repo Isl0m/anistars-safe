@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -97,13 +98,14 @@ export function AcceptTradePageContent({
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<Steps>("show");
+  const router = useRouter();
 
   const handleTrade = async () => {
     setIsLoading(true);
     if (selectedCards.length !== trade.senderCards.length) {
       toast({
-        title: "Error",
-        description: "Count of cands is invalid.",
+        title: "Ошибка",
+        description: "Количество карт неверно.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -124,14 +126,32 @@ export function AcceptTradePageContent({
       body: JSON.stringify(data),
     });
 
+    toast({
+      title: "Трейд успешно отправлен",
+      variant: "default",
+    });
+
     setIsLoading(false);
-    resetSelectedCards();
+    router.push("/trade");
   };
 
-  const resetSelectedCards = () => {
-    resetSelected();
-    setStep("show");
-  };
+  async function cancelTrade() {
+    await fetch(`${process.env.NEXT_PUBLIC_URL}/api/trade/cancel`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: trade.id }),
+    });
+
+    toast({
+      title: "Трейд успешно отменен",
+      variant: "default",
+    });
+
+    router.push("/trade");
+    setIsLoading(false);
+  }
 
   function calcDifference() {
     const raritiesDiff: Record<string, number> = {};
@@ -192,7 +212,7 @@ export function AcceptTradePageContent({
       />
     ),
     confirm: (
-      <>
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg">Вы отдаете</h3>
           <Badge>Стоимость: {calcDifference()}🪙</Badge>
@@ -203,14 +223,18 @@ export function AcceptTradePageContent({
         />
         <h3 className="text-lg">Вы получите</h3>
         <SuggestedCardsList cards={trade.senderCards} />
-      </>
+      </div>
     ),
   };
 
   const footerActions: Record<Steps, JSX.Element> = {
     show: (
       <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
-        <Button onClick={() => {}} className="w-full" variant={"destructive"}>
+        <Button
+          onClick={cancelTrade}
+          className="w-full"
+          variant={"destructive"}
+        >
           Отказаться
         </Button>
         <Button onClick={() => setStep("select")} className="w-full">
@@ -264,7 +288,7 @@ export function AcceptTradePageContent({
   return (
     <>
       {headerSection[step]}
-      {mainSection[step]}
+      <div className="px-2">{mainSection[step]}</div>
       {footerActions[step]}
     </>
   );

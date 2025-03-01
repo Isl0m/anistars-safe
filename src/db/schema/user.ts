@@ -61,8 +61,20 @@ export const tgUsers = pgTable(
   }
 );
 
+export const userPasses = pgTable("UserPass", {
+  id: text("id").notNull().primaryKey(),
+  points: integer("points").default(0).notNull(),
+  currentStep: integer("currentStep").default(0).notNull(),
+  premiumStep: integer("premiumStep").default(0).notNull(),
+  isPremium: boolean("isPremium").default(false).notNull(),
+  tasksGeneratedAt: timestamp("tasksGeneratedAt", {
+    withTimezone: true,
+  }),
+});
+
 const insertTgUserSchema = createInsertSchema(tgUsers);
 export type InsertTgUser = z.infer<typeof insertTgUserSchema>;
 
 const selectTgUserSchema = createSelectSchema(tgUsers);
 export type User = z.infer<typeof selectTgUserSchema>;
+export type UserExtended = User & { isPremium: boolean };

@@ -1,11 +1,11 @@
 import {
-  boolean,
-  integer,
-  pgTable,
-  real,
-  serial,
-  text,
-  timestamp,
+    boolean,
+    integer,
+    pgTable,
+    real,
+    serial,
+    text,
+    timestamp,
 } from "drizzle-orm/pg-core";
 
 import { tAuthors } from "./author";
@@ -24,6 +24,7 @@ export const tCards = pgTable("Card", {
   droppable: boolean("droppable").default(true).notNull(),
   type: text("type").$type<CardTypes>().default("basic").notNull(),
   collection: text("collection"),
+  price: integer("price").default(0).notNull(),
 
   createdAt: timestamp("createdAt").defaultNow(),
 

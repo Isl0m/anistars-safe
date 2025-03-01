@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { sendTelegramMessage } from "@/lib/bot";
-import { addTradeCards, updateTrade } from "@/lib/queries";
+import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
+import { addTradeCards, getUser, updateTrade } from "@/lib/queries";
 
 const updateTradeSchema = z.object({
   tradeId: z.number(),
@@ -19,12 +19,17 @@ export async function POST(request: Request) {
     });
   const { data } = parsedData;
   try {
-    const [trade] = await updateTrade(data.tradeId, { cost: data.cost });
+    const [trade] = await updateTrade(data.tradeId, {
+      cost: data.cost,
+      status: "fulfilled",
+    });
+    const receiver = await getUser(trade.receiverId);
+    const me = await getMe();
     await addTradeCards(trade.id, data.cardIds, false);
 
     await sendTelegramMessage(
       trade.senderId,
-      `${trade.receiverId} предлогает вам трейд`,
+      `${getProfileLink(me.result.username, receiver.id, receiver.name)} предлогает вам трейд`,
       [
         [
           {

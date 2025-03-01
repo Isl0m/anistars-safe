@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { User } from "@/db/schema/user";
 import { Input } from "@/ui/input";
@@ -56,6 +57,18 @@ function TradePageContent({ user }: { user: User }) {
         description: "Введите ид получателя",
         variant: "destructive",
       });
+      setReceiver("");
+      setIsLoading(false);
+      return;
+    }
+    if (receiver === user.id) {
+      toast({
+        title: "Ошибка",
+        description: "Нельзя трейдится с самим собой",
+        variant: "destructive",
+      });
+      setReceiver("");
+      setIsLoading(false);
       return;
     }
     try {
@@ -71,7 +84,6 @@ function TradePageContent({ user }: { user: User }) {
             description: "Пользователь не может трейдится",
             variant: "destructive",
           });
-          return;
         }
       }
       setIsLoading(false);
@@ -87,9 +99,21 @@ function TradePageContent({ user }: { user: User }) {
 
   return (
     <>
-      <Header title="Трейд" />
+      <Header
+        title="Трейд"
+        element={
+          <Link
+            href={"/trade/history"}
+            className={buttonVariants({
+              variant: "outline",
+            })}
+          >
+            История трейдов
+          </Link>
+        }
+      />
 
-      <div className="mb-2 flex items-center space-x-4">
+      <div className="mb-2 flex items-center space-x-4 px-2">
         <UserIcon className="ml-2 h-4 w-4 text-muted-foreground" />
         <Input
           id="recipient"
