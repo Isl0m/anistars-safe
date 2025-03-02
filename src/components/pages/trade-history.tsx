@@ -71,15 +71,7 @@ export function TradeHistory() {
                 <ArrowDown className="mx-auto h-3 w-3 text-muted-foreground" />
                 <UserDisplay user={trade.receiver} role="Получатель" />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {Intl.DateTimeFormat("ru-RU", {
-                      year: "2-digit",
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "numeric",
-                    }).format(new Date(trade.createdAt))}
-                  </span>
+                  <span>{dateFormat(trade.createdAt)}</span>
                 </div>
               </div>
 
@@ -100,6 +92,17 @@ export function TradeHistory() {
       />
     </main>
   );
+}
+
+function dateFormat(date: Date) {
+  return Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Asia/Tashkent",
+    year: "2-digit",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  }).format(new Date(date));
 }
 
 function UserDisplay({ user, role }: { user: User; role: string }) {

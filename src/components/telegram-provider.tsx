@@ -7,7 +7,6 @@ import {
   retrieveLaunchParams,
   swipeBehavior,
   User as TelegramUser,
-  viewport,
 } from "@telegram-apps/sdk-react";
 
 export interface ITelegramContext {
@@ -30,7 +29,7 @@ export const TelegramProvider = ({
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
         postEvent("web_app_set_header_color", { color: "#020817" });
-        await viewport.requestFullscreen();
+        // await viewport.requestFullscreen();
         const { initData } = retrieveLaunchParams();
         if (initData && initData.user) {
           setTgUser(initData.user);
