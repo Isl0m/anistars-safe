@@ -1,7 +1,5 @@
-import { getFilterOptions } from "@/components/get-filte-options";
-import { Profile } from "@/components/profile";
+import { Profile } from "@/components/pages/profile";
 
 export default async function ProfilePage() {
-  const filterOptions = await getFilterOptions();
-  return <Profile filterOptions={filterOptions} />;
+  return <Profile />;
 }

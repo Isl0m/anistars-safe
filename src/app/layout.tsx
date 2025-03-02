@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
 
 import { cn } from "@/lib/utils";
 
-import { Header } from "@/components/header";
 import { TelegramProvider } from "@/components/telegram-provider";
+import { Toaster } from "@/ui/toaster";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -27,16 +25,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <SpeedInsights />
-      <Analytics />
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      />
       <body
         className={cn(
           "min-h-screen bg-background font-sans text-white antialiased",
           fontSans.variable
         )}
       >
-        <Header />
         <TelegramProvider>{children}</TelegramProvider>
+        <Toaster />
       </body>
     </html>
   );

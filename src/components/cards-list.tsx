@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import { isKey } from "@/lib/utils";
+import { isKey, prettyNumbers } from "@/lib/utils";
 
 import { FullCard, Technique } from "@/db/schema/card";
 
 import CardsFilter from "./cards-filter";
 import { FilterOption } from "./get-filte-options";
+import { Header } from "./header";
 import CardsPagination from "./pagination";
 import { Button } from "./ui/button";
 import {
@@ -28,7 +29,7 @@ type Props = {
 };
 
 export function CardsList({ title, cards, filterOptions }: Props) {
-  let cardsPerPage = 12;
+  let cardsPerPage = 16;
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<Map<string, string>>(new Map());
   const [filteredCards, setFilteredCards] = useState<FullCard[]>(cards);
@@ -84,24 +85,27 @@ export function CardsList({ title, cards, filterOptions }: Props) {
   const closeDrawer = () => setSelectedCard(null);
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-bold">{title}</h2>
-        <CardsFilter
-          filterOptions={filterOptions}
-          onFilterSelect={handleFilterSelect}
-          onFiltersReset={handleFilterReset}
-        />
-      </div>
-      <section className="flex flex-col gap-12 md:flex-row">
+      <Header
+        title={title}
+        element={
+          <CardsFilter
+            filterOptions={filterOptions}
+            onFilterSelect={handleFilterSelect}
+            onFiltersReset={handleFilterReset}
+          />
+        }
+      />
+      <section className="flex flex-col gap-12 px-2 md:flex-row">
         {pageCards.length > 0 ? (
-          <div className="space-y-8 md:container">
-            <ul className="grid grid-cols-3 gap-2 md:grid-cols-3 md:gap-8 lg:grid-cols-4">
+          <div className="space-y-4 md:container">
+            <ul className="grid grid-cols-4 gap-2 md:gap-8 lg:grid-cols-6">
               {pageCards.map((card, idx) => (
                 <li key={card.id} onClick={() => setSelectedCard(idx)}>
                   <Image
                     src={card.image}
                     width={255}
                     height={320}
+                    className="rounded"
                     alt={card.slug}
                   />
                 </li>
@@ -120,14 +124,14 @@ export function CardsList({ title, cards, filterOptions }: Props) {
       <Drawer open={selectedCard !== null} onClose={closeDrawer}>
         <DrawerContent aria-describedby="Карта">
           <DrawerHeader>
-            <DrawerTitle className="text-2xl font-bold">
+            <DrawerTitle className="text-xl font-bold">
               {selectedCard !== null
                 ? `${pageCards[selectedCard].name}`
                 : "🎴 Карта"}
             </DrawerTitle>
           </DrawerHeader>
           {selectedCard !== null && (
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 px-4">
               <Tabs defaultValue="image" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="image">Фото</TabsTrigger>
@@ -144,7 +148,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                       src={pageCards[selectedCard].image}
                       alt={pageCards[selectedCard].name}
                       layout="fill"
-                      className="rounded-lg object-contain"
+                      className="object-contain"
                     />
                   </div>
                 </TabsContent>
@@ -154,21 +158,17 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                       src={pageCards[selectedCard].gif!}
                       autoPlay
                       muted
-                      className="h-full w-full rounded-lg object-contain"
+                      className="h-full w-full object-contain"
                     >
                       Your browser does not support the video tag.
                     </video>
                   </div>
                 </TabsContent>
               </Tabs>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                   <p className="font-semibold">💎 Редкость:</p>
                   <p>{pageCards[selectedCard].rarity}</p>
-                </div>
-                <div>
-                  <p className="font-semibold">🪐 Вселенная:</p>
-                  <p>{pageCards[selectedCard].universe}</p>
                 </div>
                 <div>
                   <p className="font-semibold">⚜️ Класс:</p>
@@ -178,8 +178,16 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                   <p className="font-semibold">👤 Автор:</p>
                   <p>{pageCards[selectedCard].author}</p>
                 </div>
+                <div>
+                  <p className="font-semibold">🪐 Вселенная:</p>
+                  <p>{pageCards[selectedCard].universe}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">💰 Цена:</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].price)}🪙</p>
+                </div>
                 {pageCards[selectedCard].technique !== null && (
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <p className="font-semibold">🦾 Техника:</p>
                     <p>{parseTechnique(pageCards[selectedCard].technique!)}</p>
                   </div>
