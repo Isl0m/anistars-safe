@@ -80,7 +80,8 @@ export function CardsList({ title, cards, filterOptions }: Props) {
     const power = technique.power && `⚔️${technique.power * 100}%`;
     const heal = technique.heal && `♥️${technique.heal * 100}%`;
     const dodge = technique.dodge && `Уклонение`;
-    return `${technique.slug} | ${power || heal || dodge} 🎰${chance}%\n`;
+    const reflection = technique.reflection && `Отражение`;
+    return `${technique.slug} | ${power || heal || dodge || reflection} 🎰${chance}%\n`;
   };
   const closeDrawer = () => setSelectedCard(null);
   return (

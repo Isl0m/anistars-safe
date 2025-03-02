@@ -1,11 +1,11 @@
 import {
-    boolean,
-    integer,
-    pgTable,
-    real,
-    serial,
-    text,
-    timestamp,
+  boolean,
+  integer,
+  pgTable,
+  real,
+  serial,
+  text,
+  timestamp,
 } from "drizzle-orm/pg-core";
 
 import { tAuthors } from "./author";
@@ -86,6 +86,7 @@ export const tTechniques = pgTable("Technique", {
   heal: real("heal").default(0),
   power: real("power").default(0),
   dodge: boolean("dodge").default(false),
+  reflection: boolean("reflection").default(false),
   chance: real("chance").default(0.15).notNull(),
 });
 

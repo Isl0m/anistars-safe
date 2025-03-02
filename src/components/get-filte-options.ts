@@ -75,6 +75,7 @@ export async function getFilterOptions() {
       items: [
         { id: "power", name: "Урон" },
         { id: "heal", name: "Хил" },
+        { id: "reflection", name: "Отражение" },
         { id: "dodge", name: "Уклонение" },
       ],
     },
@@ -135,6 +136,7 @@ export async function getUserFilterOptions(userId: string) {
       items: [
         { id: "power", name: "Урон" },
         { id: "heal", name: "Хил" },
+        { id: "reflection", name: "Отражение" },
         { id: "dodge", name: "Уклонение" },
       ],
     },
