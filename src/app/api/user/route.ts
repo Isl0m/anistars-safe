@@ -8,6 +8,7 @@ export async function GET(request: Request) {
       status: 400,
     });
   const user = await getUser(id);
+  console.log(user)
   if (!user) return new Response("user not found", { status: 404 });
   return new Response(
     JSON.stringify({

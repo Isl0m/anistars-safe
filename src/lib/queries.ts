@@ -89,11 +89,11 @@ export async function getUser(id: string) {
   return db
     .select({
       ...userColumns,
-      isPremium: userPasses.isPremium,
+      isPremium: userPasses.isPremium || false,
     })
     .from(tgUsers)
     .where(eq(tgUsers.id, id))
-    .innerJoin(userPasses, eq(userPasses.id, tgUsers.id))
+    .leftJoin(userPasses, eq(userPasses.id, tgUsers.id))
     .then((res) => res[0] ?? null);
 }
 
