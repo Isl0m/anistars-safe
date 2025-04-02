@@ -55,6 +55,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
               if (value === "power" && !technique.power) return false;
               if (value === "heal" && !technique.heal) return false;
               if (value === "dodge" && !technique.dodge) return false;
+              if (value === "reflection" && !technique.reflection) return false;
             } else if (String(card[key]) !== value) {
               return false;
             }

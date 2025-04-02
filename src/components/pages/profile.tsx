@@ -74,11 +74,15 @@ export function SearchProfile({
   filterOptions,
 }: SearchProfileProps) {
   const router = useRouter();
-  postEvent("web_app_setup_back_button", { is_visible: true });
-  on("back_button_pressed", (payload) => {
-    postEvent("web_app_setup_back_button", { is_visible: false });
-    router.replace("/profile/search");
-  });
+  const { tgUser } = useTelegram();
+  if (tgUser) {
+    postEvent("web_app_setup_back_button", { is_visible: true });
+    on("back_button_pressed", (payload) => {
+      postEvent("web_app_setup_back_button", { is_visible: false });
+      router.replace("/profile/search");
+    });
+  }
+
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
       {cards?.length ? (
@@ -87,7 +91,9 @@ export function SearchProfile({
           cards={cards}
           filterOptions={filterOptions}
         />
-      ) : null}
+      ) : (
+        "Нет карт для отображения"
+      )}
     </main>
   );
 }
