@@ -52,6 +52,11 @@ export function CardsList({ title, cards, filterOptions }: Props) {
             if (key === "technique") {
               const technique = card[key];
               if (!technique) return false;
+              if (
+                value === "power&heal" &&
+                (!technique.power || !technique.heal)
+              )
+                return false;
               if (value === "power" && !technique.power) return false;
               if (value === "heal" && !technique.heal) return false;
               if (value === "dodge" && !technique.dodge) return false;
@@ -82,7 +87,9 @@ export function CardsList({ title, cards, filterOptions }: Props) {
     const heal = technique.heal && `♥️${technique.heal * 100}%`;
     const dodge = technique.dodge && `Уклонение`;
     const reflection = technique.reflection && `Отражение`;
-    return `${technique.slug} | ${power || heal || dodge || reflection} 🎰${chance}%\n`;
+    const techniqueText =
+      power && heal ? `${power} ${heal}` : power || heal || dodge || reflection;
+    return `${technique.slug} | ${techniqueText} 🎰${chance}%\n`;
   };
   const closeDrawer = () => setSelectedCard(null);
   return (

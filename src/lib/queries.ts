@@ -6,6 +6,7 @@ import {
   getTableColumns,
   notInArray,
   or,
+  sql,
 } from "drizzle-orm";
 
 import { db } from "@/db";
