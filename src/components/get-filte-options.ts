@@ -1,9 +1,9 @@
 import {
-  getAuthors,
-  getClasses,
-  getRarities,
-  getUniverses,
-  getUserUniverses,
+    getAuthors,
+    getClasses,
+    getRarities,
+    getUniverses,
+    getUserUniverses,
 } from "@/lib/queries";
 
 export type FilterOptionKey =
@@ -137,6 +137,7 @@ export async function getUserFilterOptions(userId: string) {
       items: [
         { id: "power", name: "Урон" },
         { id: "heal", name: "Хил" },
+        { id: "power&heal", name: "Урон&Хил" },
         { id: "reflection", name: "Отражение" },
         { id: "dodge", name: "Уклонение" },
       ],
