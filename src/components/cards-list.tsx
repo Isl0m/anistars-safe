@@ -82,14 +82,13 @@ export function CardsList({ title, cards, filterOptions }: Props) {
   };
 
   const parseTechnique = (technique: Technique) => {
-    const chance = technique.chance * 100;
     const power = technique.power && `⚔️${technique.power * 100}%`;
     const heal = technique.heal && `♥️${technique.heal * 100}%`;
     const dodge = technique.dodge && `Уклонение`;
     const reflection = technique.reflection && `Отражение`;
     const techniqueText =
       power && heal ? `${power} ${heal}` : power || heal || dodge || reflection;
-    return `${technique.slug} | ${techniqueText} 🎰${chance}%\n`;
+    return `${technique.slug} | ${techniqueText}\n`;
   };
   const closeDrawer = () => setSelectedCard(null);
   return (
