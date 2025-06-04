@@ -17,6 +17,8 @@ import {
   viewport,
 } from "@telegram-apps/sdk-react";
 
+import { toast } from "./ui/use-toast";
+
 export interface ITelegramContext {
   tgUser?: TelegramUser;
 }
@@ -34,13 +36,21 @@ export const TelegramProvider = ({
     try {
       await viewport.requestFullscreen();
     } catch (e) {
-      console.error("Failed to request fullscreen:", e);
+      toast({
+        title: "Failed to request fullscreen",
+        description: JSON.stringify(e),
+        variant: "destructive",
+      });
     }
   }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        toast({
+          title: "Loading...",
+          description: "Please wait while we load your data.",
+        });
         init();
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
