@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   init,
   postEvent,
@@ -23,6 +30,14 @@ export const TelegramProvider = ({
 }) => {
   const [tgUser, setTgUser] = useState<TelegramUser | undefined>(undefined);
 
+  const requestAppFullscreen = useCallback(async () => {
+    try {
+      await viewport.requestFullscreen();
+    } catch (e) {
+      console.error("Failed to request fullscreen:", e);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -30,7 +45,9 @@ export const TelegramProvider = ({
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
         postEvent("web_app_set_header_color", { color: "#020817" });
-        // await viewport.requestFullscreen();
+
+        await requestAppFullscreen();
+
         const { initData } = retrieveLaunchParams();
         if (initData && initData.user) {
           setTgUser(initData.user);
@@ -43,9 +60,7 @@ export const TelegramProvider = ({
     fetchData();
   }, []);
 
-  const value = useMemo(() => {
-    return { tgUser };
-  }, [tgUser]);
+  const value = useMemo(() => ({ tgUser }), [tgUser]);
 
   return (
     <TelegramContext.Provider value={value}>
