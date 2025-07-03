@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     await sendTelegramMessage(
       trade.senderId,
-      `${getProfileLink(me.result.username, receiver.id, receiver.name)} предлогает вам трейд`,
+      `${getProfileLink(me.result.username, receiver.id, receiver.name)} предлагает вам трейд`,
       [
         [
           {
