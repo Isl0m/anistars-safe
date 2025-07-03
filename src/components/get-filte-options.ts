@@ -1,25 +1,37 @@
 import {
-    getAuthors,
-    getClasses,
-    getRarities,
-    getUniverses,
-    getUserUniverses,
+  getAuthors,
+  getClasses,
+  getRarities,
+  getUniverses,
+  getUserUniverses,
 } from "@/lib/queries";
 
+import { CardTypes } from "@/db/schema/card";
+
 export type FilterOptionKey =
-  | "rarityId"
-  | "classId"
-  | "universeId"
-  | "authorId"
-  | "type"
+  | "rarityIds"
+  | "classIds"
+  | "universeIds"
+  | "authorIds"
+  | "types"
   | "droppable"
-  | "technique";
+  | "techniques";
 
 export type FilterOption = {
   key: FilterOptionKey;
   name: string;
   items: { id: number | string; name: string }[];
   span?: number;
+};
+
+export type Filter = {
+  rarityIds: number[];
+  classIds: number[];
+  universeIds: number[];
+  authorIds: number[];
+  types: CardTypes[];
+  droppable: string[];
+  techniques: string[];
 };
 
 export async function getFilterOptions() {
@@ -32,23 +44,23 @@ export async function getFilterOptions() {
 
   const filterOptions: FilterOption[] = [
     {
-      key: "rarityId",
+      key: "rarityIds",
       name: "Редкость",
       items: rarities,
     },
     {
-      key: "classId",
+      key: "classIds",
       name: "Класс",
       items: classes,
     },
     {
-      key: "universeId",
+      key: "universeIds",
       name: "Вселенная",
       items: universes,
       span: 2,
     },
     {
-      key: "type",
+      key: "types",
       name: "Характеристики",
       items: [
         { id: "full", name: "Фулл" },
@@ -60,17 +72,17 @@ export async function getFilterOptions() {
       key: "droppable",
       name: "Тип",
       items: [
-        { id: "false", name: "Лимитированный" },
-        { id: "true", name: "Базовый" },
+        { id: "limited", name: "Лимитированный" },
+        { id: "basic", name: "Базовый" },
       ],
     },
     {
-      key: "authorId",
+      key: "authorIds",
       name: "Автор",
       items: authors.map(({ id, username }) => ({ id, name: username })),
     },
     {
-      key: "technique",
+      key: "techniques",
       name: "Техника",
       items: [
         { id: "power", name: "Урон" },
@@ -94,23 +106,23 @@ export async function getUserFilterOptions(userId: string) {
 
   const filterOptions: FilterOption[] = [
     {
-      key: "rarityId",
+      key: "rarityIds",
       name: "Редкость",
       items: rarities,
     },
     {
-      key: "classId",
+      key: "classIds",
       name: "Класс",
       items: classes,
     },
     {
-      key: "universeId",
+      key: "universeIds",
       name: "Вселенная",
       items: universes,
       span: 2,
     },
     {
-      key: "type",
+      key: "types",
       name: "Характеристики",
       items: [
         { id: "full", name: "Фулл" },
@@ -122,17 +134,17 @@ export async function getUserFilterOptions(userId: string) {
       key: "droppable",
       name: "Тип",
       items: [
-        { id: "false", name: "Лимитированный" },
-        { id: "true", name: "Базовый" },
+        { id: "limited", name: "Лимитированный" },
+        { id: "basic", name: "Базовый" },
       ],
     },
     {
-      key: "authorId",
+      key: "authorIds",
       name: "Автор",
       items: authors.map(({ id, username }) => ({ id, name: username })),
     },
     {
-      key: "technique",
+      key: "techniques",
       name: "Техника",
       items: [
         { id: "power", name: "Урон" },

@@ -5,6 +5,7 @@ import "./globals.css";
 
 import { cn } from "@/lib/utils";
 
+import { QueryProvider } from "@/components/query-client-provider";
 import { TelegramProvider } from "@/components/telegram-provider";
 import { Toaster } from "@/ui/toaster";
 
@@ -31,12 +32,18 @@ export default function RootLayout({
       />
       <body
         className={cn(
-          "min-h-screen bg-background font-sans text-white antialiased",
+          "bg-background font-sans text-white antialiased",
           fontSans.variable
         )}
       >
-        <TelegramProvider>{children}</TelegramProvider>
-        <Toaster />
+        <QueryProvider>
+          <TelegramProvider>
+            <div className="relative h-screen pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)] pt-[calc(var(--tg-viewport-safe-area-inset-top)+30px)]">
+              {children}
+            </div>
+            <Toaster />
+          </TelegramProvider>
+        </QueryProvider>
       </body>
     </html>
   );

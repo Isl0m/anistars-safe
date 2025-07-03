@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
 
-import { isKey, prettyNumbers } from "@/lib/utils";
+import { prettyNumbers } from "@/lib/utils";
 
 import { FullCard, Technique } from "@/db/schema/card";
 
 import CardsFilter from "./cards-filter";
-import { FilterOption } from "./get-filte-options";
+import { Filter, FilterOption } from "./get-filte-options";
 import { Header } from "./header";
 import CardsPagination from "./pagination";
 import { Button } from "./ui/button";
@@ -24,58 +25,56 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 type Props = {
   title: string;
-  cards: FullCard[];
   filterOptions: FilterOption[];
 };
 
-export function CardsList({ title, cards, filterOptions }: Props) {
+export function CardsPage({ title, filterOptions }: Props) {
+  const [filter, setFilter] = useState<Filter>();
+
+  const query = useQuery({
+    queryKey: ["cards", filter],
+    queryFn: async () => {
+      console.log(filter);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/cards`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(filter ?? {}),
+      });
+      return (await response.json()).cards as Promise<FullCard[]>;
+    },
+  });
+
+  const handleFilterChange = (data: Filter) => {
+    setFilter(data);
+  };
+
+  return (
+    <>
+      <Header
+        title={title}
+        element={
+          <CardsFilter
+            filterOptions={filterOptions}
+            setFilters={handleFilterChange}
+          />
+        }
+      />
+      {query.data && <CardsList cards={query.data} />}
+    </>
+  );
+}
+
+function CardsList({ cards }: { cards: FullCard[] }) {
   let cardsPerPage = 16;
   const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<Map<string, string>>(new Map());
-  const [filteredCards, setFilteredCards] = useState<FullCard[]>(cards);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
 
-  const cardsLeft = filteredCards.length - page * cardsPerPage;
+  const cardsLeft = cards.length - page * cardsPerPage;
 
   const skip = (page - 1) * cardsPerPage;
-  const pageCards = filteredCards.slice(skip, skip + cardsPerPage);
-
-  const handleFilterSelect = (key: string, value: string) => {
-    if (!value) return;
-    setFilter((prev) => prev.set(key, value));
-
-    setFilteredCards(() =>
-      cards.filter((card) => {
-        if (filter.size <= 0) return true;
-        for (let [key, value] of filter) {
-          if (isKey(card, key)) {
-            if (key === "technique") {
-              const technique = card[key];
-              if (!technique) return false;
-              if (
-                value === "power&heal" &&
-                (!technique.power || !technique.heal)
-              )
-                return false;
-              if (value === "power" && !technique.power) return false;
-              if (value === "heal" && !technique.heal) return false;
-              if (value === "dodge" && !technique.dodge) return false;
-              if (value === "reflection" && !technique.reflection) return false;
-            } else if (String(card[key]) !== value) {
-              return false;
-            }
-          }
-        }
-        return true;
-      })
-    );
-    setPage(1);
-  };
-  const handleFilterReset = () => {
-    setFilter(new Map());
-    setFilteredCards(cards);
-    setPage(1);
-  };
+  const pageCards = cards.slice(skip, skip + cardsPerPage);
 
   const handleChangePage = (page: number) => {
     setPage(page);
@@ -93,16 +92,6 @@ export function CardsList({ title, cards, filterOptions }: Props) {
   const closeDrawer = () => setSelectedCard(null);
   return (
     <>
-      <Header
-        title={title}
-        element={
-          <CardsFilter
-            filterOptions={filterOptions}
-            onFilterSelect={handleFilterSelect}
-            onFiltersReset={handleFilterReset}
-          />
-        }
-      />
       <section className="flex flex-col gap-12 px-2 md:flex-row">
         {pageCards.length > 0 ? (
           <div className="space-y-4 md:container">

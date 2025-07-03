@@ -4,11 +4,13 @@ import {
   desc,
   eq,
   getTableColumns,
+  inArray,
   notInArray,
   or,
-  sql,
+  SQL,
 } from "drizzle-orm";
 
+import { Filter } from "@/components/get-filte-options";
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
 import {
@@ -78,6 +80,45 @@ export async function getCardsFull(): Promise<FullCard[]> {
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
     .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
     .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+    .orderBy(desc(tCards.createdAt));
+}
+
+export async function getCardsFullWithFilter(
+  filter?: Filter
+): Promise<FullCard[]> {
+  const filters: SQL[] = [];
+  if (filter?.rarityIds && filter.rarityIds.length > 0)
+    filters.push(inArray(tCards.rarityId, filter.rarityIds));
+  if (filter?.classIds && filter.classIds.length > 0)
+    filters.push(inArray(tCards.classId, filter.classIds));
+  if (filter?.universeIds && filter.universeIds.length > 0)
+    filters.push(inArray(tCards.universeId, filter.universeIds));
+  if (filter?.authorIds && filter.authorIds.length > 0)
+    filters.push(inArray(tCards.authorId, filter.authorIds));
+  if (filter?.types && filter.types.length > 0)
+    filters.push(inArray(tCards.type, filter.types));
+
+  if (filter?.droppable && filter.droppable[0] === "limited")
+    filters.push(eq(tCards.droppable, false));
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
+  return db
+    .select({
+      ...cardBase,
+      rarity: tRarities.name,
+      universe: tUniverses.name,
+      class: tClasses.name,
+      author: tAuthors.username,
+      technique: techniqueColums,
+    })
+    .from(tCards)
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+    .where(and(...filters))
     .orderBy(desc(tCards.createdAt));
 }
 

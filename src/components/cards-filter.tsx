@@ -1,158 +1,163 @@
 "use client";
 
-import { useDeferredValue, useRef, useState } from "react";
-import { ChevronUp, Filter, X } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
+import { ChevronDown, Filter as FilterIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { CardTypes } from "@/db/schema/card";
 
-import { FilterOption, FilterOptionKey } from "./get-filte-options";
+import { Filter, FilterOption } from "./get-filte-options";
 import { Button } from "./ui/button";
-import { Form, FormControl, FormField, FormItem } from "./ui/form";
+import { Checkbox } from "./ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./ui/collapsible";
 import { Label } from "./ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 
 type Props = {
   filterOptions: FilterOption[];
-  onFilterSelect: (key: string, value: string) => void;
-  onFiltersReset: () => void;
+  setFilters: (filters: Filter) => void;
 };
-type Inputs = Record<FilterOptionKey, string>;
-export default function CardsFilter({
-  filterOptions,
-  onFilterSelect,
-  onFiltersReset,
-}: Props) {
-  const [isOptionOpen, setIsOptionOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const isDisabled = useDeferredValue(isOptionOpen);
-
-  const form = useForm<Inputs>({
+export default function CardsFilter({ filterOptions, setFilters }: Props) {
+  const form = useForm({
     defaultValues: {
-      authorId: "",
-      classId: "",
-      rarityId: "",
-      universeId: "",
-      type: "",
-      droppable: "",
-      technique: "",
+      authorIds: [] as number[],
+      classIds: [] as number[],
+      rarityIds: [] as number[],
+      universeIds: [] as number[],
+      types: [] as CardTypes[],
+      droppable: [] as string[],
+      techniques: [] as string[],
+    },
+    onSubmit: async ({ value }) => {
+      setFilters(value);
     },
   });
-  const onSubmit = (data: Inputs) => {
-    Object.entries(data).forEach(([key, value]) => {
-      onFilterSelect(key, value);
-    });
+
+  const renderFilterOptions = (
+    { items, key }: Pick<FilterOption, "items" | "key">,
+    maxItems = 10
+  ) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    console.log("isExpanded", key, isExpanded);
+    const displayItems =
+      isExpanded || items.length <= maxItems ? items : items.slice(0, maxItems);
+
+    const hasMoreItems = items.length > maxItems;
+
+    return (
+      <CollapsibleContent className="max-h-80 space-y-2 overflow-y-auto pt-2">
+        {displayItems.map(({ id, name }) => (
+          <form.Field
+            key={id}
+            name={key}
+            children={(field) => (
+              <Label
+                htmlFor={`${key}-${id}`}
+                className="flex cursor-pointer p-2"
+              >
+                <Checkbox
+                  id={`${key}-${id}`}
+                  // @ts-ignore
+                  checked={field.state.value.includes(id)}
+                  onCheckedChange={(checked) => {
+                    const currentId = id;
+                    if (checked) {
+                      field.pushValue(currentId);
+                    } else {
+                      const valueIdx = field.state.value.findIndex(
+                        (value) => value === currentId
+                      );
+                      field.removeValue(valueIdx);
+                    }
+                  }}
+                  className="mr-2 h-4 w-4"
+                />
+                {name}
+              </Label>
+            )}
+          />
+        ))}
+        {hasMoreItems && (
+          <div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsExpanded((prev) => !prev)}
+              className="mt-2 w-full text-xs"
+            >
+              {isExpanded ? (
+                <>Показать меньше ({items.length - maxItems} скрытых)</>
+              ) : (
+                <>Показать больше ({items.length - maxItems} больше)</>
+              )}
+            </Button>
+          </div>
+        )}
+      </CollapsibleContent>
+    );
   };
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (
-      !(isOptionOpen || isDisabled) &&
-      drawerRef.current &&
-      !drawerRef.current.contains(e.target as Node)
-    ) {
-      setShowFilters(false);
-    }
-  };
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full basis-1/6">
-        <Button
-          onClick={() => setShowFilters(!showFilters)}
-          variant="outline"
-          aria-label="Show filters"
-        >
-          <Filter className="mr-2 h-4 w-4" />
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" aria-label="Show filters">
+          <FilterIcon className="mr-2 h-4 w-4" />
           Фильтры
         </Button>
-
-        {/* Filter Drawer */}
-        <div
-          className={`bg-background/80 fixed inset-0 z-30 backdrop-blur-sm ${
-            showFilters
-              ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0"
-          } transition-opacity duration-300`}
-          onClick={handleBackdropClick}
-        />
-        <div
-          ref={drawerRef}
-          className={`fixed bottom-0 left-0 right-0 z-40 transform bg-card ${
-            showFilters ? "translate-y-0" : "translate-y-full"
-          } rounded-t-3xl shadow-lg transition-transform duration-300 ease-in-out`}
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="h-screen max-h-[calc(100vh-(var(--tg-viewport-safe-area-inset-top)+40px))] overflow-y-auto"
+      >
+        <SheetHeader>
+          <SheetTitle className="text-lg">Фильтры</SheetTitle>
+        </SheetHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit();
+          }}
+          className="mt-4 "
         >
-          <div className="space-y-6 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Фильтры</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFilters(false);
-                }}
-                aria-label="Close filters"
-              >
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {filterOptions.map(({ key, name, items, span }) => (
-                <FormField
-                  control={form.control}
-                  name={key}
-                  key={key}
-                  render={({ field }) => (
-                    <FormItem className={cn(span && `col-span-${span}`)}>
-                      <Label>{name}</Label>
-                      <Select
-                        onOpenChange={setIsOptionOpen}
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выбрать" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {items.map(({ id, name }) => (
-                            <SelectItem value={id.toString()} key={id}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-              ))}
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <Button
-                disabled={isDisabled}
-                onClick={() => {
-                  form.reset();
-                  onFiltersReset();
-                }}
-              >
-                Перезагрузить
-              </Button>
-              <Button disabled={isDisabled} type="submit">
-                Применить
-              </Button>
-            </div>
+          <div className="space-y-3">
+            {filterOptions.map(({ key, name, items }) => (
+              <Collapsible key={key}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-auto w-full justify-between rounded-lg border bg-muted/30 p-3"
+                  >
+                    <span className="text-base font-medium">{name}</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                {renderFilterOptions({ items, key })}
+              </Collapsible>
+            ))}
           </div>
-          <div className="mx-auto mb-4 flex h-6 w-12 items-center justify-center">
-            <ChevronUp className="h-6 w-6 text-muted-foreground" />
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            <Button
+              type="button"
+              variant={"secondary"}
+              onClick={() => form.reset()}
+            >
+              Перезагрузить
+            </Button>
+            <Button type="submit">Применить</Button>
           </div>
-        </div>
-      </form>
-    </Form>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
