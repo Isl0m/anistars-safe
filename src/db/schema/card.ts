@@ -22,12 +22,14 @@ export const tCards = pgTable("Card", {
   image: text("image").notNull(),
   gif: text("gif"),
   droppable: boolean("droppable").default(true).notNull(),
-  type: text("type").$type<CardTypes>().default("basic").notNull(),
+  upgradeable: boolean("upgradeable").default(false).notNull(),
+  stats: text("stats").$type<CardTypes>().default("basic").notNull(),
   collection: text("collection"),
   price: integer("price").default(0).notNull(),
 
   createdAt: timestamp("createdAt").defaultNow(),
 
+  techniqueIds: integer("techniqueIds").array(),
   techniqueId: integer("techniqueId").references(() => tTechniques.id, {
     onDelete: "set null",
   }),
@@ -79,6 +81,13 @@ export const tRarities = pgTable("Rarity", {
   rank: integer("rank").default(1).notNull(),
 });
 
+export type TechniqueType =
+  | "power"
+  | "heal"
+  | "power+heal"
+  | "dodge"
+  | "reflect";
+
 export const tTechniques = pgTable("Technique", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull(),
@@ -88,6 +97,7 @@ export const tTechniques = pgTable("Technique", {
   dodge: boolean("dodge").default(false),
   reflection: boolean("reflection").default(false),
   chance: real("chance").default(0.15).notNull(),
+  type: text("type").$type<TechniqueType>().notNull().default("power"),
 });
 
 export type Technique = typeof tTechniques.$inferSelect;

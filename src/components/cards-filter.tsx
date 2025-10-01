@@ -73,7 +73,7 @@ export default function CardsFilter({
 
         {/* Filter Drawer */}
         <div
-          className={`bg-background/80 fixed inset-0 z-30 backdrop-blur-sm ${
+          className={`fixed inset-0 z-30 bg-background/80 backdrop-blur-sm ${
             showFilters
               ? "pointer-events-auto opacity-100"
               : "pointer-events-none opacity-0"
