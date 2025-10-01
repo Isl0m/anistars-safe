@@ -4,6 +4,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  gt,
   inArray,
   notInArray,
   or,
@@ -86,7 +87,7 @@ export async function getCardsFull(): Promise<FullCard[]> {
 export async function getCardsFullWithFilter(
   filter?: Filter
 ): Promise<FullCard[]> {
-  const filters: SQL[] = [];
+  const filters: (SQL | undefined)[] = [];
   if (filter?.rarityIds && filter.rarityIds.length > 0)
     filters.push(inArray(tCards.rarityId, filter.rarityIds));
   if (filter?.classIds && filter.classIds.length > 0)
@@ -100,6 +101,24 @@ export async function getCardsFullWithFilter(
 
   if (filter?.droppable && filter.droppable[0] === "limited")
     filters.push(eq(tCards.droppable, false));
+
+  if (filter?.techniques && filter.techniques.length > 0) {
+    const techFilters: (SQL | undefined)[] = [];
+    filter.techniques.forEach((t) => {
+      if (t === "reflection") {
+        techFilters.push(eq(tTechniques.reflection, true));
+      }
+      if (t === "power&heal") {
+        techFilters.push(
+          and(gt(tTechniques.heal, 0), gt(tTechniques.power, 0))
+        );
+      }
+      if (t === "dodge") {
+        techFilters.push(eq(tTechniques.dodge, true));
+      }
+    });
+    filters.push(or(...techFilters));
+  }
   const cardBase = getTableColumns(tCards);
   const techniqueColums = getTableColumns(tTechniques);
 
