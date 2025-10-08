@@ -1,9 +1,9 @@
 import {
-    getAuthors,
-    getClasses,
-    getRarities,
-    getUniverses,
-    getUserUniverses,
+  getAuthors,
+  getClasses,
+  getRarities,
+  getUniverses,
+  getUserUniverses,
 } from "@/lib/queries";
 
 export type FilterOptionKey =
@@ -11,7 +11,7 @@ export type FilterOptionKey =
   | "classId"
   | "universeId"
   | "authorId"
-  | "type"
+  | "stats"
   | "droppable"
   | "technique";
 
@@ -48,7 +48,7 @@ export async function getFilterOptions() {
       span: 2,
     },
     {
-      key: "type",
+      key: "stats",
       name: "Характеристики",
       items: [
         { id: "full", name: "Фулл" },
@@ -110,7 +110,7 @@ export async function getUserFilterOptions(userId: string) {
       span: 2,
     },
     {
-      key: "type",
+      key: "stats",
       name: "Характеристики",
       items: [
         { id: "full", name: "Фулл" },

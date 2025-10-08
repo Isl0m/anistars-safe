@@ -40,7 +40,7 @@ export default function CardsFilter({
       classId: "",
       rarityId: "",
       universeId: "",
-      type: "",
+      stats: "",
       droppable: "",
       technique: "",
     },
