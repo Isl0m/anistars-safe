@@ -11,7 +11,7 @@ import {
 import { tAuthors } from "./author";
 import { tgUsers } from "./user";
 
-export type CardTypes = "full" | "pre-full" | "basic";
+export type CardStats = "full" | "pre-full" | "basic";
 
 export const tCards = pgTable("Card", {
   id: text("id").primaryKey(),
@@ -22,7 +22,7 @@ export const tCards = pgTable("Card", {
   image: text("image").notNull(),
   gif: text("gif"),
   droppable: boolean("droppable").default(true).notNull(),
-  type: text("type").$type<CardTypes>().default("basic").notNull(),
+  stats: text("stats").$type<CardStats>().default("basic").notNull(),
   collection: text("collection"),
   price: integer("price").default(0).notNull(),
 

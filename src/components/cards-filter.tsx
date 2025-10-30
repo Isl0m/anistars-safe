@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { ChevronDown, Filter as FilterIcon } from "lucide-react";
 
-import { CardTypes } from "@/db/schema/card";
+import { CardStats } from "@/db/schema/card";
 
 import { Filter, FilterOption } from "./get-filte-options";
 import { Button } from "./ui/button";
@@ -34,7 +34,7 @@ export default function CardsFilter({ filterOptions, setFilters }: Props) {
       classIds: [] as number[],
       rarityIds: [] as number[],
       universeIds: [] as number[],
-      types: [] as CardTypes[],
+      stats: [] as CardStats[],
       droppable: [] as string[],
       techniques: [] as string[],
     },

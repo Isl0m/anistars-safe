@@ -96,8 +96,8 @@ export async function getCardsFullWithFilter(
     filters.push(inArray(tCards.universeId, filter.universeIds));
   if (filter?.authorIds && filter.authorIds.length > 0)
     filters.push(inArray(tCards.authorId, filter.authorIds));
-  if (filter?.types && filter.types.length > 0)
-    filters.push(inArray(tCards.type, filter.types));
+  if (filter?.stats && filter.stats.length > 0)
+    filters.push(inArray(tCards.stats, filter.stats));
 
   if (filter?.droppable && filter.droppable[0] === "limited")
     filters.push(eq(tCards.droppable, false));

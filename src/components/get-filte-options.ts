@@ -6,14 +6,14 @@ import {
   getUserUniverses,
 } from "@/lib/queries";
 
-import { CardTypes } from "@/db/schema/card";
+import { CardStats } from "@/db/schema/card";
 
 export type FilterOptionKey =
   | "rarityIds"
   | "classIds"
   | "universeIds"
   | "authorIds"
-  | "types"
+  | "stats"
   | "droppable"
   | "techniques";
 
@@ -29,7 +29,7 @@ export type Filter = {
   classIds: number[];
   universeIds: number[];
   authorIds: number[];
-  types: CardTypes[];
+  stats: CardStats[];
   droppable: string[];
   techniques: string[];
 };
@@ -60,7 +60,7 @@ export async function getFilterOptions() {
       span: 2,
     },
     {
-      key: "types",
+      key: "stats",
       name: "Характеристики",
       items: [
         { id: "full", name: "Фулл" },
@@ -122,7 +122,7 @@ export async function getUserFilterOptions(userId: string) {
       span: 2,
     },
     {
-      key: "types",
+      key: "stats",
       name: "Характеристики",
       items: [
         { id: "full", name: "Фулл" },
