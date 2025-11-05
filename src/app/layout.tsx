@@ -38,7 +38,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <TelegramProvider>
-            <div className="relative h-screen pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)] pt-[calc(var(--tg-viewport-safe-area-inset-top)+30px)]">
+            <div className="relative h-screen pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)] pt-[calc(var(--tg-viewport-safe-area-inset-top)+40px)]">
               {children}
             </div>
             <Toaster />

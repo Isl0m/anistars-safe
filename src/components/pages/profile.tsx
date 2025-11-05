@@ -63,7 +63,6 @@ export function Profile() {
 }
 
 type SearchProfileProps = {
-  userId: string;
   filterOptions: FilterOption[];
   cards: FullCard[];
   user: User;

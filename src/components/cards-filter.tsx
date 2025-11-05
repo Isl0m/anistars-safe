@@ -117,7 +117,7 @@ export default function CardsFilter({ filterOptions, setFilters }: Props) {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="h-screen max-h-[calc(100vh-(var(--tg-viewport-safe-area-inset-top)+40px))] overflow-y-auto"
+        className="mt-auto h-screen max-h-[calc(100vh-(var(--tg-viewport-safe-area-inset-top)))] overflow-y-auto"
       >
         <SheetHeader>
           <SheetTitle className="text-lg">Фильтры</SheetTitle>
@@ -128,7 +128,7 @@ export default function CardsFilter({ filterOptions, setFilters }: Props) {
             e.stopPropagation();
             form.handleSubmit();
           }}
-          className="mt-4 "
+          className="mt-4"
         >
           <div className="space-y-3">
             {filterOptions.map(({ key, name, items }) => (
@@ -146,7 +146,7 @@ export default function CardsFilter({ filterOptions, setFilters }: Props) {
               </Collapsible>
             ))}
           </div>
-          <div className="mt-8 grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 py-8">
             <Button
               type="button"
               variant={"secondary"}

@@ -2,9 +2,8 @@ import { Suspense } from "react";
 
 import { getUser, getUserCards } from "@/lib/queries";
 
-import { CardsList } from "@/components/cards-list";
 import { getUserFilterOptions } from "@/components/get-filte-options";
-import { SearchFirstProfile } from "@/components/pages/profile";
+import { SearchFirstProfile, SearchProfile } from "@/components/pages/profile";
 
 export default async function Profile({
   searchParams,
@@ -25,8 +24,8 @@ export default async function Profile({
     <main className="flex min-h-screen flex-col gap-4 md:container">
       <Suspense>
         {userCards?.length ? (
-          <CardsList
-            title={user.name}
+          <SearchProfile
+            user={user}
             cards={userCards}
             filterOptions={filterOptions}
           />

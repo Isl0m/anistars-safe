@@ -30,7 +30,7 @@ type Props = {
 
 export function CardsPage({ title, filterOptions }: Props) {
   const [filter, setFilter] = useState<Filter>();
-
+  console.log("RENDER CARDS PAGE");
   const query = useQuery({
     queryKey: ["cards", filter],
     queryFn: async () => {
@@ -66,7 +66,7 @@ export function CardsPage({ title, filterOptions }: Props) {
   );
 }
 
-function CardsList({ cards }: { cards: FullCard[] }) {
+export function CardsList({ cards }: { cards: FullCard[] }) {
   let cardsPerPage = 16;
   const [page, setPage] = useState(1);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
