@@ -25,6 +25,8 @@ export const tCards = pgTable("Card", {
   stats: text("stats").$type<CardStats>().default("basic").notNull(),
   collection: text("collection"),
   price: integer("price").default(0).notNull(),
+  upgradeable: boolean("upgradeable").default(false).notNull(),
+  upgrade: boolean("upgrade").default(false).notNull(),
 
   createdAt: timestamp("createdAt").defaultNow(),
 

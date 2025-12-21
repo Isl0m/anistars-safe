@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { UpdateTradeType } from "@/app/api/trade/update/route";
 import { FullCard } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
-import { User } from "@/db/schema/user";
+import { UserExtended } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 
 import CardsFilter from "../cards-filter";
-import { FilterOption } from "../get-filte-options";
+import { CardsListSkeleton } from "../cards-list-skeleton";
+import { Filter, FilterOption } from "../get-filte-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
-import { useCardsFilter } from "../use-cards-filer";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
 type Steps = "show" | "select" | "confirm";
@@ -28,55 +29,52 @@ export default function AcceptTradePage({
   trade: SelectMultiTrade & { senderName: string; senderCards: FullCard[] };
 }) {
   const { tgUser } = useTelegram();
+  const [filter, setFilter] = useState<Filter>();
 
-  const [isValidUser, setIsValidUser] = useState(true);
-  const [user, setUser] = useState<User>();
-  const [cards, setCards] = useState<FullCard[]>();
-  const [filterOptions, setFilterOptions] = useState<FilterOption[]>();
+  const query = useQuery({
+    queryKey: ["trade-accept-cards", filter],
+    queryFn: async () => {
+      if (!tgUser) return;
+      if (String(tgUser.id) !== trade.receiverId) return;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/cards/difference?id=${tgUser.id}&secondId=${trade.senderId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(filter ?? {}),
+        }
+      );
+      return (await response.json()) as Promise<{
+        cards: FullCard[];
+        user: UserExtended;
+        filterOptions: FilterOption[];
+      }>;
+    },
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    if (tgUser) {
-      if (String(tgUser.id) === trade.receiverId) {
-        fetch(
-          `${process.env.NEXT_PUBLIC_URL}/api/user/cards/difference?id=${tgUser.id}&secondId=${trade.senderId}`
-        )
-          .then((res) => res.json())
-          .then((data) => {
-            setUser(data.user);
-            setCards(data.cards);
-            setFilterOptions(data.filterOptions);
-          });
-      } else {
-        setIsValidUser(false);
-      }
-    }
-  }, [tgUser]);
+  const handleFilterChange = (data: Filter) => {
+    setFilter(data);
+  };
 
-  if (!isValidUser) {
+  if (query.data) {
     return (
-      <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Этот трейд не преднозначен вам
-        </h1>
-      </main>
-    );
-  }
-  if (!user || !filterOptions || !cards) {
-    return (
-      <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Загрузка...
-        </h1>
+      <main className="flex min-h-screen flex-col gap-4 md:container">
+        <AcceptTradePageContent
+          trade={trade}
+          cards={query.data.cards}
+          filterOptions={query.data.filterOptions}
+          setFilters={handleFilterChange}
+        />
       </main>
     );
   }
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
-      <AcceptTradePageContent
-        trade={trade}
-        cards={cards}
-        filterOptions={filterOptions}
-      />
+      <Header title={"Трейд"} />
+      <CardsListSkeleton />
     </main>
   );
 }
@@ -85,15 +83,26 @@ export function AcceptTradePageContent({
   cards,
   filterOptions,
   trade,
+  setFilters,
 }: {
   trade: SelectMultiTrade & { senderName: string; senderCards: FullCard[] };
   cards: FullCard[];
   filterOptions: FilterOption[];
+  setFilters: (filters: Filter) => void;
 }) {
-  const { pageCards, pagination, filterReset, filterSelect } = useCardsFilter({
-    cards,
-    cardsPerPage: 16,
-  });
+  let cardsPerPage = 16;
+  const [page, setPage] = useState(1);
+
+  if (page != 1 && Math.ceil(cards.length / cardsPerPage) < page) {
+    setPage(1);
+  }
+  const cardsLeft = cards.length - page * cardsPerPage;
+  const skip = (page - 1) * cardsPerPage;
+  const pageCards = cards.slice(skip, skip + cardsPerPage);
+
+  const handleChangePage = (page: number) => {
+    setPage(page);
+  };
 
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const [isLoading, setIsLoading] = useState(false);
@@ -131,7 +140,6 @@ export function AcceptTradePageContent({
       variant: "default",
     });
 
-    setIsLoading(false);
     router.push("/trade");
   };
 
@@ -183,11 +191,7 @@ export function AcceptTradePageContent({
       <Header
         title="Выберите"
         element={
-          <CardsFilter
-            filterOptions={filterOptions}
-            onFilterSelect={filterSelect}
-            onFiltersReset={filterReset}
-          />
+          <CardsFilter filterOptions={filterOptions} setFilters={setFilters} />
         }
       />
     ),
@@ -208,7 +212,11 @@ export function AcceptTradePageContent({
         pageCards={pageCards}
         selectedCards={selectedCards}
         onClick={onCardSelect}
-        pagination={pagination}
+        pagination={{
+          cardsLeft,
+          changePage: handleChangePage,
+          page,
+        }}
       />
     ),
     confirm: (
@@ -305,7 +313,7 @@ export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
         <li key={card.id}>
           <Image
             src={card.image}
-            width={255}
+            width={240}
             height={320}
             className="rounded"
             alt={card.slug}

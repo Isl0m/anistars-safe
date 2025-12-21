@@ -15,7 +15,8 @@ export type FilterOptionKey =
   | "authorIds"
   | "stats"
   | "droppable"
-  | "techniques";
+  | "techniques"
+  | "sort";
 
 export type FilterOption = {
   key: FilterOptionKey;
@@ -23,6 +24,12 @@ export type FilterOption = {
   items: { id: number | string; name: string }[];
   span?: number;
 };
+
+export type SortOptions =
+  | "createdAt-asc"
+  | "createdAt-desc"
+  | "price-asc"
+  | "price-desc";
 
 export type Filter = {
   rarityIds: number[];
@@ -32,6 +39,7 @@ export type Filter = {
   stats: CardStats[];
   droppable: string[];
   techniques: string[];
+  sort: SortOptions;
 };
 
 export async function getFilterOptions() {
@@ -74,6 +82,8 @@ export async function getFilterOptions() {
       items: [
         { id: "limited", name: "Лимитированный" },
         { id: "basic", name: "Базовый" },
+        { id: "upgradable", name: "Улучшаемый" },
+        { id: "upgrade", name: "Улучшение" },
       ],
     },
     {
@@ -90,6 +100,16 @@ export async function getFilterOptions() {
         { id: "power&heal", name: "Урон&Хил" },
         { id: "reflection", name: "Отражение" },
         { id: "dodge", name: "Уклонение" },
+      ],
+    },
+    {
+      key: "sort",
+      name: "Сортировка",
+      items: [
+        { id: "createdAt-desc", name: "Сначала новые" },
+        { id: "createdAt-asc", name: "Сначала старые" },
+        { id: "price-asc", name: "Сначала дешевые" },
+        { id: "price-desc", name: "Сначала дорогие" },
       ],
     },
   ];
@@ -136,6 +156,8 @@ export async function getUserFilterOptions(userId: string) {
       items: [
         { id: "limited", name: "Лимитированный" },
         { id: "basic", name: "Базовый" },
+        { id: "upgradable", name: "Улучшаемый" },
+        { id: "upgrade", name: "Улучшение" },
       ],
     },
     {
@@ -152,6 +174,16 @@ export async function getUserFilterOptions(userId: string) {
         { id: "power&heal", name: "Урон&Хил" },
         { id: "reflection", name: "Отражение" },
         { id: "dodge", name: "Уклонение" },
+      ],
+    },
+    {
+      key: "sort",
+      name: "Сортировка",
+      items: [
+        { id: "createdAt-asc", name: "Сначала новые" },
+        { id: "createdAt-desc", name: "Сначала старые" },
+        { id: "price-asc", name: "Сначала дешевые" },
+        { id: "price-desc", name: "Сначала дорогие" },
       ],
     },
   ];

@@ -1,8 +1,5 @@
-import { Suspense } from "react";
+import { getUser } from "@/lib/queries";
 
-import { getUser, getUserCards } from "@/lib/queries";
-
-import { getUserFilterOptions } from "@/components/get-filte-options";
 import { SearchFirstProfile, SearchProfile } from "@/components/pages/profile";
 
 export default async function Profile({
@@ -16,23 +13,15 @@ export default async function Profile({
   const user = await getUser(userId);
 
   if (!user) return <SearchFirstProfile />;
-  const userCards = await getUserCards(userId);
+  // if (user.isInvisible) {
+  //   return (
+  //     <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
+  //       <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
+  //         Этот профиль инкогнито
+  //       </h1>
+  //     </main>
+  //   );
+  // }
 
-  const filterOptions = await getUserFilterOptions(userId);
-
-  return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
-      <Suspense>
-        {userCards?.length ? (
-          <SearchProfile
-            user={user}
-            cards={userCards}
-            filterOptions={filterOptions}
-          />
-        ) : (
-          "Нет карт для отображения"
-        )}
-      </Suspense>
-    </main>
-  );
+  return <SearchProfile user={user} />;
 }

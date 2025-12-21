@@ -1,6 +1,8 @@
-import { getUser, getUserMissingCards } from "@/lib/queries";
+import { getUser, getUserMissingCardsWithFilter } from "@/lib/queries";
 
-export async function GET(request: Request) {
+import { Filter } from "@/components/get-filte-options";
+
+export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id)
@@ -9,8 +11,8 @@ export async function GET(request: Request) {
     });
   const user = await getUser(id);
   if (!user) return new Response("user not found", { status: 404 });
-
-  const cards = await getUserMissingCards(id);
+  const body = (await request.json()) as Filter | undefined;
+  const cards = await getUserMissingCardsWithFilter(id, body ?? undefined);
 
   return new Response(
     JSON.stringify({

@@ -1,5 +1,5 @@
-import { CardsPage } from "@/components/cards-list";
 import { getFilterOptions } from "@/components/get-filte-options";
+import { CardsPage } from "@/components/pages/all-cards";
 
 export default async function Home() {
   const filterOptions = await getFilterOptions();

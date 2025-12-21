@@ -1,6 +1,8 @@
 import {
   aliasedTable,
   and,
+  asc,
+  count,
   desc,
   eq,
   getTableColumns,
@@ -8,6 +10,7 @@ import {
   inArray,
   notInArray,
   or,
+  sql,
   SQL,
 } from "drizzle-orm";
 
@@ -87,38 +90,7 @@ export async function getCardsFull(): Promise<FullCard[]> {
 export async function getCardsFullWithFilter(
   filter?: Filter
 ): Promise<FullCard[]> {
-  const filters: (SQL | undefined)[] = [];
-  if (filter?.rarityIds && filter.rarityIds.length > 0)
-    filters.push(inArray(tCards.rarityId, filter.rarityIds));
-  if (filter?.classIds && filter.classIds.length > 0)
-    filters.push(inArray(tCards.classId, filter.classIds));
-  if (filter?.universeIds && filter.universeIds.length > 0)
-    filters.push(inArray(tCards.universeId, filter.universeIds));
-  if (filter?.authorIds && filter.authorIds.length > 0)
-    filters.push(inArray(tCards.authorId, filter.authorIds));
-  if (filter?.stats && filter.stats.length > 0)
-    filters.push(inArray(tCards.stats, filter.stats));
-
-  if (filter?.droppable && filter.droppable[0] === "limited")
-    filters.push(eq(tCards.droppable, false));
-
-  if (filter?.techniques && filter.techniques.length > 0) {
-    const techFilters: (SQL | undefined)[] = [];
-    filter.techniques.forEach((t) => {
-      if (t === "reflection") {
-        techFilters.push(eq(tTechniques.reflection, true));
-      }
-      if (t === "power&heal") {
-        techFilters.push(
-          and(gt(tTechniques.heal, 0), gt(tTechniques.power, 0))
-        );
-      }
-      if (t === "dodge") {
-        techFilters.push(eq(tTechniques.dodge, true));
-      }
-    });
-    filters.push(or(...techFilters));
-  }
+  const { filters, order } = getSQLFilters(filter);
   const cardBase = getTableColumns(tCards);
   const techniqueColums = getTableColumns(tTechniques);
 
@@ -138,7 +110,7 @@ export async function getCardsFullWithFilter(
     .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
     .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
     .where(and(...filters))
-    .orderBy(desc(tCards.createdAt));
+    .orderBy(order);
 }
 
 export async function getAuthors() {
@@ -180,6 +152,31 @@ export async function getUserCards(id: string) {
     .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
     .where(eq(cardToTgUser.tgUserId, id))
     .orderBy(desc(tCards.power), desc(tCards.stamina));
+}
+
+export async function getUserCardsWithFilter(id: string, filter?: Filter) {
+  const { filters, order } = getSQLFilters(filter);
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
+  return db
+    .select({
+      ...cardBase,
+      rarity: tRarities.name,
+      universe: tUniverses.name,
+      class: tClasses.name,
+      author: tAuthors.username,
+      technique: techniqueColums,
+    })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+    .where(and(eq(cardToTgUser.tgUserId, id), ...filters))
+    .orderBy(order);
 }
 
 export async function getUserMissingCards(id: string) {
@@ -229,6 +226,205 @@ export async function getUserMissingCards(id: string) {
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
       .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .orderBy(desc(tCards.power), desc(tCards.stamina));
+  }
+}
+
+export async function getUserMissingCardsWithFilter(
+  id: string,
+  filter?: Filter
+) {
+  const { filters, order } = getSQLFilters(filter);
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
+  const userCards = await db
+    .select({ cardId: cardToTgUser.cardId })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+    .where(eq(cardToTgUser.tgUserId, id));
+
+  const userCardIds = userCards.map((c) => c.cardId);
+
+  if (userCardIds.length > 0) {
+    return db
+      .select({
+        ...cardBase,
+        rarity: tRarities.name,
+        universe: tUniverses.name,
+        class: tClasses.name,
+        author: tAuthors.username,
+        technique: techniqueColums,
+      })
+      .from(tCards)
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+      .where(and(notInArray(tCards.id, userCardIds), ...filters))
+      .orderBy(order);
+  } else {
+    return db
+      .select({
+        ...cardBase,
+        rarity: tRarities.name,
+        universe: tUniverses.name,
+        class: tClasses.name,
+        author: tAuthors.username,
+        technique: techniqueColums,
+      })
+      .from(tCards)
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+      .where(and(...filters))
+      .orderBy(order);
+  }
+}
+
+function getSQLFilters(filter?: Filter) {
+  const filters: (SQL | undefined)[] = [];
+  if (filter?.rarityIds && filter.rarityIds.length > 0)
+    filters.push(inArray(tCards.rarityId, filter.rarityIds));
+  if (filter?.classIds && filter.classIds.length > 0)
+    filters.push(inArray(tCards.classId, filter.classIds));
+  if (filter?.universeIds && filter.universeIds.length > 0)
+    filters.push(inArray(tCards.universeId, filter.universeIds));
+  if (filter?.authorIds && filter.authorIds.length > 0)
+    filters.push(inArray(tCards.authorId, filter.authorIds));
+  if (filter?.stats && filter.stats.length > 0)
+    filters.push(inArray(tCards.stats, filter.stats));
+
+  if (filter?.droppable && filter.droppable.length > 0) {
+    filter.droppable.forEach((f) => {
+      if (f === "limited") {
+        filters.push(eq(tCards.droppable, false));
+      }
+      if (f === "basic") {
+        filters.push(eq(tCards.droppable, true));
+      }
+      if (f === "upgradable") {
+        filters.push(eq(tCards.upgradeable, true));
+      }
+      if (f === "upgrade") {
+        filters.push(eq(tCards.upgrade, true));
+      }
+    });
+  }
+
+  if (filter?.techniques && filter.techniques.length > 0) {
+    const techFilters: (SQL | undefined)[] = [];
+    filter.techniques.forEach((t) => {
+      if (t === "reflection") {
+        techFilters.push(eq(tTechniques.reflection, true));
+      }
+      if (t === "power&heal") {
+        techFilters.push(
+          and(gt(tTechniques.heal, 0), gt(tTechniques.power, 0))
+        );
+      }
+      if (t === "dodge") {
+        techFilters.push(eq(tTechniques.dodge, true));
+      }
+      if (t === "heal") {
+        techFilters.push(
+          and(gt(tTechniques.heal, 0), eq(tTechniques.power, 0))
+        );
+      }
+      if (t === "power") {
+        techFilters.push(
+          and(eq(tTechniques.heal, 0), gt(tTechniques.power, 0))
+        );
+      }
+    });
+    filters.push(or(...techFilters));
+  }
+
+  let order: SQL = desc(tCards.createdAt);
+  switch (filter?.sort) {
+    case "createdAt-asc":
+      order = asc(tCards.createdAt);
+      break;
+    case "createdAt-desc":
+      order = desc(tCards.createdAt);
+      break;
+    case "price-asc":
+      order = asc(tCards.price);
+      break;
+    case "price-desc":
+      order = desc(tCards.price);
+      break;
+  }
+
+  return {
+    filters,
+    order,
+  };
+}
+
+export async function getUserCardsDifferenceWithFilter(
+  id: string,
+  secondId: string,
+  filter?: Filter
+) {
+  const { filters, order } = getSQLFilters(filter);
+  const cardBase = getTableColumns(tCards);
+  const techniqueColums = getTableColumns(tTechniques);
+
+  const secondUserCards = await db
+    .select({ cardId: cardToTgUser.cardId })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+    .where(eq(cardToTgUser.tgUserId, secondId));
+
+  const secondUserCardIds = secondUserCards.map((c) => c.cardId);
+
+  if (secondUserCardIds.length > 0) {
+    return db
+      .select({
+        ...cardBase,
+        rarity: tRarities.name,
+        universe: tUniverses.name,
+        class: tClasses.name,
+        author: tAuthors.username,
+        technique: techniqueColums,
+      })
+      .from(cardToTgUser)
+      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+      .where(
+        and(
+          ...filters,
+          notInArray(tCards.id, secondUserCardIds),
+          eq(cardToTgUser.tgUserId, id)
+        )
+      )
+      .orderBy(order);
+  } else {
+    return db
+      .select({
+        ...cardBase,
+        rarity: tRarities.name,
+        universe: tUniverses.name,
+        class: tClasses.name,
+        author: tAuthors.username,
+        technique: techniqueColums,
+      })
+      .from(cardToTgUser)
+      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
+      .where(and(...filters, eq(cardToTgUser.tgUserId, id)))
+      .orderBy(order);
   }
 }
 
@@ -542,4 +738,26 @@ export async function userTradeHistory(userId: string) {
   return [...singleTrades, ...multiTrades].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+}
+
+export async function getUserCollection(id: string, filter?: Filter) {
+  return db
+    .select({
+      id: tUniverses.id,
+      name: tUniverses.name,
+      totalCards: count(tCards.id).as("totalCards"),
+      userCards: count(cardToTgUser.cardId).as("userCards"),
+      persentage:
+        sql`(${count(cardToTgUser.cardId)} * 1.0 / ${count(tCards.id)})`.as(
+          "percentage"
+        ),
+    })
+    .from(tUniverses)
+    .innerJoin(tCards, eq(tCards.universeId, tUniverses.id))
+    .leftJoin(
+      cardToTgUser,
+      and(eq(cardToTgUser.cardId, tCards.id), eq(cardToTgUser.tgUserId, id))
+    )
+    .groupBy(tUniverses.id, tUniverses.name)
+    .orderBy(sql`percentage DESC`);
 }

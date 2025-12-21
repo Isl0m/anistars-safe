@@ -2,15 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
 
-import { prettyNumbers } from "@/lib/utils";
+import { cn, prettyNumbers } from "@/lib/utils";
 
-import { FullCard, Technique } from "@/db/schema/card";
+import { Card, FullCard, Technique } from "@/db/schema/card";
 
-import CardsFilter from "./cards-filter";
-import { Filter, FilterOption } from "./get-filte-options";
-import { Header } from "./header";
 import CardsPagination from "./pagination";
 import { Button } from "./ui/button";
 import {
@@ -21,58 +17,18 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "./ui/drawer";
+import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-
-type Props = {
-  title: string;
-  filterOptions: FilterOption[];
-};
-
-export function CardsPage({ title, filterOptions }: Props) {
-  const [filter, setFilter] = useState<Filter>();
-  console.log("RENDER CARDS PAGE");
-  const query = useQuery({
-    queryKey: ["cards", filter],
-    queryFn: async () => {
-      console.log(filter);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/cards`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(filter ?? {}),
-      });
-      return (await response.json()).cards as Promise<FullCard[]>;
-    },
-  });
-
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
-
-  return (
-    <>
-      <Header
-        title={title}
-        element={
-          <CardsFilter
-            filterOptions={filterOptions}
-            setFilters={handleFilterChange}
-          />
-        }
-      />
-      {query.data && <CardsList cards={query.data} />}
-    </>
-  );
-}
 
 export function CardsList({ cards }: { cards: FullCard[] }) {
   let cardsPerPage = 16;
   const [page, setPage] = useState(1);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
 
+  if (page != 1 && Math.ceil(cards.length / cardsPerPage) < page) {
+    setPage(1);
+  }
   const cardsLeft = cards.length - page * cardsPerPage;
-
   const skip = (page - 1) * cardsPerPage;
   const pageCards = cards.slice(skip, skip + cardsPerPage);
 
@@ -97,14 +53,12 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
           <div className="space-y-4 md:container">
             <ul className="grid grid-cols-4 gap-2 md:gap-8 lg:grid-cols-6">
               {pageCards.map((card, idx) => (
-                <li key={card.id} onClick={() => setSelectedCard(idx)}>
-                  <Image
-                    src={card.image}
-                    width={255}
-                    height={320}
-                    className="rounded"
-                    alt={card.slug}
-                  />
+                <li
+                  key={card.id}
+                  className="relative"
+                  onClick={() => setSelectedCard(idx)}
+                >
+                  <CardImage card={card} />
                 </li>
               ))}
             </ul>
@@ -119,7 +73,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
         )}
       </section>
       <Drawer open={selectedCard !== null} onClose={closeDrawer}>
-        <DrawerContent aria-describedby="Карта">
+        <DrawerContent aria-describedby="card-details">
           <DrawerHeader>
             <DrawerTitle className="text-xl font-bold">
               {selectedCard !== null
@@ -145,6 +99,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
                       src={pageCards[selectedCard].image}
                       alt={pageCards[selectedCard].name}
                       layout="fill"
+                      loading="lazy"
                       className="object-contain"
                     />
                   </div>
@@ -199,6 +154,31 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+    </>
+  );
+}
+
+function CardImage({ card }: { card: Card }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <>
+      {!loaded && (
+        <Skeleton className="absolute inset-0 h-full w-full rounded" />
+      )}
+
+      <Image
+        src={card.image}
+        width={240}
+        height={320}
+        alt={card.slug}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          "rounded transition-opacity duration-300",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
+      />
     </>
   );
 }
