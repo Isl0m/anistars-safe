@@ -1,10 +1,9 @@
-import { Suspense } from "react";
-
 import { getCardsFull } from "@/lib/queries";
 
 import { CardsList } from "@/components/cards-list";
 import { getFilterOptions } from "@/components/get-filte-options";
-import { Skeleton } from "@/ui/skeleton";
+
+export const revalidate = 300;
 
 export default async function Home() {
   return (
