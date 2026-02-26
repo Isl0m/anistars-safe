@@ -25,6 +25,7 @@ export const tCards = pgTable("Card", {
   stats: text("stats").$type<CardStats>().default("basic").notNull(),
   collection: text("collection"),
   price: integer("price").default(0).notNull(),
+  count: integer("count").default(0).notNull(),
   upgradeable: boolean("upgradeable").default(false).notNull(),
   upgrade: boolean("upgrade").default(false).notNull(),
 
@@ -55,6 +56,23 @@ export const cardToTgUser = pgTable("CardToTgUser", {
     .notNull()
     .references(() => tgUsers.id, { onDelete: "cascade" }),
   isLocked: boolean("isLocked").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export const cardUpgradePaths = pgTable("CardUpgradePath", {
+  id: serial("id").primaryKey(),
+  fromCardId: text("fromCardId")
+    .notNull()
+    .references(() => tCards.id, { onDelete: "cascade" }),
+  toCardId: text("toCardId")
+    .notNull()
+    .references(() => tCards.id, { onDelete: "cascade" }),
+  shardCardId: text("shardCardId")
+    .notNull()
+    .references(() => tCards.id, { onDelete: "cascade" }),
+  requiredCoins: integer("requiredCoins").notNull(),
+  requiredShards: integer("requiredShards").notNull(),
+  requiredAstrals: integer("requiredAstrals").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 

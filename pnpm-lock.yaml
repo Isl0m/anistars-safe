@@ -77,6 +77,9 @@ dependencies:
   framer-motion:
     specifier: ^10.18.0
     version: 10.18.0(react-dom@18.3.1)(react@18.3.1)
+  geist:
+    specifier: ^1.7.0
+    version: 1.7.0(next@14.0.4)
   lucide-react:
     specifier: ^0.311.0
     version: 0.311.0(react@18.3.1)
@@ -2969,6 +2972,14 @@ packages:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wide-align: 1.1.5
+    dev: false
+
+  /geist@1.7.0(next@14.0.4):
+    resolution: {integrity: sha512-ZaoiZwkSf0DwwB1ncdLKp+ggAldqxl5L1+SXaNIBGkPAqcu+xjVJLxlf3/S8vLt9UHx1xu5fz3lbzKCj5iOVdQ==}
+    peerDependencies:
+      next: '>=13.2.0'
+    dependencies:
+      next: 14.0.4(react-dom@18.3.1)(react@18.3.1)
     dev: false
 
   /get-nonce@1.0.1:

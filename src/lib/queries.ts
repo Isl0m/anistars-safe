@@ -8,6 +8,7 @@ import {
   getTableColumns,
   gt,
   inArray,
+  notExists,
   notInArray,
   or,
   sql,
@@ -20,6 +21,7 @@ import { tAuthors } from "@/db/schema/author";
 import {
   Card,
   cardToTgUser,
+  cardUpgradePaths,
   FullCard,
   tCards,
   tClasses,
@@ -760,4 +762,42 @@ export async function getUserCollection(id: string, filter?: Filter) {
     )
     .groupBy(tUniverses.id, tUniverses.name)
     .orderBy(sql`percentage DESC`);
+}
+
+export type CardUpgrades = {
+  id: string;
+  name: string;
+  baseImage: string;
+  image1: string;
+  image2: string | null;
+};
+
+export async function getCardUpgrades() {
+  const c1 = aliasedTable(tCards, "c1");
+  const c2 = aliasedTable(tCards, "c2");
+  const c3 = aliasedTable(tCards, "c3");
+  const up2 = aliasedTable(cardUpgradePaths, "up2");
+
+  return db
+    .select({
+      id: c1.id,
+      name: c1.name,
+      baseImage: c1.image,
+      image1: c2.image,
+      image2: c3.image,
+    })
+    .from(cardUpgradePaths)
+    .innerJoin(c1, eq(cardUpgradePaths.fromCardId, c1.id))
+    .innerJoin(c2, eq(cardUpgradePaths.toCardId, c2.id))
+    .leftJoin(up2, eq(c2.id, up2.fromCardId))
+    .leftJoin(c3, eq(up2.toCardId, c3.id))
+    .where(
+      notExists(
+        db
+          .select()
+          .from(cardUpgradePaths)
+          .where(eq(cardUpgradePaths.toCardId, c1.id))
+      )
+    )
+    .orderBy(cardUpgradePaths.createdAt);
 }

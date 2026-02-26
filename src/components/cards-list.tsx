@@ -5,7 +5,7 @@ import Image from "next/image";
 
 import { cn, prettyNumbers } from "@/lib/utils";
 
-import { Card, FullCard, Technique } from "@/db/schema/card";
+import { FullCard, Technique } from "@/db/schema/card";
 
 import CardsPagination from "./pagination";
 import { Button } from "./ui/button";
@@ -137,6 +137,10 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
                 <div>
                   <p className="font-semibold">💰 Цена:</p>
                   <p>{prettyNumbers(pageCards[selectedCard].price)}🪙</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Количество:</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].count)}</p>
                 </div>
                 {pageCards[selectedCard].technique !== null && (
                   <div className="col-span-3">
