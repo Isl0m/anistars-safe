@@ -31,7 +31,6 @@ export const tCards = pgTable("Card", {
 
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 
-  techniqueIds: integer("techniqueIds").array(),
   techniqueId: integer("techniqueId").references(() => tTechniques.id, {
     onDelete: "set null",
   }),
