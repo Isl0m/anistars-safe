@@ -44,8 +44,7 @@ export const TelegramProvider = ({
           await viewport.requestFullscreen();
         }
         viewport.bindCssVars();
-        console.log(viewport.safeAreaInsetTop());
-        console.log(viewport.safeAreaInsets());
+
         setSafeAreaInsets(viewport.safeAreaInsets());
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
@@ -70,11 +69,11 @@ export const TelegramProvider = ({
   return (
     <TelegramContext.Provider value={value}>
       {isLoading ? <LoadingScreen /> : children}
-      {safeAreaInsets && (
+      {/*{safeAreaInsets && (
         <div className="absolute bottom-0 left-4">
           {JSON.stringify(safeAreaInsets)}
         </div>
-      )}
+      )}*/}
     </TelegramContext.Provider>
   );
 };
