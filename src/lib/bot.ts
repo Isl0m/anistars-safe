@@ -12,21 +12,25 @@ export async function sendTelegramMessage(
   const BOT_TOKEN = process.env.TG_BOT_TOKEN!;
   const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
-  const response = await fetch(TELEGRAM_API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: buttons,
+  try {
+    const response = await fetch(TELEGRAM_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
-  return response.json();
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: buttons,
+        },
+      }),
+    });
+    return response.json();
+  } catch (error) {
+    console.error("Error sending Telegram message:", error);
+  }
 }
 
 type GetMeResponse = {

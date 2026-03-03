@@ -11,7 +11,7 @@ import {
 import { tAuthors } from "./author";
 import { tgUsers } from "./user";
 
-export type CardTypes = "full" | "pre-full" | "basic";
+export type CardStats = "full" | "pre-full" | "basic";
 
 export const tCards = pgTable("Card", {
   id: text("id").primaryKey(),
@@ -22,17 +22,20 @@ export const tCards = pgTable("Card", {
   image: text("image").notNull(),
   gif: text("gif"),
   droppable: boolean("droppable").default(true).notNull(),
-  upgradeable: boolean("upgradeable").default(false).notNull(),
-  stats: text("stats").$type<CardTypes>().default("basic").notNull(),
+  stats: text("stats").$type<CardStats>().default("basic").notNull(),
   collection: text("collection"),
   price: integer("price").default(0).notNull(),
+  quantity: integer("quantity").default(0).notNull(),
+  upgradeable: boolean("upgradeable").default(false).notNull(),
+  upgrade: boolean("upgrade").default(false).notNull(),
 
-  createdAt: timestamp("createdAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 
   techniqueIds: integer("techniqueIds").array(),
   techniqueId: integer("techniqueId").references(() => tTechniques.id, {
     onDelete: "set null",
   }),
+  techniqueIds: integer("techniqueIds").array(),
   authorId: integer("authorId")
     .notNull()
     .references(() => tAuthors.id, { onDelete: "cascade" }),
@@ -55,6 +58,23 @@ export const cardToTgUser = pgTable("CardToTgUser", {
     .notNull()
     .references(() => tgUsers.id, { onDelete: "cascade" }),
   isLocked: boolean("isLocked").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export const cardUpgradePaths = pgTable("CardUpgradePath", {
+  id: serial("id").primaryKey(),
+  fromCardId: text("fromCardId")
+    .notNull()
+    .references(() => tCards.id, { onDelete: "cascade" }),
+  toCardId: text("toCardId")
+    .notNull()
+    .references(() => tCards.id, { onDelete: "cascade" }),
+  shardCardId: text("shardCardId")
+    .notNull()
+    .references(() => tCards.id, { onDelete: "cascade" }),
+  requiredCoins: integer("requiredCoins").notNull(),
+  requiredShards: integer("requiredShards").notNull(),
+  requiredAstrals: integer("requiredAstrals").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
@@ -117,5 +137,5 @@ export type FullCard = Card & {
   universe: string;
   class: string;
   author: string;
-  technique: Technique | null;
+  techniques: Technique[];
 };

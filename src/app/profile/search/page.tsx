@@ -1,10 +1,6 @@
-import { Suspense } from "react";
+import { getUser } from "@/lib/queries";
 
-import { getUser, getUserCards } from "@/lib/queries";
-
-import { CardsList } from "@/components/cards-list";
-import { getUserFilterOptions } from "@/components/get-filte-options";
-import { SearchFirstProfile } from "@/components/pages/profile";
+import { SearchFirstProfile, SearchProfile } from "@/components/pages/profile";
 
 export default async function Profile({
   searchParams,
@@ -17,23 +13,6 @@ export default async function Profile({
   const user = await getUser(userId);
 
   if (!user) return <SearchFirstProfile />;
-  const userCards = await getUserCards(userId);
 
-  const filterOptions = await getUserFilterOptions(userId);
-
-  return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
-      <Suspense>
-        {userCards?.length ? (
-          <CardsList
-            title={user.name}
-            cards={userCards}
-            filterOptions={filterOptions}
-          />
-        ) : (
-          "Нет карт для отображения"
-        )}
-      </Suspense>
-    </main>
-  );
+  return <SearchProfile user={user} />;
 }

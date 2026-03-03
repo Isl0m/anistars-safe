@@ -1,60 +1,72 @@
 "use client";
 
-import { CheckIcon } from "lucide-react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { CheckIcon } from "lucide-react";
 
-import { CreateTradeType } from "@/app/api/trade/create/route";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { CreateTradeType } from "@/app/api/trade/create/route";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
 
 import CardsFilter from "../cards-filter";
-import { FilterOption } from "../get-filte-options";
+import { CardsListSkeleton } from "../cards-list-skeleton";
+import { Filter, FilterOption } from "../get-filte-options";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
-import { useCardsFilter } from "../use-cards-filer";
 
 export default function TradePage({ receiver }: { receiver: string }) {
   const { tgUser } = useTelegram();
-  const [user, setUser] = useState<UserExtended>();
-  const [cards, setCards] = useState<FullCard[]>();
-  const [filterOptions, setFilterOptions] = useState<FilterOption[]>();
+  const [filter, setFilter] = useState<Filter>();
 
-  useEffect(() => {
-    if (tgUser) {
-      fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/cards/difference?id=${tgUser.id}&secondId=${receiver}`
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          setUser(data.user);
-          setCards(data.cards);
-          setFilterOptions(data.filterOptions);
-        });
-    }
-  }, [tgUser]);
-  if (!user || !filterOptions || !cards) {
+  const query = useQuery({
+    queryKey: ["trade-cards", filter],
+    queryFn: async () => {
+      if (!tgUser) return;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/cards/difference?id=${tgUser.id}&secondId=${receiver}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(filter ?? {}),
+        }
+      );
+      return (await response.json()) as Promise<{
+        cards: FullCard[];
+        user: UserExtended;
+        filterOptions: FilterOption[];
+      }>;
+    },
+    placeholderData: keepPreviousData,
+  });
+
+  const handleFilterChange = (data: Filter) => {
+    setFilter(data);
+  };
+  if (query.data) {
     return (
-      <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Загрузка...
-        </h1>
+      <main className="flex min-h-screen flex-col gap-4 md:container">
+        <TradePageContent
+          user={query.data.user}
+          cards={query.data.cards}
+          receiver={receiver}
+          filterOptions={query.data.filterOptions}
+          setFilters={handleFilterChange}
+        />
       </main>
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
-      <TradePageContent
-        user={user}
-        cards={cards}
-        receiver={receiver}
-        filterOptions={filterOptions}
-      />
+    <main className="flex min-h-screen flex-col gap-4">
+      <Header title={"Трейд"} />
+      <CardsListSkeleton />
     </main>
   );
 }
@@ -66,16 +78,27 @@ function TradePageContent({
   cards,
   filterOptions,
   receiver,
+  setFilters,
 }: {
   user: UserExtended;
   cards: FullCard[];
   filterOptions: FilterOption[];
   receiver: string;
+  setFilters: (filters: Filter) => void;
 }) {
-  const { pageCards, pagination, filterReset, filterSelect } = useCardsFilter({
-    cards,
-    cardsPerPage: 16,
-  });
+  let cardsPerPage = 16;
+  const [page, setPage] = useState(1);
+
+  if (page != 1 && Math.ceil(cards.length / cardsPerPage) < page) {
+    setPage(1);
+  }
+  const cardsLeft = cards.length - page * cardsPerPage;
+  const skip = (page - 1) * cardsPerPage;
+  const pageCards = cards.slice(skip, skip + cardsPerPage);
+
+  const handleChangePage = (page: number) => {
+    setPage(page);
+  };
 
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const router = useRouter();
@@ -125,7 +148,6 @@ function TradePageContent({
 
     // Reset the form
     router.push(`/trade`);
-    setIsLoading(false);
   };
 
   const headerSection: Record<Steps, JSX.Element> = {
@@ -133,11 +155,7 @@ function TradePageContent({
       <Header
         title="Трейд"
         element={
-          <CardsFilter
-            filterOptions={filterOptions}
-            onFilterSelect={filterSelect}
-            onFiltersReset={filterReset}
-          />
+          <CardsFilter filterOptions={filterOptions} setFilters={setFilters} />
         }
       />
     ),
@@ -150,7 +168,11 @@ function TradePageContent({
         pageCards={pageCards}
         selectedCards={selectedCards}
         onClick={onCardSelect}
-        pagination={pagination}
+        pagination={{
+          cardsLeft,
+          changePage: handleChangePage,
+          page,
+        }}
       />
     ),
     confirm: (
@@ -160,7 +182,7 @@ function TradePageContent({
 
   const footerSection: Record<Steps, JSX.Element> = {
     select: (
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
         <Button
           onClick={resetSelected}
           className="w-full"
@@ -180,7 +202,7 @@ function TradePageContent({
       </div>
     ),
     confirm: (
-      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-4">
         <div className="flex gap-4">
           <Button
             onClick={() => setStep("select")}
@@ -249,9 +271,10 @@ export function CardsSelectList({
                 <div>
                   <Image
                     src={card.image}
-                    width={255}
+                    width={240}
                     height={320}
                     className="rounded"
+                    loading="lazy"
                     alt={card.slug}
                   />
                   {Boolean(selectedCards.find((s) => s.id === card.id)) && (
@@ -294,7 +317,7 @@ export function SelectedCardsList({
           onClick={onClick(card)}
         >
           <div>
-            <Image src={card.image} width={255} height={320} alt={card.slug} />
+            <Image src={card.image} width={240} height={320} alt={card.slug} />
 
             <div className="absolute right-1 top-1 rounded-full bg-primary p-[2px] transition-opacity duration-100 ease-in-out">
               <CheckIcon className="h-2 w-2 text-primary-foreground" />

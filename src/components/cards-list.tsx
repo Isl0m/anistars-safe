@@ -3,13 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import { isKey, prettyNumbers } from "@/lib/utils";
+import { cn, prettyNumbers } from "@/lib/utils";
 
-import { FullCard, Technique } from "@/db/schema/card";
+import { Card, FullCard, Technique } from "@/db/schema/card";
 
-import CardsFilter from "./cards-filter";
-import { FilterOption } from "./get-filte-options";
-import { Header } from "./header";
 import CardsPagination from "./pagination";
 import { Button } from "./ui/button";
 import {
@@ -20,102 +17,48 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "./ui/drawer";
+import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
-type Props = {
-  title: string;
-  cards: FullCard[];
-  filterOptions: FilterOption[];
-};
-
-export function CardsList({ title, cards, filterOptions }: Props) {
+export function CardsList({ cards }: { cards: FullCard[] }) {
   let cardsPerPage = 16;
   const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<Map<string, string>>(new Map());
-  const [filteredCards, setFilteredCards] = useState<FullCard[]>(cards);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
 
-  const cardsLeft = filteredCards.length - page * cardsPerPage;
-
+  if (page != 1 && Math.ceil(cards.length / cardsPerPage) < page) {
+    setPage(1);
+  }
+  const cardsLeft = cards.length - page * cardsPerPage;
   const skip = (page - 1) * cardsPerPage;
-  const pageCards = filteredCards.slice(skip, skip + cardsPerPage);
-
-  const handleFilterSelect = (key: string, value: string) => {
-    if (!value) return;
-    setFilter((prev) => prev.set(key, value));
-
-    setFilteredCards(() =>
-      cards.filter((card) => {
-        if (filter.size <= 0) return true;
-        for (let [key, value] of filter) {
-          if (isKey(card, key)) {
-            if (key === "technique") {
-              const technique = card[key];
-              if (!technique) return false;
-              if (
-                value === "power&heal" &&
-                (!technique.power || !technique.heal)
-              )
-                return false;
-              if (value === "power" && !technique.power) return false;
-              if (value === "heal" && !technique.heal) return false;
-              if (value === "dodge" && !technique.dodge) return false;
-              if (value === "reflection" && !technique.reflection) return false;
-            } else if (String(card[key]) !== value) {
-              return false;
-            }
-          }
-        }
-        return true;
-      })
-    );
-    setPage(1);
-  };
-  const handleFilterReset = () => {
-    setFilter(new Map());
-    setFilteredCards(cards);
-    setPage(1);
-  };
+  const pageCards = cards.slice(skip, skip + cardsPerPage);
 
   const handleChangePage = (page: number) => {
     setPage(page);
   };
 
   const parseTechnique = (technique: Technique) => {
-    const power = technique.power && `⚔️${technique.power * 100}%`;
-    const heal = technique.heal && `♥️${technique.heal * 100}%`;
-    const dodge = technique.dodge && `Уклонение`;
-    const reflection = technique.reflection && `Отражение`;
+    const power = technique.power && `⚔️${Math.round(technique.power * 100)}%`;
+    const heal = technique.heal && `♥️${Math.round(technique.heal * 100)}%`;
+    const dodge = technique.dodge && `💨 Уклон`;
+    const reflection = technique.reflection && `🪞 Отражение`;
     const techniqueText =
       power && heal ? `${power} ${heal}` : power || heal || dodge || reflection;
-    return `${technique.slug} | ${techniqueText}\n`;
+    return `${techniqueText} | ${technique.slug}`;
   };
   const closeDrawer = () => setSelectedCard(null);
   return (
     <>
-      <Header
-        title={title}
-        element={
-          <CardsFilter
-            filterOptions={filterOptions}
-            onFilterSelect={handleFilterSelect}
-            onFiltersReset={handleFilterReset}
-          />
-        }
-      />
       <section className="flex flex-col gap-12 px-2 md:flex-row">
         {pageCards.length > 0 ? (
           <div className="space-y-4 md:container">
             <ul className="grid grid-cols-4 gap-2 md:gap-8 lg:grid-cols-6">
               {pageCards.map((card, idx) => (
-                <li key={card.id} onClick={() => setSelectedCard(idx)}>
-                  <Image
-                    src={card.image}
-                    width={255}
-                    height={320}
-                    className="rounded"
-                    alt={card.slug}
-                  />
+                <li
+                  key={card.id}
+                  className="relative"
+                  onClick={() => setSelectedCard(idx)}
+                >
+                  <CardImage card={card} />
                 </li>
               ))}
             </ul>
@@ -130,7 +73,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
         )}
       </section>
       <Drawer open={selectedCard !== null} onClose={closeDrawer}>
-        <DrawerContent aria-describedby="Карта">
+        <DrawerContent aria-describedby="card-details">
           <DrawerHeader>
             <DrawerTitle className="text-xl font-bold">
               {selectedCard !== null
@@ -156,6 +99,7 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                       src={pageCards[selectedCard].image}
                       alt={pageCards[selectedCard].name}
                       layout="fill"
+                      loading="lazy"
                       className="object-contain"
                     />
                   </div>
@@ -192,12 +136,18 @@ export function CardsList({ title, cards, filterOptions }: Props) {
                 </div>
                 <div>
                   <p className="font-semibold">💰 Цена:</p>
-                  <p>{prettyNumbers(pageCards[selectedCard].price)}🪙</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].price)}✨</p>
                 </div>
-                {pageCards[selectedCard].technique !== null && (
+                <div>
+                  <p className="font-semibold">Количество:</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].quantity)}</p>
+                </div>
+                {pageCards[selectedCard].techniques !== null && (
                   <div className="col-span-3">
                     <p className="font-semibold">🦾 Техника:</p>
-                    <p>{parseTechnique(pageCards[selectedCard].technique!)}</p>
+                    {pageCards[selectedCard].techniques.map((technique) => (
+                      <p key={technique.id}>{parseTechnique(technique)}</p>
+                    ))}
                   </div>
                 )}
               </div>
@@ -210,6 +160,31 @@ export function CardsList({ title, cards, filterOptions }: Props) {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+    </>
+  );
+}
+
+function CardImage({ card }: { card: Card }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <>
+      {!loaded && (
+        <Skeleton className="absolute inset-0 h-full w-full rounded" />
+      )}
+
+      <Image
+        src={card.image}
+        width={240}
+        height={320}
+        alt={card.slug}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          "rounded transition-opacity duration-300",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
+      />
     </>
   );
 }

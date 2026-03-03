@@ -17,6 +17,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/ui/drawer";
+import { Skeleton } from "@/ui/skeleton";
 
 import { Header } from "../header";
 import CardsPagination from "../pagination";
@@ -46,50 +47,51 @@ export function TradeHistory() {
     }
   }, [tgUser]);
 
-  if (!tradeHistory || !tradeHistory.length) {
-    return (
-      <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Загрузка.....
-        </h1>
-      </main>
-    );
-  }
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
       <Header title="История Трейдов" />
-      <div className="space-y-1 p-2">
-        {pageTradeHistory.map((trade) => (
-          <div
-            key={trade.id}
-            className="border-b border-border bg-card px-2 py-2"
-          >
-            <div className="flex items-start justify-between">
-              {/* Users */}
-              <div className="flex flex-col items-start gap-1">
-                <UserDisplay user={trade.sender} role="Отправитель" />
-                <ArrowDown className="mx-auto h-3 w-3 text-muted-foreground" />
-                <UserDisplay user={trade.receiver} role="Получатель" />
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{dateFormat(trade.createdAt)}</span>
+      {!tradeHistory || !tradeHistory.length ? (
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-44 rounded" />
+          <Skeleton className="h-44 rounded" />
+          <Skeleton className="h-44 rounded" />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-1 p-2">
+            {pageTradeHistory.map((trade) => (
+              <div
+                key={trade.id}
+                className="border-b border-border bg-card px-2 py-2"
+              >
+                <div className="flex items-start justify-between">
+                  {/* Users */}
+                  <div className="flex flex-col items-start gap-1">
+                    <UserDisplay user={trade.sender} role="Отправитель" />
+                    <ArrowDown className="mx-auto h-3 w-3 text-muted-foreground" />
+                    <UserDisplay user={trade.receiver} role="Получатель" />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{dateFormat(trade.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Cards */}
+                  <div className="flex flex-col items-end gap-1">
+                    <CardPreview cards={trade.senderCards} />
+                    <CardPreview cards={trade.receiverCards} />
+                  </div>
                 </div>
               </div>
-
-              {/* Cards */}
-              <div className="flex flex-col items-end gap-1">
-                <CardPreview cards={trade.senderCards} />
-                <CardPreview cards={trade.receiverCards} />
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <CardsPagination
-        page={page}
-        cardsLeft={cardsLeft}
-        handleChangePage={handleChangePage}
-      />
+          <CardsPagination
+            page={page}
+            cardsLeft={cardsLeft}
+            handleChangePage={handleChangePage}
+          />
+        </>
+      )}
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -8,6 +9,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+
+import { banners } from "./banner";
 
 export type UserTypes = "admin" | "support" | "basic";
 
@@ -24,10 +27,17 @@ export const tgUsers = pgTable(
     sparkles: integer("sparkles").default(0).notNull(),
     tries: integer("tries").default(3).notNull(),
     event: integer("event").default(0).notNull(),
+    astrals: integer("astrals").default(0).notNull(),
     referrals: integer("referrals").default(0).notNull(),
+    pullsCount: integer("pullsCount").default(0).notNull(),
+    universes: integer("universes")
+      .array()
+      .default(sql`'{1, 5, 8, 10, 17, 22, 34, 71, 82, 99}'`)
+      .notNull(),
 
     giftStreak: integer("giftStreak").default(1).notNull(),
     isBlocked: boolean("isBlocked").default(false).notNull(),
+    isBotBlocked: boolean("isBotBlocked").default(false).notNull(),
 
     isInvisible: boolean("isInvisible").default(false).notNull(),
     isNotification: boolean("isNotification").default(true).notNull(),
@@ -36,6 +46,12 @@ export const tgUsers = pgTable(
     invitedById: text("invitedById"),
     type: text("type").$type<UserTypes>().default("basic").notNull(),
 
+    bannerId: integer("bannerId")
+      .references(() => banners.id, {
+        onDelete: "set default",
+      })
+      .default(1)
+      .notNull(),
     lastTimeGetBoostGift: timestamp("lastTimeGetBoostGift", {
       withTimezone: true,
     }),

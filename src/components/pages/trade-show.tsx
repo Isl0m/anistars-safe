@@ -44,7 +44,7 @@ export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
         <li key={card.id}>
           <Image
             src={card.image}
-            width={255}
+            width={240}
             height={320}
             className="rounded"
             alt={card.slug}

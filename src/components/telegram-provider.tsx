@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   init,
   postEvent,
@@ -16,6 +9,8 @@ import {
   User as TelegramUser,
   viewport,
 } from "@telegram-apps/sdk-react";
+
+import LoadingScreen from "./loading-screen";
 
 export interface ITelegramContext {
   tgUser?: TelegramUser;
@@ -28,25 +23,33 @@ export const TelegramProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [tgUser, setTgUser] = useState<TelegramUser | undefined>(undefined);
-
-  const requestAppFullscreen = useCallback(async () => {
-    try {
-      await viewport.requestFullscreen();
-    } catch (e) {
-      console.error("Failed to request fullscreen:", e);
-    }
-  }, []);
+  const [tgUser, setTgUser] = useState<ITelegramContext["tgUser"]>();
+  const [safeAreaInsets, setSafeAreaInsets] = useState<{
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  }>({ top: 0, bottom: 0, left: 0, right: 0 });
+  const [isLoading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         init();
+        await viewport.mount();
+        if (
+          (navigator as any).userAgentData?.mobile &&
+          !viewport.isFullscreen()
+        ) {
+          await viewport.requestFullscreen();
+        }
+        viewport.bindCssVars();
+        console.log(viewport.safeAreaInsetTop());
+        console.log(viewport.safeAreaInsets());
+        setSafeAreaInsets(viewport.safeAreaInsets());
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
         postEvent("web_app_set_header_color", { color: "#020817" });
-
-        await requestAppFullscreen();
 
         const { initData } = retrieveLaunchParams();
         if (initData && initData.user) {
@@ -54,6 +57,8 @@ export const TelegramProvider = ({
         }
       } catch (e) {
         setTgUser(undefined);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -64,7 +69,12 @@ export const TelegramProvider = ({
 
   return (
     <TelegramContext.Provider value={value}>
-      {children}
+      {isLoading ? <LoadingScreen /> : children}
+      {safeAreaInsets && (
+        <div className="absolute bottom-0 left-4">
+          {JSON.stringify(safeAreaInsets)}
+        </div>
+      )}
     </TelegramContext.Provider>
   );
 };
