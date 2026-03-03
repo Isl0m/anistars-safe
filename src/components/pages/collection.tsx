@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 
 import { Skeleton } from "@/ui/skeleton";
 
@@ -23,9 +23,9 @@ export function Collection() {
   const query = useQuery({
     queryKey: ["user-collection"],
     queryFn: async () => {
-      // if (!tgUser) return;
+      if (!tgUser) return;
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${tgUser?.id || "6718135090"}`
+        `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${tgUser.id}`
       );
       return (await response.json()).collection as Promise<UserCollection>;
     },

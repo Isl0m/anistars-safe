@@ -53,9 +53,9 @@ export function UniverseCollection({ universeId }: { universeId: number }) {
   const query = useQuery({
     queryKey: ["universe-collection", universeId],
     queryFn: async () => {
-      // if (!tgUser) return;
+      if (!tgUser) return;
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${tgUser?.id || "6718135090"}`
+        `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${tgUser.id}`
       );
       return (await response.json()) as Promise<UniverseCollection>;
     },
