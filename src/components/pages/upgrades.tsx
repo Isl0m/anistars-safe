@@ -6,6 +6,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { CardUpgrades } from "@/lib/queries";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
+import { Skeleton } from "@/ui/skeleton";
 
 import { Header } from "../header";
 
@@ -22,26 +23,32 @@ export function CardUpgradesPage() {
   });
 
   return (
-    <>
+    <main className="flex h-full flex-col">
       <Header title={"Улучшения"} />
 
-      <section className="my-4">
-        {query.data && query.data?.length > 0 ? (
-          <div className="md:container">
-            <div className="grid grid-cols-1 gap-2 md:gap-4 lg:grid-cols-2">
-              {query.data.map(({ id, name, baseImage, image1, image2 }) => (
+      <section className="flex-1 overflow-y-auto px-2 py-4">
+        <div className="grid grid-cols-1 gap-2 md:container md:gap-4 lg:grid-cols-2">
+          {query.isLoading
+            ? new Array(6)
+                .fill(null)
+                .map((_, i) => (
+                  <Skeleton key={i} className="h-56 rounded-lg md:h-72" />
+                ))
+            : query.data?.map(({ id, name, baseImage, image1, image2 }) => (
                 <Card key={id}>
-                  <CardHeader>
-                    <CardTitle>{name}</CardTitle>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-xl md:text-2xl">
+                      {name}
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4">
+                  <CardContent className="p-4 pt-0">
+                    <div className="grid grid-cols-3 items-center gap-4">
                       <Image
                         src={baseImage}
                         width={180}
                         height={240}
                         alt={"card1"}
-                        className="rounded-lg"
+                        className="rounded-md md:rounded-lg"
                         loading="lazy"
                       />
                       <Image
@@ -49,7 +56,7 @@ export function CardUpgradesPage() {
                         width={180}
                         height={240}
                         alt={"card2"}
-                        className="rounded-lg"
+                        className="rounded-md md:rounded-lg"
                         loading="lazy"
                       />
                       {image2 && (
@@ -58,7 +65,7 @@ export function CardUpgradesPage() {
                           width={180}
                           height={240}
                           alt={"card3"}
-                          className="rounded-lg"
+                          className="rounded-md md:rounded-lg"
                           loading="lazy"
                         />
                       )}
@@ -66,14 +73,8 @@ export function CardUpgradesPage() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          </div>
-        ) : (
-          <h1 className="text-center text-2xl font-bold">
-            Нет доступных улучшений
-          </h1>
-        )}
+        </div>
       </section>
-    </>
+    </main>
   );
 }

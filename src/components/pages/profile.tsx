@@ -51,7 +51,7 @@ export function Profile() {
 
   if (query.data) {
     return (
-      <main className="flex min-h-screen flex-col gap-4 md:container">
+      <main className="flex min-h-screen flex-col gap-4">
         <Header
           title={query.data.user.name}
           element={
@@ -66,7 +66,7 @@ export function Profile() {
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4">
       <Header title={"Профиль"} />
       <CardsListSkeleton />
     </main>
@@ -90,7 +90,7 @@ export function SearchProfile({ user }: SearchProfileProps) {
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({
-    queryKey: ["profile-cards", filter],
+    queryKey: ["others-profile-cards", filter],
     queryFn: async () => {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${user.id}`,
@@ -117,7 +117,7 @@ export function SearchProfile({ user }: SearchProfileProps) {
 
   if (query.data) {
     return (
-      <main className="flex min-h-screen flex-col gap-4 md:container">
+      <main className="flex min-h-screen flex-col gap-4">
         <Header
           title={query.data.user.name}
           element={
@@ -132,7 +132,7 @@ export function SearchProfile({ user }: SearchProfileProps) {
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4">
       <Header title={user.name} />
       <CardsListSkeleton />
     </main>

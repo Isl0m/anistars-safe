@@ -6,11 +6,11 @@ import {
   desc,
   eq,
   getTableColumns,
-  gt,
   inArray,
   notExists,
   notInArray,
   or,
+  Param,
   sql,
   SQL,
 } from "drizzle-orm";
@@ -18,6 +18,7 @@ import {
 import { Filter } from "@/components/get-filte-options";
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
+import { banners, userBanners } from "@/db/schema/banner";
 import {
   Card,
   cardToTgUser,
@@ -25,6 +26,7 @@ import {
   FullCard,
   tCards,
   tClasses,
+  Technique,
   tRarities,
   tTechniques,
   tUniverses,
@@ -67,34 +69,11 @@ export async function getCards() {
   return db.select().from(tCards).orderBy(desc(tCards.createdAt));
 }
 
-export async function getCardsFull(): Promise<FullCard[]> {
-  const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
-
-  return db
-    .select({
-      ...cardBase,
-      rarity: tRarities.name,
-      universe: tUniverses.name,
-      class: tClasses.name,
-      author: tAuthors.username,
-      technique: techniqueColums,
-    })
-    .from(tCards)
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-    .orderBy(desc(tCards.createdAt));
-}
-
 export async function getCardsFullWithFilter(
   filter?: Filter
 ): Promise<FullCard[]> {
   const { filters, order } = getSQLFilters(filter);
   const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
 
   return db
     .select({
@@ -103,14 +82,20 @@ export async function getCardsFullWithFilter(
       universe: tUniverses.name,
       class: tClasses.name,
       author: tAuthors.username,
-      technique: techniqueColums,
+      techniques: sql<Technique[]>`COALESCE(
+              (
+                SELECT json_agg(t)
+                FROM unnest(${tCards.techniqueIds}) AS tid
+                JOIN ${tTechniques} t ON t.id = tid
+              ),
+              '[]'::json
+            )`,
     })
     .from(tCards)
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
     .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
     .where(and(...filters))
     .orderBy(order);
 }
@@ -132,34 +117,9 @@ export async function getUser(id: string) {
     .then((res) => res[0] ?? null);
 }
 
-export async function getUserCards(id: string) {
-  const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
-
-  return db
-    .select({
-      ...cardBase,
-      rarity: tRarities.name,
-      universe: tUniverses.name,
-      class: tClasses.name,
-      author: tAuthors.username,
-      technique: techniqueColums,
-    })
-    .from(cardToTgUser)
-    .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-    .where(eq(cardToTgUser.tgUserId, id))
-    .orderBy(desc(tCards.power), desc(tCards.stamina));
-}
-
 export async function getUserCardsWithFilter(id: string, filter?: Filter) {
   const { filters, order } = getSQLFilters(filter);
   const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
 
   return db
     .select({
@@ -168,7 +128,14 @@ export async function getUserCardsWithFilter(id: string, filter?: Filter) {
       universe: tUniverses.name,
       class: tClasses.name,
       author: tAuthors.username,
-      technique: techniqueColums,
+      techniques: sql<Technique[]>`COALESCE(
+              (
+                SELECT json_agg(t)
+                FROM unnest(${tCards.techniqueIds}) AS tid
+                JOIN ${tTechniques} t ON t.id = tid
+              ),
+              '[]'::json
+            )`,
     })
     .from(cardToTgUser)
     .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
@@ -176,59 +143,8 @@ export async function getUserCardsWithFilter(id: string, filter?: Filter) {
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
     .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
     .where(and(eq(cardToTgUser.tgUserId, id), ...filters))
     .orderBy(order);
-}
-
-export async function getUserMissingCards(id: string) {
-  const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
-
-  const userCards = await db
-    .select({ cardId: cardToTgUser.cardId })
-    .from(cardToTgUser)
-    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
-    .where(eq(cardToTgUser.tgUserId, id));
-
-  const userCardIds = userCards.map((c) => c.cardId);
-
-  if (userCardIds.length > 0) {
-    return db
-      .select({
-        ...cardBase,
-        rarity: tRarities.name,
-        universe: tUniverses.name,
-        class: tClasses.name,
-        author: tAuthors.username,
-        technique: techniqueColums,
-      })
-      .from(tCards)
-      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-      .where(notInArray(tCards.id, userCardIds))
-      .orderBy(desc(tCards.power), desc(tCards.stamina));
-  } else {
-    return db
-      .select({
-        ...cardBase,
-        rarity: tRarities.name,
-        universe: tUniverses.name,
-        class: tClasses.name,
-        author: tAuthors.username,
-        technique: techniqueColums,
-      })
-      .from(tCards)
-      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-      .orderBy(desc(tCards.power), desc(tCards.stamina));
-  }
 }
 
 export async function getUserMissingCardsWithFilter(
@@ -237,7 +153,6 @@ export async function getUserMissingCardsWithFilter(
 ) {
   const { filters, order } = getSQLFilters(filter);
   const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
 
   const userCards = await db
     .select({ cardId: cardToTgUser.cardId })
@@ -255,14 +170,20 @@ export async function getUserMissingCardsWithFilter(
         universe: tUniverses.name,
         class: tClasses.name,
         author: tAuthors.username,
-        technique: techniqueColums,
+        techniques: sql<Technique[]>`COALESCE(
+                      (
+                        SELECT json_agg(t)
+                        FROM unnest(${tCards.techniqueIds}) AS tid
+                        JOIN ${tTechniques} t ON t.id = tid
+                      ),
+                      '[]'::json
+                    )`,
       })
       .from(tCards)
       .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
       .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .where(and(notInArray(tCards.id, userCardIds), ...filters))
       .orderBy(order);
   } else {
@@ -273,14 +194,20 @@ export async function getUserMissingCardsWithFilter(
         universe: tUniverses.name,
         class: tClasses.name,
         author: tAuthors.username,
-        technique: techniqueColums,
+        techniques: sql<Technique[]>`COALESCE(
+                      (
+                        SELECT json_agg(t)
+                        FROM unnest(${tCards.techniqueIds}) AS tid
+                        JOIN ${tTechniques} t ON t.id = tid
+                      ),
+                      '[]'::json
+                    )`,
       })
       .from(tCards)
       .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
       .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .where(and(...filters))
       .orderBy(order);
   }
@@ -317,31 +244,12 @@ function getSQLFilters(filter?: Filter) {
   }
 
   if (filter?.techniques && filter.techniques.length > 0) {
-    const techFilters: (SQL | undefined)[] = [];
-    filter.techniques.forEach((t) => {
-      if (t === "reflection") {
-        techFilters.push(eq(tTechniques.reflection, true));
-      }
-      if (t === "power&heal") {
-        techFilters.push(
-          and(gt(tTechniques.heal, 0), gt(tTechniques.power, 0))
-        );
-      }
-      if (t === "dodge") {
-        techFilters.push(eq(tTechniques.dodge, true));
-      }
-      if (t === "heal") {
-        techFilters.push(
-          and(gt(tTechniques.heal, 0), eq(tTechniques.power, 0))
-        );
-      }
-      if (t === "power") {
-        techFilters.push(
-          and(eq(tTechniques.heal, 0), gt(tTechniques.power, 0))
-        );
-      }
-    });
-    filters.push(or(...techFilters));
+    filters.push(sql`EXISTS (
+          SELECT 1
+          FROM "Technique" t
+          WHERE t.id = ANY(${tCards.techniqueIds})
+            AND t."type" = ANY(${new Param(filter.techniques)})
+        )`);
   }
 
   let order: SQL = desc(tCards.createdAt);
@@ -358,6 +266,12 @@ function getSQLFilters(filter?: Filter) {
     case "price-desc":
       order = desc(tCards.price);
       break;
+    case "quantity-asc":
+      order = asc(tCards.quantity);
+      break;
+    case "quantity-desc":
+      order = desc(tCards.quantity);
+      break;
   }
 
   return {
@@ -373,7 +287,6 @@ export async function getUserCardsDifferenceWithFilter(
 ) {
   const { filters, order } = getSQLFilters(filter);
   const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
 
   const secondUserCards = await db
     .select({ cardId: cardToTgUser.cardId })
@@ -391,7 +304,14 @@ export async function getUserCardsDifferenceWithFilter(
         universe: tUniverses.name,
         class: tClasses.name,
         author: tAuthors.username,
-        technique: techniqueColums,
+        techniques: sql<Technique[]>`COALESCE(
+                      (
+                        SELECT json_agg(t)
+                        FROM unnest(${tCards.techniqueIds}) AS tid
+                        JOIN ${tTechniques} t ON t.id = tid
+                      ),
+                      '[]'::json
+                    )`,
       })
       .from(cardToTgUser)
       .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
@@ -399,7 +319,6 @@ export async function getUserCardsDifferenceWithFilter(
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
       .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .where(
         and(
           ...filters,
@@ -416,7 +335,14 @@ export async function getUserCardsDifferenceWithFilter(
         universe: tUniverses.name,
         class: tClasses.name,
         author: tAuthors.username,
-        technique: techniqueColums,
+        techniques: sql<Technique[]>`COALESCE(
+                      (
+                        SELECT json_agg(t)
+                        FROM unnest(${tCards.techniqueIds}) AS tid
+                        JOIN ${tTechniques} t ON t.id = tid
+                      ),
+                      '[]'::json
+                    )`,
       })
       .from(cardToTgUser)
       .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
@@ -424,67 +350,8 @@ export async function getUserCardsDifferenceWithFilter(
       .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
       .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
       .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
       .where(and(...filters, eq(cardToTgUser.tgUserId, id)))
       .orderBy(order);
-  }
-}
-
-export async function getUserCardsDifference(id: string, secondId: string) {
-  const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
-
-  const secondUserCards = await db
-    .select({ cardId: cardToTgUser.cardId })
-    .from(cardToTgUser)
-    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
-    .where(eq(cardToTgUser.tgUserId, secondId));
-
-  const secondUserCardIds = secondUserCards.map((c) => c.cardId);
-
-  if (secondUserCardIds.length > 0) {
-    return db
-      .select({
-        ...cardBase,
-        rarity: tRarities.name,
-        universe: tUniverses.name,
-        class: tClasses.name,
-        author: tAuthors.username,
-        technique: techniqueColums,
-      })
-      .from(cardToTgUser)
-      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
-      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-      .where(
-        and(
-          notInArray(tCards.id, secondUserCardIds),
-          eq(cardToTgUser.tgUserId, id)
-        )
-      )
-      .orderBy(desc(tCards.power), desc(tCards.stamina));
-  } else {
-    return db
-      .select({
-        ...cardBase,
-        rarity: tRarities.name,
-        universe: tUniverses.name,
-        class: tClasses.name,
-        author: tAuthors.username,
-        technique: techniqueColums,
-      })
-      .from(cardToTgUser)
-      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
-      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-      .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-      .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-      .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-      .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId))
-      .where(eq(cardToTgUser.tgUserId, id))
-      .orderBy(desc(tCards.power), desc(tCards.stamina));
   }
 }
 
@@ -502,7 +369,6 @@ export async function getTradeWithSenderCards(id: number) {
   if (!trade) return;
 
   const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
   const cards = await db
     .select({
       ...cardBase,
@@ -510,7 +376,14 @@ export async function getTradeWithSenderCards(id: number) {
       universe: tUniverses.name,
       class: tClasses.name,
       author: tAuthors.username,
-      technique: techniqueColums,
+      techniques: sql<Technique[]>`COALESCE(
+                    (
+                      SELECT json_agg(t)
+                      FROM unnest(${tCards.techniqueIds}) AS tid
+                      JOIN ${tTechniques} t ON t.id = tid
+                    ),
+                    '[]'::json
+                  )`,
     })
     .from(multiTradeCards)
     .where(
@@ -523,8 +396,7 @@ export async function getTradeWithSenderCards(id: number) {
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId));
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
 
   return { ...trade, senderCards: cards };
 }
@@ -548,7 +420,6 @@ export async function getTradeFull(id: number) {
   if (!trade) return;
 
   const cardBase = getTableColumns(tCards);
-  const techniqueColums = getTableColumns(tTechniques);
   const senderCards = await db
     .select({
       ...cardBase,
@@ -556,7 +427,14 @@ export async function getTradeFull(id: number) {
       universe: tUniverses.name,
       class: tClasses.name,
       author: tAuthors.username,
-      technique: techniqueColums,
+      techniques: sql<Technique[]>`COALESCE(
+                    (
+                      SELECT json_agg(t)
+                      FROM unnest(${tCards.techniqueIds}) AS tid
+                      JOIN ${tTechniques} t ON t.id = tid
+                    ),
+                    '[]'::json
+                  )`,
     })
     .from(multiTradeCards)
     .where(
@@ -569,8 +447,7 @@ export async function getTradeFull(id: number) {
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId));
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
 
   const receiverCards = await db
     .select({
@@ -579,7 +456,14 @@ export async function getTradeFull(id: number) {
       universe: tUniverses.name,
       class: tClasses.name,
       author: tAuthors.username,
-      technique: techniqueColums,
+      techniques: sql<Technique[]>`COALESCE(
+                    (
+                      SELECT json_agg(t)
+                      FROM unnest(${tCards.techniqueIds}) AS tid
+                      JOIN ${tTechniques} t ON t.id = tid
+                    ),
+                    '[]'::json
+                  )`,
     })
     .from(multiTradeCards)
     .where(
@@ -592,8 +476,7 @@ export async function getTradeFull(id: number) {
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .leftJoin(tTechniques, eq(tTechniques.id, tCards.techniqueId));
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
 
   return { ...trade, senderCards, receiverCards };
 }
@@ -749,10 +632,10 @@ export async function getUserCollection(id: string, filter?: Filter) {
       name: tUniverses.name,
       totalCards: count(tCards.id).as("totalCards"),
       userCards: count(cardToTgUser.cardId).as("userCards"),
-      persentage:
-        sql`(${count(cardToTgUser.cardId)} * 1.0 / ${count(tCards.id)})`.as(
-          "percentage"
-        ),
+      percentage:
+        sql<number>`ROUND((${count(cardToTgUser.cardId)} * 100.0) / NULLIF(${count(tCards.id)}, 0))`
+          .mapWith(Number)
+          .as("percentage"),
     })
     .from(tUniverses)
     .innerJoin(tCards, eq(tCards.universeId, tUniverses.id))
@@ -800,4 +683,83 @@ export async function getCardUpgrades() {
       )
     )
     .orderBy(cardUpgradePaths.createdAt);
+}
+
+export async function getBanners(userId?: string | null) {
+  const bannerColumns = getTableColumns(banners);
+  if (!userId) {
+    return db
+      .select({
+        ...bannerColumns,
+        isOwned: sql<boolean>`false`,
+      })
+      .from(banners)
+      .where(eq(banners.isPrivate, false))
+      .orderBy(banners.id);
+  }
+  return db
+    .select({
+      ...bannerColumns,
+      isOwned: sql<boolean>`CASE WHEN ${userBanners.bannerId} IS NOT NULL THEN TRUE ELSE FALSE END`,
+    })
+    .from(banners)
+    .leftJoin(
+      userBanners,
+      and(eq(banners.id, userBanners.bannerId), eq(userBanners.userId, userId))
+    )
+    .where(eq(banners.isPrivate, false));
+}
+
+export async function getUniverseData(userId: string, universeId: number) {
+  const stats = await db
+    .select({
+      totalInUniverse: count(tCards.id),
+      totalOwnedByUser: count(cardToTgUser.cardId),
+      universe: tUniverses.name,
+    })
+    .from(tCards)
+    .innerJoin(
+      tUniverses,
+      and(eq(tCards.universeId, tUniverses.id), eq(tUniverses.id, universeId))
+    )
+    .leftJoin(
+      cardToTgUser,
+      and(eq(cardToTgUser.cardId, tCards.id), eq(cardToTgUser.tgUserId, userId))
+    )
+    .where(eq(tCards.universeId, universeId))
+    .groupBy(tUniverses.name)
+    .then((res) => res[0]);
+
+  const cardsRaw = await db
+    .select({
+      card: tCards,
+      rarity: tRarities,
+      isOwned:
+        sql<boolean>`CASE WHEN ${cardToTgUser.cardId} IS NOT NULL THEN TRUE ELSE FALSE END`.mapWith(
+          Boolean
+        ),
+    })
+    .from(tCards)
+    .innerJoin(tRarities, eq(tCards.rarityId, tRarities.id))
+    .leftJoin(
+      cardToTgUser,
+      and(eq(cardToTgUser.cardId, tCards.id), eq(cardToTgUser.tgUserId, userId))
+    )
+    .where(eq(tCards.universeId, universeId))
+    .orderBy(desc(tRarities.rank), desc(tCards.price));
+
+  const cardsByRarity = cardsRaw.reduce(
+    (acc, row) => {
+      const rarityName = row.rarity.name;
+      if (!acc[rarityName]) acc[rarityName] = [];
+      acc[rarityName].push({ ...row.card, isOwned: row.isOwned });
+      return acc;
+    },
+    {} as Record<string, (Card & { isOwned: boolean })[]>
+  );
+
+  return {
+    stats,
+    cardsByRarity,
+  };
 }

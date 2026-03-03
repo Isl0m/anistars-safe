@@ -32,7 +32,7 @@ export default async function Trade({
   }
 
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4">
       <TradeShowPage trade={trade} />
     </main>
   );

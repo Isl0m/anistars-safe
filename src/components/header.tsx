@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import {
+  Grid3X3,
+  Heart,
+  Image,
+  Library,
+  Menu,
+  Repeat2,
+  User,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,22 +23,42 @@ const pages = [
   {
     name: "Все карты",
     href: "/",
+    Icon: Grid3X3,
   },
   {
     name: "Профиль",
     href: "/profile",
+    Icon: User,
   },
   {
     name: "Профиль других",
     href: "/profile/search",
+    Icon: Users,
   },
   {
     name: "Отсуствующие карты",
     href: "/profile/missing",
+    Icon: Heart,
   },
   {
     name: "Трейд",
     href: "/trade",
+    Icon: Repeat2,
+  },
+  {
+    name: "Улучшения",
+    href: "/upgrades",
+    Icon: Zap,
+  },
+  {
+    name: "Фоны",
+    href: "/banners",
+    Icon: Image,
+  },
+  {
+    name: "Коллекция",
+    href: "/profile/collection",
+    Icon: Library,
   },
 ];
 
@@ -64,18 +95,19 @@ export function Header({ title = "AniStars", element }: Props) {
             `absolute left-0 right-0 top-full bg-background shadow-md`
           )}
         >
-          <ul className="flex flex-col space-y-2 p-4 ">
-            {pages.map(({ name, href }) => (
+          <ul className="flex flex-col gap-2 p-4">
+            {pages.map(({ name, href, Icon }) => (
               <li key={name}>
                 <Link
                   href={href}
                   className={buttonVariants({
                     variant: "ghost",
-                    className: "w-full !justify-start",
+                    className: "flex w-full items-center !justify-start gap-2",
                   })}
                   onClick={() => setIsNavOpen(false)}
                 >
-                  {name}
+                  <Icon className="h-4 w-4" />
+                  <span>{name}</span>
                 </Link>
               </li>
             ))}

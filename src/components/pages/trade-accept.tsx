@@ -72,7 +72,7 @@ export default function AcceptTradePage({
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4">
       <Header title={"Трейд"} />
       <CardsListSkeleton />
     </main>
@@ -251,7 +251,7 @@ export function AcceptTradePageContent({
       </div>
     ),
     select: (
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
         <Button
           onClick={resetSelected}
           className="w-full"
@@ -271,7 +271,7 @@ export function AcceptTradePageContent({
       </div>
     ),
     confirm: (
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
         <Button
           onClick={() => setStep("select")}
           size={"sm"}

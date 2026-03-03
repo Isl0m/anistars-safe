@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
@@ -14,14 +15,22 @@ export async function POST(request: Request) {
   const res = await request.json();
   const parsedData = createTradeSchema.safeParse(res);
   if (!parsedData.success)
-    return new Response("Data schema not correct", {
-      status: 400,
-    });
+    return NextResponse.json(
+      { error: "Data schema not correct" },
+      {
+        status: 400,
+      }
+    );
   const { data } = parsedData;
   const receiver = await getUser(data.receiverId);
   const sender = await getUser(data.senderId);
   if (!receiver || !sender)
-    return new Response("Receiver or sender not found", { status: 404 });
+    return NextResponse.json(
+      { error: "Receiver or sender not found" },
+      {
+        status: 404,
+      }
+    );
   try {
     const [trade] = await createTrade(data);
     await addTradeCards(trade.id, data.cardIds, true);
@@ -40,9 +49,12 @@ export async function POST(request: Request) {
         ],
       ]
     );
-    return new Response(JSON.stringify(trade));
+    return NextResponse.json(trade);
   } catch (e) {
     console.log("error", e);
-    return new Response("Something went wrong", { status: 500 });
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
   }
 }

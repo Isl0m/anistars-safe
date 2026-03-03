@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
@@ -14,9 +15,12 @@ export async function POST(request: Request) {
   const res = await request.json();
   const parsedData = updateTradeSchema.safeParse(res);
   if (!parsedData.success)
-    return new Response("Data schema not correct", {
-      status: 400,
-    });
+    return NextResponse.json(
+      { error: "Data schema not correct" },
+      {
+        status: 400,
+      }
+    );
   const { data } = parsedData;
   try {
     const [trade] = await updateTrade(data.tradeId, {
@@ -47,9 +51,12 @@ export async function POST(request: Request) {
         ],
       ]
     );
-    return new Response(JSON.stringify(trade));
+    return NextResponse.json(trade);
   } catch (e) {
     console.log(e);
-    return new Response("Something went wrong", { status: 500 });
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
   }
 }

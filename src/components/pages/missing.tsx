@@ -47,26 +47,22 @@ export function Missing({ filterOptions }: MissingProps) {
     setFilter(data);
   };
 
-  if (query.data) {
-    return (
-      <main className="flex min-h-screen flex-col gap-4 md:container">
-        <Header
-          title={"Отсуствующие карты"}
-          element={
-            <CardsFilter
-              filterOptions={filterOptions}
-              setFilters={handleFilterChange}
-            />
-          }
-        />
-        <CardsList cards={query.data.cards} />
-      </main>
-    );
-  }
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
-      <Header title={"Отсуствующие карты"} />
-      <CardsListSkeleton />
+    <main className="flex min-h-screen flex-col gap-4">
+      <Header
+        title={"Отсуствующие карты"}
+        element={
+          <CardsFilter
+            filterOptions={filterOptions}
+            setFilters={handleFilterChange}
+          />
+        }
+      />
+      {query.data ? (
+        <CardsList cards={query.data.cards} />
+      ) : (
+        <CardsListSkeleton />
+      )}
     </main>
   );
 }

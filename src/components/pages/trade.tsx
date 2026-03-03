@@ -64,7 +64,7 @@ export default function TradePage({ receiver }: { receiver: string }) {
     );
   }
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <main className="flex min-h-screen flex-col gap-4">
       <Header title={"Трейд"} />
       <CardsListSkeleton />
     </main>
@@ -182,7 +182,7 @@ function TradePageContent({
 
   const footerSection: Record<Steps, JSX.Element> = {
     select: (
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
         <Button
           onClick={resetSelected}
           className="w-full"
@@ -202,7 +202,7 @@ function TradePageContent({
       </div>
     ),
     confirm: (
-      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-4">
         <div className="flex gap-4">
           <Button
             onClick={() => setStep("select")}

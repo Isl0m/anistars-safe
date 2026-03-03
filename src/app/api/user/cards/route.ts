@@ -1,44 +1,28 @@
-import { getUser, getUserCards, getUserCardsWithFilter } from "@/lib/queries";
+import { NextResponse } from "next/server";
+
+import { getUser, getUserCardsWithFilter } from "@/lib/queries";
 
 import { Filter, getUserFilterOptions } from "@/components/get-filte-options";
-
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id)
-    return new Response("id param required", {
-      status: 400,
-    });
-  const user = await getUser(id);
-  if (!user) return new Response("user not found", { status: 404 });
-  const cards = await getUserCards(id);
-  const filterOptions = await getUserFilterOptions(id);
-  return new Response(
-    JSON.stringify({
-      user,
-      cards,
-      filterOptions,
-    })
-  );
-}
 
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id)
-    return new Response("id param required", {
-      status: 400,
-    });
+    return NextResponse.json(
+      { eror: "id param required" },
+      {
+        status: 400,
+      }
+    );
   const user = await getUser(id);
-  if (!user) return new Response("user not found", { status: 404 });
+  if (!user)
+    return NextResponse.json({ error: "user not found" }, { status: 404 });
   const body = (await request.json()) as Filter | undefined;
   const cards = await getUserCardsWithFilter(id, body ?? undefined);
   const filterOptions = await getUserFilterOptions(id);
-  return new Response(
-    JSON.stringify({
-      user,
-      cards,
-      filterOptions,
-    })
-  );
+  return NextResponse.json({
+    user,
+    cards,
+    filterOptions,
+  });
 }

@@ -25,15 +25,16 @@ export const tCards = pgTable("Card", {
   stats: text("stats").$type<CardStats>().default("basic").notNull(),
   collection: text("collection"),
   price: integer("price").default(0).notNull(),
-  count: integer("count").default(0).notNull(),
+  quantity: integer("quantity").default(0).notNull(),
   upgradeable: boolean("upgradeable").default(false).notNull(),
   upgrade: boolean("upgrade").default(false).notNull(),
 
-  createdAt: timestamp("createdAt").defaultNow(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 
   techniqueId: integer("techniqueId").references(() => tTechniques.id, {
     onDelete: "set null",
   }),
+  techniqueIds: integer("techniqueIds").array(),
   authorId: integer("authorId")
     .notNull()
     .references(() => tAuthors.id, { onDelete: "cascade" }),
@@ -127,5 +128,5 @@ export type FullCard = Card & {
   universe: string;
   class: string;
   author: string;
-  technique: Technique | null;
+  techniques: Technique[];
 };

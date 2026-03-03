@@ -5,7 +5,7 @@ export default async function Home() {
   const filterOptions = await getFilterOptions();
 
   return (
-    <main className="flex flex-col gap-4 md:container">
+    <main className="flex flex-col gap-4">
       <CardsPage title="Все карты" filterOptions={filterOptions} />
     </main>
   );

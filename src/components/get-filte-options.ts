@@ -29,7 +29,9 @@ export type SortOptions =
   | "createdAt-asc"
   | "createdAt-desc"
   | "price-asc"
-  | "price-desc";
+  | "price-desc"
+  | "quantity-asc"
+  | "quantity-desc";
 
 export type Filter = {
   rarityIds: number[];
@@ -40,6 +42,59 @@ export type Filter = {
   droppable: string[];
   techniques: string[];
   sort: SortOptions;
+};
+
+export type TechniqueType =
+  | "power"
+  | "heal"
+  | "power+heal"
+  | "dodge"
+  | "reflect";
+
+const statsOptions: FilterOption = {
+  key: "stats",
+  name: "Характеристики",
+  items: [
+    { id: "full", name: "Фулл" },
+    { id: "pre-full", name: "Пре-Фулл" },
+    { id: "basic", name: "Базовый" },
+  ],
+};
+
+const typeOptions: FilterOption = {
+  key: "droppable",
+  name: "Тип",
+  items: [
+    { id: "limited", name: "Лимитированный" },
+    { id: "basic", name: "Базовый" },
+    { id: "upgradable", name: "Улучшаемый" },
+    { id: "upgrade", name: "Улучшение" },
+  ],
+};
+
+const techniqueOptions: FilterOption = {
+  key: "techniques",
+  name: "Техника",
+  items: [
+    { id: "power", name: "Урон" },
+    { id: "heal", name: "Хил" },
+    { id: "power&heal", name: "Урон&Хил" },
+    { id: "reflect", name: "Отражение" },
+    { id: "dodge", name: "Уклонение" },
+  ],
+};
+
+const sortOptions: FilterOption = {
+  key: "sort",
+  name: "Сортировка",
+  items: [
+    { id: "createdAt-desc", name: "Сначала новые" },
+    { id: "createdAt-asc", name: "Сначала старые" },
+    { id: "price-asc", name: "Сначала дешевые" },
+    { id: "price-desc", name: "Сначала дорогие" },
+    { id: "quantity-asc", name: "Малое количество" },
+    { id: "quantity-desc", name: "Большое количество" },
+  ],
 };
 
 export async function getFilterOptions() {
@@ -67,51 +122,15 @@ export async function getFilterOptions() {
       items: universes,
       span: 2,
     },
-    {
-      key: "stats",
-      name: "Характеристики",
-      items: [
-        { id: "full", name: "Фулл" },
-        { id: "pre-full", name: "Пре-Фулл" },
-        { id: "basic", name: "Базовый" },
-      ],
-    },
-    {
-      key: "droppable",
-      name: "Тип",
-      items: [
-        { id: "limited", name: "Лимитированный" },
-        { id: "basic", name: "Базовый" },
-        { id: "upgradable", name: "Улучшаемый" },
-        { id: "upgrade", name: "Улучшение" },
-      ],
-    },
+    statsOptions,
+    typeOptions,
     {
       key: "authorIds",
       name: "Автор",
       items: authors.map(({ id, username }) => ({ id, name: username })),
     },
-    {
-      key: "techniques",
-      name: "Техника",
-      items: [
-        { id: "power", name: "Урон" },
-        { id: "heal", name: "Хил" },
-        { id: "power&heal", name: "Урон&Хил" },
-        { id: "reflection", name: "Отражение" },
-        { id: "dodge", name: "Уклонение" },
-      ],
-    },
-    {
-      key: "sort",
-      name: "Сортировка",
-      items: [
-        { id: "createdAt-desc", name: "Сначала новые" },
-        { id: "createdAt-asc", name: "Сначала старые" },
-        { id: "price-asc", name: "Сначала дешевые" },
-        { id: "price-desc", name: "Сначала дорогие" },
-      ],
-    },
+    techniqueOptions,
+    sortOptions,
   ];
   return filterOptions;
 }
@@ -141,51 +160,15 @@ export async function getUserFilterOptions(userId: string) {
       items: universes,
       span: 2,
     },
-    {
-      key: "stats",
-      name: "Характеристики",
-      items: [
-        { id: "full", name: "Фулл" },
-        { id: "pre-full", name: "Пре-Фулл" },
-        { id: "basic", name: "Базовый" },
-      ],
-    },
-    {
-      key: "droppable",
-      name: "Тип",
-      items: [
-        { id: "limited", name: "Лимитированный" },
-        { id: "basic", name: "Базовый" },
-        { id: "upgradable", name: "Улучшаемый" },
-        { id: "upgrade", name: "Улучшение" },
-      ],
-    },
+    statsOptions,
+    typeOptions,
     {
       key: "authorIds",
       name: "Автор",
       items: authors.map(({ id, username }) => ({ id, name: username })),
     },
-    {
-      key: "techniques",
-      name: "Техника",
-      items: [
-        { id: "power", name: "Урон" },
-        { id: "heal", name: "Хил" },
-        { id: "power&heal", name: "Урон&Хил" },
-        { id: "reflection", name: "Отражение" },
-        { id: "dodge", name: "Уклонение" },
-      ],
-    },
-    {
-      key: "sort",
-      name: "Сортировка",
-      items: [
-        { id: "createdAt-asc", name: "Сначала новые" },
-        { id: "createdAt-desc", name: "Сначала старые" },
-        { id: "price-asc", name: "Сначала дешевые" },
-        { id: "price-desc", name: "Сначала дорогие" },
-      ],
-    },
+    techniqueOptions,
+    sortOptions,
   ];
   return filterOptions;
 }

@@ -1,44 +1,18 @@
-import { getUser, getUserCollection } from "@/lib/queries";
+import { NextResponse } from "next/server";
 
-import { Filter } from "@/components/get-filte-options";
-
-export async function POST(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id)
-    return new Response("id param required", {
-      status: 400,
-    });
-  const body = (await request.json()) as Filter | undefined;
-
-  const user = await getUser(id);
-  if (!user) return new Response("user not found", { status: 404 });
-
-  const collection = await getUserCollection(id);
-  return new Response(
-    JSON.stringify({
-      user,
-      collection,
-    })
-  );
-}
+import { getUserCollection } from "@/lib/queries";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id)
-    return new Response("id param required", {
-      status: 400,
-    });
-
-  const user = await getUser(id);
-  if (!user) return new Response("user not found", { status: 404 });
+    return NextResponse.json(
+      { error: "id param required" },
+      {
+        status: 400,
+      }
+    );
 
   const collection = await getUserCollection(id);
-  return new Response(
-    JSON.stringify({
-      user,
-      collection,
-    })
-  );
+  return NextResponse.json({ collection });
 }

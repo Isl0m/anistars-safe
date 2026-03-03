@@ -5,7 +5,7 @@ import Image from "next/image";
 
 import { cn, prettyNumbers } from "@/lib/utils";
 
-import { FullCard, Technique } from "@/db/schema/card";
+import { Card, FullCard, Technique } from "@/db/schema/card";
 
 import CardsPagination from "./pagination";
 import { Button } from "./ui/button";
@@ -37,13 +37,13 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
   };
 
   const parseTechnique = (technique: Technique) => {
-    const power = technique.power && `⚔️${technique.power * 100}%`;
-    const heal = technique.heal && `♥️${technique.heal * 100}%`;
-    const dodge = technique.dodge && `Уклонение`;
-    const reflection = technique.reflection && `Отражение`;
+    const power = technique.power && `⚔️${Math.round(technique.power * 100)}%`;
+    const heal = technique.heal && `♥️${Math.round(technique.heal * 100)}%`;
+    const dodge = technique.dodge && `💨 Уклон`;
+    const reflection = technique.reflection && `🪞 Отражение`;
     const techniqueText =
       power && heal ? `${power} ${heal}` : power || heal || dodge || reflection;
-    return `${technique.slug} | ${techniqueText}\n`;
+    return `${techniqueText} | ${technique.slug}`;
   };
   const closeDrawer = () => setSelectedCard(null);
   return (
@@ -136,16 +136,18 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
                 </div>
                 <div>
                   <p className="font-semibold">💰 Цена:</p>
-                  <p>{prettyNumbers(pageCards[selectedCard].price)}🪙</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].price)}✨</p>
                 </div>
                 <div>
                   <p className="font-semibold">Количество:</p>
-                  <p>{prettyNumbers(pageCards[selectedCard].count)}</p>
+                  <p>{prettyNumbers(pageCards[selectedCard].quantity)}</p>
                 </div>
-                {pageCards[selectedCard].technique !== null && (
+                {pageCards[selectedCard].techniques !== null && (
                   <div className="col-span-3">
                     <p className="font-semibold">🦾 Техника:</p>
-                    <p>{parseTechnique(pageCards[selectedCard].technique!)}</p>
+                    {pageCards[selectedCard].techniques.map((technique) => (
+                      <p key={technique.id}>{parseTechnique(technique)}</p>
+                    ))}
                   </div>
                 )}
               </div>

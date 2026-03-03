@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { UserIcon } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -15,39 +16,21 @@ import { useTelegram } from "../telegram-provider";
 
 export default function TradeReceiverPage() {
   const { tgUser } = useTelegram();
-  const [user, setUser] = useState<User>();
-
-  useEffect(() => {
-    if (tgUser) {
-      fetch(`${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser.id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setUser(data.user);
-        });
-    }
-  }, [tgUser]);
-
-  if (!user) {
-    return (
-      <main className="flex min-h-screen flex-col gap-8 px-4 py-12 md:container">
-        <h1 className="text-center text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Загрузка...
-        </h1>
-      </main>
-    );
-  }
-
-  return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
-      <TradePageContent user={user} />
-    </main>
-  );
-}
-
-function TradePageContent({ user }: { user: User }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [receiver, setReceiver] = useState("");
+
+  const query = useQuery({
+    queryKey: ["user", tgUser],
+    queryFn: async () => {
+      if (!tgUser) return null;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser.id}`
+      );
+      return (await response.json()).user as Promise<User>;
+    },
+    placeholderData: keepPreviousData,
+  });
 
   const handleReceiver = async () => {
     setIsLoading(true);
@@ -61,7 +44,7 @@ function TradePageContent({ user }: { user: User }) {
       setIsLoading(false);
       return;
     }
-    if (receiver === user.id) {
+    if (receiver === query.data?.id) {
       toast({
         title: "Ошибка",
         description: "Нельзя трейдится с самим собой",
@@ -98,7 +81,7 @@ function TradePageContent({ user }: { user: User }) {
   };
 
   return (
-    <>
+    <main className="flex min-h-screen flex-col gap-4">
       <Header
         title="Трейд"
         element={
@@ -112,7 +95,6 @@ function TradePageContent({ user }: { user: User }) {
           </Link>
         }
       />
-
       <div className="mb-2 flex items-center space-x-4 px-2">
         <UserIcon className="ml-2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -125,16 +107,16 @@ function TradePageContent({ user }: { user: User }) {
         />
       </div>
 
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-2">
+      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
         <Button
           onClick={handleReceiver}
           className="w-full"
           size={"sm"}
-          disabled={!receiver || isLoading}
+          disabled={!receiver || isLoading || query.isLoading || !query.data}
         >
           Продолжить
         </Button>
       </div>
-    </>
+    </main>
   );
 }
