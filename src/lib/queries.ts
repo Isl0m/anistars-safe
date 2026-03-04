@@ -65,10 +65,6 @@ export async function getUserUniverses(userId: string) {
     .groupBy(tUniverses.id, tUniverses.name);
 }
 
-export async function getCards() {
-  return db.select().from(tCards).orderBy(desc(tCards.createdAt));
-}
-
 export async function getCardsFullWithFilter(
   filter?: Filter
 ): Promise<FullCard[]> {
@@ -252,8 +248,14 @@ function getSQLFilters(filter?: Filter) {
         )`);
   }
 
-  let order: SQL = desc(tCards.createdAt);
+  let order: SQL = desc(sql`${tCards.power} + ${tCards.stamina} / 2`);
   switch (filter?.sort) {
+    case "power-desc":
+      order = desc(sql`${tCards.power} + ${tCards.stamina} / 2`);
+      break;
+    case "power-asc":
+      order = asc(sql`${tCards.power} + ${tCards.stamina} / 2`);
+      break;
     case "createdAt-asc":
       order = asc(tCards.createdAt);
       break;

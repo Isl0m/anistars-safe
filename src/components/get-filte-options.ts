@@ -26,6 +26,8 @@ export type FilterOption = {
 };
 
 export type SortOptions =
+  | "power-desc"
+  | "power-asc"
   | "createdAt-asc"
   | "createdAt-desc"
   | "price-asc"
@@ -78,7 +80,7 @@ const techniqueOptions: FilterOption = {
   items: [
     { id: "power", name: "Урон" },
     { id: "heal", name: "Хил" },
-    { id: "power&heal", name: "Урон&Хил" },
+    { id: "power+heal", name: "Урон&Хил" },
     { id: "reflect", name: "Отражение" },
     { id: "dodge", name: "Уклонение" },
   ],
@@ -88,6 +90,8 @@ const sortOptions: FilterOption = {
   key: "sort",
   name: "Сортировка",
   items: [
+    { id: "power-desc", name: "Сначала сильные" },
+    { id: "power-asc", name: "Сначала слабые" },
     { id: "createdAt-desc", name: "Сначала новые" },
     { id: "createdAt-asc", name: "Сначала старые" },
     { id: "price-asc", name: "Сначала дешевые" },

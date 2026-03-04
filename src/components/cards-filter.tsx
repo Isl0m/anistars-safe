@@ -27,8 +27,13 @@ import {
 type Props = {
   filterOptions: FilterOption[];
   setFilters: (filters: Filter) => void;
+  defaultSort?: SortOptions;
 };
-export default function CardsFilter({ filterOptions, setFilters }: Props) {
+export default function CardsFilter({
+  filterOptions,
+  setFilters,
+  defaultSort,
+}: Props) {
   const [open, setOpen] = useState(false);
   const form = useForm({
     defaultValues: {
@@ -39,7 +44,7 @@ export default function CardsFilter({ filterOptions, setFilters }: Props) {
       stats: [] as CardStats[],
       droppable: [] as string[],
       techniques: [] as string[],
-      sort: "createdAt-desc" as SortOptions,
+      sort: defaultSort ?? ("power-desc" as SortOptions),
     },
     onSubmit: async ({ value }) => {
       setFilters(value);
@@ -115,7 +120,7 @@ export default function CardsFilter({ filterOptions, setFilters }: Props) {
                         )}
                       />
                     ))}
-                    {items.length > 7 && (
+                    {items.length > 8 && (
                       <AccordionItem value={key + "more"}>
                         <AccordionTrigger>
                           Показать больше/меньше ({items.length - 7} скрытых)

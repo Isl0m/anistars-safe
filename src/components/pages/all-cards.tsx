@@ -27,7 +27,7 @@ export function CardsPage({ title, filterOptions }: Props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(filter ?? {}),
+        body: JSON.stringify(filter ?? { sort: "createdAt-desc" }),
       });
       return (await response.json()).cards as Promise<FullCard[]>;
     },
@@ -44,6 +44,7 @@ export function CardsPage({ title, filterOptions }: Props) {
         title={title}
         element={
           <CardsFilter
+            defaultSort="createdAt-desc"
             filterOptions={filterOptions}
             setFilters={handleFilterChange}
           />
