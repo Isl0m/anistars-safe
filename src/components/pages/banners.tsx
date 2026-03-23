@@ -5,7 +5,7 @@ import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Play } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn, getProxyUrl } from "@/lib/utils";
 
 import { Banner } from "@/db/schema/banner";
 import { Badge } from "@/ui/badge";
@@ -57,7 +57,7 @@ export function BannersPage() {
                   {banner.type === "photo" && (
                     <div className="relative h-40 w-full overflow-hidden">
                       <Image
-                        src={banner.file}
+                        src={getProxyUrl(banner.file)}
                         width={320}
                         height={180}
                         alt={banner.name}
@@ -74,7 +74,7 @@ export function BannersPage() {
                   {banner.type === "video" && (
                     <div className="relative h-40 w-full overflow-hidden">
                       <video
-                        src={banner.file + "#t=0.1"}
+                        src={getProxyUrl(banner.file + "#t=0.1")}
                         preload="metadata"
                         width={320}
                         height={180}
@@ -105,7 +105,7 @@ export function BannersPage() {
             <DialogTitle>{selected?.name}</DialogTitle>
           </DialogHeader>
           <video
-            src={selected?.file}
+            src={getProxyUrl(selected?.file!)}
             controls
             width={1280}
             height={720}

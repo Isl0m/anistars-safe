@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { CheckIcon } from "lucide-react";
 
+import { getProxyUrl } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { CreateTradeType } from "@/app/api/trade/create/route";
@@ -270,7 +272,7 @@ export function CardsSelectList({
               >
                 <div>
                   <Image
-                    src={card.image}
+                    src={getProxyUrl(card.image)}
                     width={240}
                     height={320}
                     className="rounded"
@@ -317,7 +319,12 @@ export function SelectedCardsList({
           onClick={onClick(card)}
         >
           <div>
-            <Image src={card.image} width={240} height={320} alt={card.slug} />
+            <Image
+              src={getProxyUrl(card.image)}
+              width={240}
+              height={320}
+              alt={card.slug}
+            />
 
             <div className="absolute right-1 top-1 rounded-full bg-primary p-[2px] transition-opacity duration-100 ease-in-out">
               <CheckIcon className="h-2 w-2 text-primary-foreground" />

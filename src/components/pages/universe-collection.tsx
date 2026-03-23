@@ -7,6 +7,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { on, postEvent } from "@telegram-apps/sdk-react";
 import { Check } from "lucide-react";
 
+import { getProxyUrl } from "@/lib/utils";
+
 import { Card as CardType } from "@/db/schema/card";
 import {
   Accordion,
@@ -139,7 +141,7 @@ function RaritySection({
           {cards.map((card) => (
             <div className="relative w-full overflow-hidden rounded-md md:rounded-lg">
               <Image
-                src={card.image}
+                src={getProxyUrl(card.image)}
                 width={240}
                 height={320}
                 alt={card.name}

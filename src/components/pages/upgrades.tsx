@@ -4,6 +4,7 @@ import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { CardUpgrades } from "@/lib/queries";
+import { getProxyUrl } from "@/lib/utils";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Skeleton } from "@/ui/skeleton";
@@ -44,7 +45,7 @@ export function CardUpgradesPage() {
                   <CardContent className="p-4 pt-0">
                     <div className="grid grid-cols-3 items-center gap-4">
                       <Image
-                        src={baseImage}
+                        src={getProxyUrl(baseImage)}
                         width={180}
                         height={240}
                         alt={"card1"}
@@ -52,7 +53,7 @@ export function CardUpgradesPage() {
                         loading="lazy"
                       />
                       <Image
-                        src={image1}
+                        src={getProxyUrl(image1)}
                         width={180}
                         height={240}
                         alt={"card2"}
@@ -61,7 +62,7 @@ export function CardUpgradesPage() {
                       />
                       {image2 && (
                         <Image
-                          src={image2}
+                          src={getProxyUrl(image2)}
                           width={180}
                           height={240}
                           alt={"card3"}

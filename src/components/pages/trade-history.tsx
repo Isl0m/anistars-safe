@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowDown, X } from "lucide-react";
 
 import { TradeHistory as TradeHistoryType } from "@/lib/queries";
+import { getProxyUrl } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
@@ -133,7 +134,7 @@ function CardPreview({ cards }: { cards: Card[] }) {
                 className="relative overflow-hidden rounded-sm border-2 border-background"
               >
                 <Image
-                  src={card.image}
+                  src={getProxyUrl(card.image)}
                   alt={card.name}
                   width={40}
                   height={52}
@@ -167,7 +168,7 @@ function CardPreview({ cards }: { cards: Card[] }) {
               className="relative overflow-hidden rounded-md border border-border"
             >
               <Image
-                src={card.image}
+                src={getProxyUrl(card.image)}
                 alt={card.name}
                 width={60}
                 height={80}

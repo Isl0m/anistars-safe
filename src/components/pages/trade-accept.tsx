@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
+import { getProxyUrl } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { UpdateTradeType } from "@/app/api/trade/update/route";
@@ -312,7 +314,7 @@ export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
       {cards.map((card) => (
         <li key={card.id}>
           <Image
-            src={card.image}
+            src={getProxyUrl(card.image)}
             width={240}
             height={320}
             className="rounded"

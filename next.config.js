@@ -4,9 +4,9 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "storage.googleapis.com",
+        hostname: "anistars.xyz",
         port: "",
-        pathname: "/anistars/**",
+        pathname: "/assets/**",
       },
     ],
   },

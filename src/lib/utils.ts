@@ -16,3 +16,11 @@ export function isKey<T extends object>(x: T, k: PropertyKey): k is keyof T {
 export function prettyNumbers(data: number) {
   return Intl.NumberFormat("en").format(data);
 }
+
+export const getProxyUrl = (originalUrl: string) => {
+  if (!originalUrl) return "";
+  return originalUrl.replace(
+    "https://storage.googleapis.com/anistars",
+    "https://anistars.xyz/assets"
+  );
+};

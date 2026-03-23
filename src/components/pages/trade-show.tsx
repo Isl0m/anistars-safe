@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 
+import { getProxyUrl } from "@/lib/utils";
+
 import { FullCard } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
 import { Badge } from "@/ui/badge";
@@ -43,7 +45,7 @@ export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
       {cards.map((card) => (
         <li key={card.id}>
           <Image
-            src={card.image}
+            src={getProxyUrl(card.image)}
             width={240}
             height={320}
             className="rounded"
