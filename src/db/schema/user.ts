@@ -29,7 +29,6 @@ export const tgUsers = pgTable(
     event: integer("event").default(0).notNull(),
     astrals: integer("astrals").default(0).notNull(),
     referrals: integer("referrals").default(0).notNull(),
-    pullsCount: integer("pullsCount").default(0).notNull(),
     universes: integer("universes")
       .array()
       .default(sql`'{1, 5, 8, 10, 17, 22, 34, 71, 82, 99}'`)
