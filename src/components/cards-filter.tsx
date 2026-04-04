@@ -63,7 +63,7 @@ export default function CardsFilter({
       <SheetContent
         aria-description="cards filter"
         side="right"
-        className="mt-auto h-screen max-h-[calc(100vh-(var(--tg-viewport-safe-area-inset-top))-40px)] w-full overflow-y-auto"
+        className="mt-auto h-screen max-h-[calc(100vh-(var(--safe-area-top)))] w-full overflow-y-auto"
       >
         <SheetHeader>
           <SheetTitle className="text-lg">Фильтры</SheetTitle>

@@ -27,12 +27,12 @@ export default function RootLayout({
     >
       <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
       />
       <body className={cn("bg-background font-sans text-white antialiased")}>
         <QueryProvider>
           <TelegramProvider>
-            <div className="relative h-screen pb-[calc(var(--tg-viewport-safe-area-inset-bottom)+16px)] pt-[calc(var(--tg-viewport-safe-area-inset-top)+40px)]">
+            <div className="relative h-screen pb-[var(--safe-area-bottom)] pt-[var(--safe-area-top)]">
               {children}
             </div>
             <Toaster />

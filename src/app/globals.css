@@ -31,8 +31,10 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-
     --radius: 0.5rem;
+
+    --safe-area-top: 0px;
+    --safe-area-bottom: 0px;
   }
 
   .dark {

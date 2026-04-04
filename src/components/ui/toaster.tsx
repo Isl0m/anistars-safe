@@ -30,7 +30,7 @@ export function Toaster() {
           </Toast>
         );
       })}
-      <ToastViewport className="pt-[calc(var(--tg-viewport-safe-area-inset-top)+40px)]" />
+      <ToastViewport className="pt-[var(--safe-area-top)]" />
     </ToastProvider>
   );
 }

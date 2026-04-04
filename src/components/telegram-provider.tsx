@@ -24,37 +24,42 @@ export const TelegramProvider = ({
   children: React.ReactNode;
 }) => {
   const [tgUser, setTgUser] = useState<ITelegramContext["tgUser"]>();
-  const [safeAreaInsets, setSafeAreaInsets] = useState<{
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-  }>({ top: 0, bottom: 0, left: 0, right: 0 });
   const [isLoading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         init();
+        const lp = retrieveLaunchParams();
+        const isMobile = ["android", "android_x", "ios"].includes(lp.platform);
+
         await viewport.mount();
-        if (
-          (navigator as any).userAgentData?.mobile &&
-          !viewport.isFullscreen()
-        ) {
+        if (isMobile && !viewport.isFullscreen()) {
           await viewport.requestFullscreen();
         }
         viewport.bindCssVars();
 
-        setSafeAreaInsets(viewport.safeAreaInsets());
+        const top = viewport.safeAreaInsetTop() ?? 0;
+        const bottom = viewport.safeAreaInsetBottom() ?? 0;
+
+        document.documentElement.style.setProperty(
+          "--safe-area-top",
+          `${top + (isMobile ? 40 : 0)}px`
+        );
+        document.documentElement.style.setProperty(
+          "--safe-area-bottom",
+          `${bottom + (isMobile ? 16 : 0)}px`
+        );
+
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
         postEvent("web_app_set_header_color", { color: "#020817" });
 
-        const { initData } = retrieveLaunchParams();
-        if (initData && initData.user) {
-          setTgUser(initData.user);
+        if (lp.initData && lp.initData.user) {
+          setTgUser(lp.initData.user);
         }
       } catch (e) {
+        console.error("Error initializing Telegram SDK:", e);
         setTgUser(undefined);
       } finally {
         setLoading(false);
@@ -69,11 +74,6 @@ export const TelegramProvider = ({
   return (
     <TelegramContext.Provider value={value}>
       {isLoading ? <LoadingScreen /> : children}
-      {/*{safeAreaInsets && (
-        <div className="absolute bottom-0 left-4">
-          {JSON.stringify(safeAreaInsets)}
-        </div>
-      )}*/}
     </TelegramContext.Provider>
   );
 };
