@@ -54,7 +54,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
             <ul className="grid grid-cols-4 gap-2 md:gap-8 lg:grid-cols-6">
               {pageCards.map((card, idx) => (
                 <li
-                  key={card.id}
+                  key={`${card.id}-${idx}`}
                   className="relative"
                   onClick={() => setSelectedCard(idx)}
                 >
