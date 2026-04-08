@@ -28,11 +28,13 @@ type Props = {
   filterOptions: FilterOption[];
   setFilters: (filters: Filter) => void;
   defaultSort?: SortOptions;
+  buttonText?: string;
 };
 export default function CardsFilter({
   filterOptions,
   setFilters,
   defaultSort,
+  buttonText,
 }: Props) {
   const [open, setOpen] = useState(false);
   const form = useForm({
@@ -57,7 +59,7 @@ export default function CardsFilter({
       <SheetTrigger asChild>
         <Button variant="outline" aria-label="Show filters">
           <FilterIcon className="mr-2 h-4 w-4" />
-          Фильтры
+          {buttonText || "Фильтры"}
         </Button>
       </SheetTrigger>
       <SheetContent

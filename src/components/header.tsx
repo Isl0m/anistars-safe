@@ -51,6 +51,11 @@ const pages = [
     Icon: Zap,
   },
   {
+    name: "Маркетплейс",
+    href: "/market",
+    Icon: Repeat2,
+  },
+  {
     name: "Фоны",
     href: "/banners",
     Icon: Image,

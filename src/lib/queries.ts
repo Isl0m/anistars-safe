@@ -38,7 +38,197 @@ import {
   SelectMultiTrade,
   tradeLogs,
 } from "@/db/schema/trade";
+import {
+  marketListingCards,
+  marketListings,
+  marketOfferCards,
+  marketOffers,
+} from "@/db/schema/market";
 import { tgUsers, User, userPasses } from "@/db/schema/user";
+
+export async function getMarketListings() {
+  const listingColumns = getTableColumns(marketListings);
+  const sellerColumns = getTableColumns(tgUsers);
+
+  const listings = await db
+    .select({
+      ...listingColumns,
+      seller: sellerColumns,
+    })
+    .from(marketListings)
+    .where(eq(marketListings.status, "active"))
+    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
+    .orderBy(desc(marketListings.createdAt));
+
+  const results = await Promise.all(
+    listings.map(async (listing) => {
+      const cards = await db
+        .select({
+          ...getTableColumns(tCards),
+          rarity: tRarities.name,
+          universe: tUniverses.name,
+          class: tClasses.name,
+          author: tAuthors.username,
+        })
+        .from(marketListingCards)
+        .where(eq(marketListingCards.listingId, listing.id))
+        .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId))
+        .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+        .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+        .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+        .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
+
+      return {
+        ...listing,
+        cards,
+      };
+    })
+  );
+
+  return results;
+}
+
+export async function getMarketListing(id: number) {
+  const listingColumns = getTableColumns(marketListings);
+  const sellerColumns = getTableColumns(tgUsers);
+
+  const listing = await db
+    .select({
+      ...listingColumns,
+      seller: sellerColumns,
+    })
+    .from(marketListings)
+    .where(eq(marketListings.id, id))
+    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
+    .then((res) => res[0]);
+
+  if (!listing) return null;
+
+  const cards = await db
+    .select({
+      ...getTableColumns(tCards),
+      rarity: tRarities.name,
+      universe: tUniverses.name,
+      class: tClasses.name,
+      author: tAuthors.username,
+    })
+    .from(marketListingCards)
+    .where(eq(marketListingCards.listingId, id))
+    .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId))
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
+
+  return {
+    ...listing,
+    cards,
+  };
+}
+
+export async function getUserMarketListings(userId: string) {
+  const listingColumns = getTableColumns(marketListings);
+  const sellerColumns = getTableColumns(tgUsers);
+
+  const listings = await db
+    .select({
+      ...listingColumns,
+      seller: sellerColumns,
+    })
+    .from(marketListings)
+    .where(eq(marketListings.sellerId, userId))
+    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
+    .orderBy(desc(marketListings.createdAt));
+
+  const results = await Promise.all(
+    listings.map(async (listing) => {
+      const cards = await db
+        .select({
+          ...getTableColumns(tCards),
+          rarity: tRarities.name,
+          universe: tUniverses.name,
+          class: tClasses.name,
+          author: tAuthors.username,
+        })
+        .from(marketListingCards)
+        .where(eq(marketListingCards.listingId, listing.id))
+        .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId))
+        .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+        .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+        .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+        .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
+
+      return {
+        ...listing,
+        cards,
+      };
+    })
+  );
+
+  return results;
+}
+
+export async function getMarketOffersForListing(listingId: number) {
+  const offerColumns = getTableColumns(marketOffers);
+  const buyerColumns = getTableColumns(tgUsers);
+
+  const offers = await db
+    .select({
+      ...offerColumns,
+      buyer: buyerColumns,
+    })
+    .from(marketOffers)
+    .where(eq(marketOffers.listingId, listingId))
+    .innerJoin(tgUsers, eq(marketOffers.buyerId, tgUsers.id))
+    .orderBy(desc(marketOffers.createdAt));
+
+  const results = await Promise.all(
+    offers.map(async (offer) => {
+      const cards = await db
+        .select({
+          ...getTableColumns(tCards),
+          rarity: tRarities.name,
+          universe: tUniverses.name,
+          class: tClasses.name,
+          author: tAuthors.username,
+        })
+        .from(marketOfferCards)
+        .where(eq(marketOfferCards.offerId, offer.id))
+        .innerJoin(tCards, eq(tCards.id, marketOfferCards.cardId))
+        .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+        .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+        .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+        .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
+
+      return {
+        ...offer,
+        cards,
+      };
+    })
+  );
+
+  return results;
+}
+
+export function createMarketListing(data: typeof marketListings.$inferInsert) {
+  return db.insert(marketListings).values(data).returning();
+}
+
+export function addMarketListingCards(listingId: number, cardIds: string[]) {
+  return db
+    .insert(marketListingCards)
+    .values(cardIds.map((cardId) => ({ listingId, cardId })));
+}
+
+export function createMarketOffer(data: typeof marketOffers.$inferInsert) {
+  return db.insert(marketOffers).values(data).returning();
+}
+
+export function addMarketOfferCards(offerId: number, cardIds: string[]) {
+  return db
+    .insert(marketOfferCards)
+    .values(cardIds.map((cardId) => ({ offerId, cardId })));
+}
 
 export async function getRarities() {
   return db.select().from(tRarities).orderBy(tRarities.chance);

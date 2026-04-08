@@ -1,0 +1,302 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { CheckIcon, ChevronLeft } from "lucide-react";
+
+import { getProxyUrl } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { FullCard } from "@/db/schema/card";
+import { UserExtended } from "@/db/schema/user";
+
+import { Input } from "@/ui/input";
+import { Label } from "@/ui/label";
+
+import CardsFilter from "../cards-filter";
+import { CardsListSkeleton } from "../cards-list-skeleton";
+import { Filter, FilterOption } from "../get-filte-options";
+import { Header } from "../header";
+import CardsPagination from "../pagination";
+import { useTelegram } from "../telegram-provider";
+import { useCardSelect } from "../use-card-select";
+import { CardsSelectList, SelectedCardsList } from "./trade";
+
+export default function MarketCreatePage() {
+  const { tgUser } = useTelegram();
+  const [filter, setFilter] = useState<Filter>();
+  const router = useRouter();
+
+  const query = useQuery({
+    queryKey: ["user-cards", filter],
+    queryFn: async () => {
+      if (!tgUser) return;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${tgUser.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(filter ?? {}),
+        }
+      );
+      return (await response.json()) as Promise<{
+        cards: FullCard[];
+        user: UserExtended;
+        filterOptions: FilterOption[];
+      }>;
+    },
+    placeholderData: keepPreviousData,
+  });
+
+  const handleFilterChange = (data: Filter) => {
+    setFilter(data);
+  };
+
+  if (query.data) {
+    return (
+      <main className="flex min-h-screen flex-col gap-4 md:container">
+        <MarketCreateContent
+          user={query.data.user}
+          cards={query.data.cards}
+          filterOptions={query.data.filterOptions}
+          setFilters={handleFilterChange}
+        />
+      </main>
+    );
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col gap-4">
+      <Header title="Выставить" />
+      <CardsListSkeleton />
+    </main>
+  );
+}
+
+type Steps = "select" | "confirm";
+
+function MarketCreateContent({
+  user,
+  cards,
+  filterOptions,
+  setFilters,
+}: {
+  user: UserExtended;
+  cards: FullCard[];
+  filterOptions: FilterOption[];
+  setFilters: (filters: Filter) => void;
+}) {
+  const [page, setPage] = useState(1);
+  const cardsPerPage = 16;
+  const router = useRouter();
+  const [step, setStep] = useState<Steps>("select");
+  const [isLoading, setIsLoading] = useState(false);
+  const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
+  const [desiredFilters, setDesiredFilters] = useState<Filter>();
+  const [minCardPrice, setMinCardPrice] = useState<number>();
+  const [minCardCount, setMinCardCount] = useState<number>();
+  const [maxCardCount, setMaxCardCount] = useState<number>();
+
+  const skip = (page - 1) * cardsPerPage;
+  const pageCards = cards.slice(skip, skip + cardsPerPage);
+  const cardsLeft = cards.length - page * cardsPerPage;
+
+  const handleCreateListing = async () => {
+    setIsLoading(true);
+    if (selectedCards.length === 0) {
+      toast({
+        title: "Ошибка",
+        description: "Выберите хотя бы одну карту.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/market/listings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sellerId: user.id,
+          cardIds: selectedCards.map((c) => c.id),
+          filters: desiredFilters ? {
+            rarityIds: desiredFilters.rarityIds,
+            universeIds: desiredFilters.universeIds,
+            classIds: desiredFilters.classIds,
+            stats: desiredFilters.stats,
+            type: desiredFilters.droppable,
+            minCardPrice,
+            minCardCount,
+            maxCardCount,
+          } : {
+            minCardPrice,
+            minCardCount,
+            maxCardCount,
+          },
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create listing");
+
+      toast({
+        title: "Успешно",
+        description: "Ваши карты выставлены на маркетплейс",
+      });
+
+      router.push("/market");
+    } catch (e) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать объявление",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Header
+        title={step === "select" ? "Выбрать карты" : "Подтверждение"}
+        element={
+          step === "select" ? (
+            <div className="flex items-center gap-2">
+               <CardsFilter filterOptions={filterOptions} setFilters={setFilters} />
+            </div>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => setStep("select")}>
+              <ChevronLeft className="mr-1 h-4 w-4" /> Назад
+            </Button>
+          )
+        }
+      />
+
+      <div className="px-2 pb-24">
+        {step === "select" ? (
+          <CardsSelectList
+            pageCards={pageCards}
+            selectedCards={selectedCards}
+            onClick={onCardSelect}
+            pagination={{
+              page,
+              cardsLeft,
+              changePage: setPage,
+            }}
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Выбранные карты ({selectedCards.length})</h3>
+              <SelectedCardsList selectedCards={selectedCards} onClick={onCardSelect} />
+            </div>
+            
+            <div className="rounded-lg border bg-card p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Что вы ищете взамен?</h3>
+                <CardsFilter 
+                  filterOptions={filterOptions} 
+                  setFilters={setDesiredFilters} 
+                  buttonText="Настроить"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="minPrice" className="text-[10px]">Мин. Цена</Label>
+                  <Input 
+                    id="minPrice" 
+                    type="number" 
+                    value={minCardPrice} 
+                    onChange={(e) => setMinCardPrice(Number(e.target.value))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="minCount" className="text-[10px]">Мин. Карт</Label>
+                  <Input 
+                    id="minCount" 
+                    type="number" 
+                    value={minCardCount} 
+                    onChange={(e) => setMinCardCount(Number(e.target.value))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="maxCount" className="text-[10px]">Макс. Карт</Label>
+                  <Input 
+                    id="maxCount" 
+                    type="number" 
+                    value={maxCardCount} 
+                    onChange={(e) => setMaxCardCount(Number(e.target.value))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {(!desiredFilters || 
+                  (desiredFilters.rarityIds.length === 0 && 
+                   desiredFilters.universeIds.length === 0 && 
+                   desiredFilters.classIds.length === 0)) ? (
+                  <p className="text-xs text-muted-foreground">Любые карты</p>
+                ) : (
+                  <>
+                    {desiredFilters.rarityIds.length > 0 && (
+                      <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded">
+                        Редкости: {desiredFilters.rarityIds.length}
+                      </div>
+                    )}
+                    {desiredFilters.universeIds.length > 0 && (
+                      <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded">
+                        Вселенные: {desiredFilters.universeIds.length}
+                      </div>
+                    )}
+                    {desiredFilters.classIds.length > 0 && (
+                      <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded">
+                        Классы: {desiredFilters.classIds.length}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-4 flex gap-4">
+        {step === "select" ? (
+          <>
+            <Button variant="destructive" className="w-full" onClick={resetSelected}>
+              Сбросить
+            </Button>
+            <Button
+              className="w-full"
+              disabled={selectedCards.length === 0}
+              onClick={() => setStep("confirm")}
+            >
+              Продолжить ({selectedCards.length})
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" className="w-full" onClick={() => setStep("select")}>
+              Назад
+            </Button>
+            <Button className="w-full" disabled={isLoading} onClick={handleCreateListing}>
+              Выставить
+            </Button>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
