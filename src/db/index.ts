@@ -6,7 +6,7 @@ if (!process.env.DATABASE_DRIZZLE_URL) {
 }
 
 const client = postgres(process.env.DATABASE_DRIZZLE_URL, {
-  max: 5,
+  max: 20,
   idle_timeout: 20,
 });
 
