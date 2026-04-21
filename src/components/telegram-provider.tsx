@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   init,
+  on,
   postEvent,
   retrieveLaunchParams,
   swipeBehavior,
@@ -38,19 +39,20 @@ export const TelegramProvider = ({
           await viewport.requestFullscreen();
         }
         viewport.bindCssVars();
-
-        const top = viewport.safeAreaInsetTop() ?? 0;
-        const bottom = viewport.safeAreaInsetBottom() ?? 0;
-
-        document.documentElement.style.setProperty(
-          "--safe-area-top",
-          `${top + (isMobile ? 40 : 0)}px`
-        );
-        document.documentElement.style.setProperty(
-          "--safe-area-bottom",
-          `${bottom + (isMobile ? 16 : 0)}px`
-        );
-
+        const syncSafeAreas = () => {
+          const top = viewport.safeAreaInsetTop() ?? 0;
+          const bottom = viewport.safeAreaInsetBottom() ?? 0;
+          document.documentElement.style.setProperty(
+            "--safe-area-top",
+            `${top + (isMobile ? 40 : 0)}px`
+          );
+          document.documentElement.style.setProperty(
+            "--safe-area-bottom",
+            `${bottom + (isMobile ? 16 : 0)}px`
+          );
+        };
+        syncSafeAreas();
+        on("safe_area_changed", syncSafeAreas);
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
         postEvent("web_app_set_header_color", { color: "#020817" });
