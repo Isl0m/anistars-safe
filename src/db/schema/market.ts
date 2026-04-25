@@ -12,23 +12,23 @@ import { tgUsers } from "./user";
 
 export type MarketListingStatus = "active" | "completed" | "cancelled";
 
-export interface MarketFilters {
+type ListingFilters = {
+  classIds?: number[];
   rarityIds?: number[];
   universeIds?: number[];
-  classIds?: number[];
   type?: ("upgrade" | "upgradable" | "limited" | "basic")[];
   stats?: ("full" | "pre-full" | "basic")[];
   minCardPrice?: number;
   minCardCount?: number;
   maxCardCount?: number;
-}
+};
 
 export const marketListings = pgTable("MarketListing", {
   id: serial("id").primaryKey(),
   sellerId: text("sellerId")
     .notNull()
     .references(() => tgUsers.id, { onDelete: "cascade" }),
-  filters: jsonb("filters").$type<MarketFilters>(),
+  filters: jsonb("filters").$type<ListingFilters>(),
   status: text("status")
     .$type<MarketListingStatus>()
     .notNull()

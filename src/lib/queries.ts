@@ -6,6 +6,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  gte,
   inArray,
   notExists,
   notInArray,
@@ -32,18 +33,18 @@ import {
   tUniverses,
 } from "@/db/schema/card";
 import {
+  marketListingCards,
+  marketListings,
+  marketOfferCards,
+  marketOffers,
+} from "@/db/schema/market";
+import {
   InsertMultiTrade,
   multiTradeCards,
   multiTrades,
   SelectMultiTrade,
   tradeLogs,
 } from "@/db/schema/trade";
-import {
-  marketListingCards,
-  marketListings,
-  marketOfferCards,
-  marketOffers,
-} from "@/db/schema/market";
 import { tgUsers, User, userPasses } from "@/db/schema/user";
 
 export async function getMarketListings() {
@@ -411,6 +412,10 @@ function getSQLFilters(filter?: Filter) {
     filters.push(inArray(tCards.authorId, filter.authorIds));
   if (filter?.stats && filter.stats.length > 0)
     filters.push(inArray(tCards.stats, filter.stats));
+
+  if (filter?.minPrice) {
+    filters.push(gte(tCards.price, filter.minPrice));
+  }
 
   if (filter?.droppable && filter.droppable.length > 0) {
     filter.droppable.forEach((f) => {

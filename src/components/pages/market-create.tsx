@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CheckIcon, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
-import { getProxyUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
-
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filte-options";
+import {
+  Filter,
+  FilterOption,
+  ListingFilterOption,
+  ListingFilters,
+} from "../get-filte-options";
 import { Header } from "../header";
-import CardsPagination from "../pagination";
+import ListingFilter from "../listing-filter";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
@@ -27,7 +29,6 @@ import { CardsSelectList, SelectedCardsList } from "./trade";
 export default function MarketCreatePage() {
   const { tgUser } = useTelegram();
   const [filter, setFilter] = useState<Filter>();
-  const router = useRouter();
 
   const query = useQuery({
     queryKey: ["user-cards", filter],
@@ -47,6 +48,7 @@ export default function MarketCreatePage() {
         cards: FullCard[];
         user: UserExtended;
         filterOptions: FilterOption[];
+        listingFilterOptions: ListingFilterOption[];
       }>;
     },
     placeholderData: keepPreviousData,
@@ -63,6 +65,7 @@ export default function MarketCreatePage() {
           user={query.data.user}
           cards={query.data.cards}
           filterOptions={query.data.filterOptions}
+          listingFilterOptions={query.data.listingFilterOptions}
           setFilters={handleFilterChange}
         />
       </main>
@@ -83,11 +86,13 @@ function MarketCreateContent({
   user,
   cards,
   filterOptions,
+  listingFilterOptions,
   setFilters,
 }: {
   user: UserExtended;
   cards: FullCard[];
   filterOptions: FilterOption[];
+  listingFilterOptions: ListingFilterOption[];
   setFilters: (filters: Filter) => void;
 }) {
   const [page, setPage] = useState(1);
@@ -96,7 +101,7 @@ function MarketCreateContent({
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
-  const [desiredFilters, setDesiredFilters] = useState<Filter>();
+  const [desiredFilters, setDesiredFilters] = useState<ListingFilters>();
   const [minCardPrice, setMinCardPrice] = useState<number>();
   const [minCardCount, setMinCardCount] = useState<number>();
   const [maxCardCount, setMaxCardCount] = useState<number>();
@@ -118,30 +123,35 @@ function MarketCreateContent({
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/market/listings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sellerId: user.id,
-          cardIds: selectedCards.map((c) => c.id),
-          filters: desiredFilters ? {
-            rarityIds: desiredFilters.rarityIds,
-            universeIds: desiredFilters.universeIds,
-            classIds: desiredFilters.classIds,
-            stats: desiredFilters.stats,
-            type: desiredFilters.droppable,
-            minCardPrice,
-            minCardCount,
-            maxCardCount,
-          } : {
-            minCardPrice,
-            minCardCount,
-            maxCardCount,
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/market/listings`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        }),
-      });
+          body: JSON.stringify({
+            sellerId: user.id,
+            cardIds: selectedCards.map((c) => c.id),
+            filters: desiredFilters
+              ? {
+                  rarityIds: desiredFilters.rarityIds,
+                  universeIds: desiredFilters.universeIds,
+                  classIds: desiredFilters.classIds,
+                  stats: desiredFilters.stats,
+                  type: desiredFilters.type,
+                  minCardPrice,
+                  minCardCount,
+                  maxCardCount,
+                }
+              : {
+                  minCardPrice,
+                  minCardCount,
+                  maxCardCount,
+                },
+          }),
+        }
+      );
 
       if (!response.ok) throw new Error("Failed to create listing");
 
@@ -169,7 +179,10 @@ function MarketCreateContent({
         element={
           step === "select" ? (
             <div className="flex items-center gap-2">
-               <CardsFilter filterOptions={filterOptions} setFilters={setFilters} />
+              <CardsFilter
+                filterOptions={filterOptions}
+                setFilters={setFilters}
+              />
             </div>
           ) : (
             <Button variant="ghost" size="sm" onClick={() => setStep("select")}>
@@ -193,74 +206,87 @@ function MarketCreateContent({
           />
         ) : (
           <div className="flex flex-col gap-6">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Выбранные карты ({selectedCards.length})</h3>
-              <SelectedCardsList selectedCards={selectedCards} onClick={onCardSelect} />
-            </div>
-            
-            <div className="rounded-lg border bg-card p-4 space-y-4">
+            <div className="space-y-4 rounded-lg border bg-card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">Что вы ищете взамен?</h3>
-                <CardsFilter 
-                  filterOptions={filterOptions} 
-                  setFilters={setDesiredFilters} 
+                <ListingFilter
+                  filterOptions={listingFilterOptions}
+                  setFilters={setDesiredFilters}
                   buttonText="Настроить"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
-                  <Label htmlFor="minPrice" className="text-[10px]">Мин. Цена</Label>
-                  <Input 
-                    id="minPrice" 
-                    type="number" 
-                    value={minCardPrice} 
-                    onChange={(e) => setMinCardPrice(Number(e.target.value))}
+                  <Label htmlFor="minPrice" className="text-[10px]">
+                    Мин. Цена
+                  </Label>
+                  <Input
+                    id="minPrice"
+                    type="number"
+                    value={minCardPrice}
+                    onChange={(e) =>
+                      setMinCardPrice(
+                        e.target.value ? Number(e.target.value) : undefined
+                      )
+                    }
                     className="h-8 text-xs"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="minCount" className="text-[10px]">Мин. Карт</Label>
-                  <Input 
-                    id="minCount" 
-                    type="number" 
-                    value={minCardCount} 
-                    onChange={(e) => setMinCardCount(Number(e.target.value))}
+                  <Label htmlFor="minCount" className="text-[10px]">
+                    Мин. Карт
+                  </Label>
+                  <Input
+                    id="minCount"
+                    type="number"
+                    value={minCardCount}
+                    onChange={(e) =>
+                      setMinCardCount(
+                        e.target.value ? Number(e.target.value) : undefined
+                      )
+                    }
                     className="h-8 text-xs"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="maxCount" className="text-[10px]">Макс. Карт</Label>
-                  <Input 
-                    id="maxCount" 
-                    type="number" 
-                    value={maxCardCount} 
-                    onChange={(e) => setMaxCardCount(Number(e.target.value))}
+                  <Label htmlFor="maxCount" className="text-[10px]">
+                    Макс. Карт
+                  </Label>
+                  <Input
+                    id="maxCount"
+                    type="number"
+                    value={maxCardCount}
+                    onChange={(e) =>
+                      setMaxCardCount(
+                        e.target.value ? Number(e.target.value) : undefined
+                      )
+                    }
                     className="h-8 text-xs"
                   />
                 </div>
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
-                {(!desiredFilters || 
-                  (desiredFilters.rarityIds.length === 0 && 
-                   desiredFilters.universeIds.length === 0 && 
-                   desiredFilters.classIds.length === 0)) ? (
+                {!desiredFilters ||
+                (desiredFilters.rarityIds.length === 0 &&
+                  desiredFilters.universeIds.length === 0 &&
+                  desiredFilters.classIds.length === 0) ? (
                   <p className="text-xs text-muted-foreground">Любые карты</p>
                 ) : (
                   <>
                     {desiredFilters.rarityIds.length > 0 && (
-                      <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded">
+                      <div className="rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
                         Редкости: {desiredFilters.rarityIds.length}
                       </div>
                     )}
                     {desiredFilters.universeIds.length > 0 && (
-                      <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded">
+                      <div className="rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
                         Вселенные: {desiredFilters.universeIds.length}
                       </div>
                     )}
                     {desiredFilters.classIds.length > 0 && (
-                      <div className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded">
+                      <div className="rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
                         Классы: {desiredFilters.classIds.length}
                       </div>
                     )}
@@ -268,14 +294,27 @@ function MarketCreateContent({
                 )}
               </div>
             </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">
+                Выбранные карты ({selectedCards.length})
+              </h3>
+              <SelectedCardsList
+                selectedCards={selectedCards}
+                onClick={onCardSelect}
+              />
+            </div>
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-4 flex gap-4">
+      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
         {step === "select" ? (
           <>
-            <Button variant="destructive" className="w-full" onClick={resetSelected}>
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={resetSelected}
+            >
               Сбросить
             </Button>
             <Button
@@ -288,10 +327,18 @@ function MarketCreateContent({
           </>
         ) : (
           <>
-            <Button variant="secondary" className="w-full" onClick={() => setStep("select")}>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => setStep("select")}
+            >
               Назад
             </Button>
-            <Button className="w-full" disabled={isLoading} onClick={handleCreateListing}>
+            <Button
+              className="w-full"
+              disabled={isLoading}
+              onClick={handleCreateListing}
+            >
               Выставить
             </Button>
           </>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Info } from "lucide-react";
 
 import { getProxyUrl } from "@/lib/utils";
@@ -11,22 +11,23 @@ import { getProxyUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { FullCard } from "@/db/schema/card";
-import { MarketFilters } from "@/db/schema/market";
 import { UserExtended } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filte-options";
+import { Filter, FilterOption, ListingFilters } from "../get-filte-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
+import { ListingFilterDisplay } from "../listing-filter-display";
+
 type MarketListing = {
   id: number;
   sellerId: string;
-  filters: MarketFilters | null;
+  filters: ListingFilters | null;
   cards: FullCard[];
 };
 
@@ -41,31 +42,56 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${listingId}`
       );
-      return (await response.json()).listing as Promise<MarketListing>;
+      if (!response.ok) return null;
+      const listing = (await response.json()).listing as MarketListing;
+      return listing;
     },
   });
 
   const cardsQuery = useQuery({
-    queryKey: ["user-cards", filter],
+    queryKey: ["user-cards-market-offer", tgUser?.id, listingId, filter],
+    enabled: !!tgUser && !!listingQuery.data,
     queryFn: async () => {
-      if (!tgUser) return;
-      const response = await fetch(
+      if (!tgUser || !listingQuery.data) return;
+      const listing = listingQuery.data;
+
+      const initialFilter: Filter = {
+        authorIds: [],
+        classIds: listing.filters?.classIds ?? [],
+        universeIds: listing.filters?.universeIds ?? [],
+        rarityIds: listing.filters?.rarityIds ?? [],
+        stats: listing.filters?.stats ?? [],
+        droppable: listing.filters?.type ?? [],
+        techniques: [],
+        sort: "power-desc",
+        minPrice: listing.filters?.minCardPrice,
+      };
+
+      const finalFilter = filter ?? initialFilter;
+
+      const cardsResponse = await fetch(
         `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${tgUser.id}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(filter ?? {}),
+          body: JSON.stringify(finalFilter),
         }
       );
-      return (await response.json()) as Promise<{
+      const userCards = (await cardsResponse.json()) as {
         cards: FullCard[];
         user: UserExtended;
         filterOptions: FilterOption[];
-      }>;
+      };
+
+      return {
+        cards: userCards.cards,
+        user: userCards.user,
+        filterOptions: userCards.filterOptions,
+        initialFilter: initialFilter,
+      };
     },
-    placeholderData: keepPreviousData,
   });
 
   if (listingQuery.isLoading || cardsQuery.isLoading) {
@@ -78,6 +104,25 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
   }
 
   if (listingQuery.data && cardsQuery.data) {
+    const lockedFilters: Partial<Filter> = {
+      rarityIds: listingQuery.data.filters?.rarityIds?.length
+        ? listingQuery.data.filters.rarityIds
+        : undefined,
+      classIds: listingQuery.data.filters?.classIds?.length
+        ? listingQuery.data.filters.classIds
+        : undefined,
+      universeIds: listingQuery.data.filters?.universeIds?.length
+        ? listingQuery.data.filters.universeIds
+        : undefined,
+      stats: listingQuery.data.filters?.stats?.length
+        ? listingQuery.data.filters.stats
+        : undefined,
+      droppable: listingQuery.data.filters?.type?.length
+        ? listingQuery.data.filters.type
+        : undefined,
+      minPrice: listingQuery.data.filters?.minCardPrice,
+    };
+
     return (
       <main className="fixed inset-0 flex flex-col md:container">
         <MarketOfferContent
@@ -86,6 +131,9 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
           cards={cardsQuery.data.cards}
           filterOptions={cardsQuery.data.filterOptions}
           setFilters={setFilter}
+          initialFilter={cardsQuery.data.initialFilter}
+          filter={filter}
+          lockedFilters={lockedFilters}
         />
       </main>
     );
@@ -109,12 +157,18 @@ function MarketOfferContent({
   cards,
   filterOptions,
   setFilters,
+  initialFilter,
+  filter,
+  lockedFilters,
 }: {
   listing: MarketListing;
   user: UserExtended;
   cards: FullCard[];
   filterOptions: FilterOption[];
   setFilters: (filters: Filter) => void;
+  initialFilter: Filter;
+  filter?: Filter;
+  lockedFilters: Partial<Filter>;
 }) {
   const [page, setPage] = useState(1);
   const cardsPerPage = 16;
@@ -215,7 +269,22 @@ function MarketOfferContent({
       !f.classIds.includes(card.classId)
     )
       return false;
-    // ... add more if needed
+
+    if (f.stats && f.stats.length > 0 && !f.stats.includes(card.stats))
+      return false;
+
+    if (f.minCardPrice && card.price < f.minCardPrice) return false;
+
+    if (f.type && f.type.length > 0) {
+      const matchesType = f.type.some((t) => {
+        if (t === "limited") return !card.droppable;
+        if (t === "basic") return card.droppable;
+        if (t === "upgradable") return card.upgradeable;
+        if (t === "upgrade") return card.upgrade;
+        return false;
+      });
+      if (!matchesType) return false;
+    }
 
     return true;
   };
@@ -231,6 +300,8 @@ function MarketOfferContent({
             <CardsFilter
               filterOptions={filterOptions}
               setFilters={setFilters}
+              initialValues={filter ?? initialFilter}
+              lockedFilters={lockedFilters}
             />
           ) : (
             <Button variant="ghost" size="sm" onClick={() => setStep("select")}>
@@ -249,42 +320,10 @@ function MarketOfferContent({
                 Требования продавца:
               </span>
             </div>
-            <div className="flex flex-wrap gap-1">
-              {listing.filters.rarityIds &&
-                listing.filters.rarityIds.length > 0 && (
-                  <Badge
-                    variant="outline"
-                    className="border-blue-500/30 bg-background text-[10px]"
-                  >
-                    Спец. редкости
-                  </Badge>
-                )}
-              {listing.filters.universeIds &&
-                listing.filters.universeIds.length > 0 && (
-                  <Badge
-                    variant="outline"
-                    className="border-blue-500/30 bg-background text-[10px]"
-                  >
-                    Спец. вселенные
-                  </Badge>
-                )}
-              {listing.filters.minCardPrice && (
-                <Badge
-                  variant="outline"
-                  className="border-blue-500/30 bg-background text-[10px]"
-                >
-                  Цена {listing.filters.minCardPrice}+
-                </Badge>
-              )}
-              {listing.filters.minCardCount && (
-                <Badge
-                  variant="outline"
-                  className="border-blue-500/30 bg-background text-[10px]"
-                >
-                  Мин. карт: {listing.filters.minCardCount}
-                </Badge>
-              )}
-            </div>
+            <ListingFilterDisplay 
+              filters={listing.filters} 
+              filterOptions={filterOptions} 
+            />
           </div>
         )}
 

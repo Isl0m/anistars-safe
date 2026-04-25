@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 import { getUser, getUserCardsWithFilter } from "@/lib/queries";
 
-import { Filter, getUserFilterOptions } from "@/components/get-filte-options";
+import {
+  Filter,
+  getListingFilterOptions,
+} from "@/components/get-filte-options";
 
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -19,10 +22,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   const body = (await request.json()) as Filter | undefined;
   const cards = await getUserCardsWithFilter(id, body ?? undefined);
-  const filterOptions = await getUserFilterOptions(id);
+  const { filterOptions, listingFilterOptions } =
+    await getListingFilterOptions();
   return NextResponse.json({
     user,
     cards,
     filterOptions,
+    listingFilterOptions,
   });
 }

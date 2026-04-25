@@ -3,16 +3,15 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Info } from "lucide-react";
 
 import { getProxyUrl } from "@/lib/utils";
 
 import { FullCard } from "@/db/schema/card";
-import { MarketFilters } from "@/db/schema/market";
+import { ListingFilters } from "@/db/schema/market";
 import { User } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
-import { Skeleton } from "@/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -20,12 +19,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/ui/dialog";
+import { Skeleton } from "@/ui/skeleton";
 import { toast } from "@/ui/use-toast";
 
 import { FilterOption } from "../get-filte-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
-import { Info } from "lucide-react";
+
+import { ListingFilterDisplay } from "../listing-filter-display";
 
 type MarketListing = {
   id: number;
@@ -34,7 +35,7 @@ type MarketListing = {
   createdAt: Date;
   seller: User;
   cards: FullCard[];
-  filters: MarketFilters | null;
+  filters: ListingFilters | null;
 };
 
 type MarketOffer = {
@@ -134,15 +135,6 @@ export default function MarketViewPage({ id }: { id: string }) {
     }
   };
 
-  const getNames = (key: string, ids: (number | string)[]) => {
-    const options = filterOptions.find((o) => o.key === key);
-    if (!options) return "";
-    return ids
-      .map((id) => options.items.find((item) => item.id === id)?.name)
-      .filter(Boolean)
-      .join(", ");
-  };
-
   return (
     <div className="flex h-full flex-col">
       <Header
@@ -190,134 +182,10 @@ export default function MarketViewPage({ id }: { id: string }) {
         {listing.filters && (
           <div className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
             <h3 className="text-sm font-semibold">Желаемые карты:</h3>
-            <div className="flex flex-col gap-2">
-              {!listing.filters || Object.keys(listing.filters).length === 0 ? (
-                <span className="text-xs text-muted-foreground">
-                  Любые карты
-                </span>
-              ) : (
-                <>
-                  {listing.filters.rarityIds &&
-                    listing.filters.rarityIds.length > 0 && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">
-                          Редкости:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {getNames("rarityIds", listing.filters.rarityIds)
-                            .split(", ")
-                            .map((name) => (
-                              <Badge
-                                key={name}
-                                variant="outline"
-                                className="text-[10px]"
-                              >
-                                {name}
-                              </Badge>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                  {listing.filters.universeIds &&
-                    listing.filters.universeIds.length > 0 && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">
-                          Вселенные:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {getNames("universeIds", listing.filters.universeIds)
-                            .split(", ")
-                            .map((name) => (
-                              <Badge
-                                key={name}
-                                variant="outline"
-                                className="text-[10px]"
-                              >
-                                {name}
-                              </Badge>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                  {listing.filters.classIds &&
-                    listing.filters.classIds.length > 0 && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">
-                          Классы:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {getNames("classIds", listing.filters.classIds)
-                            .split(", ")
-                            .map((name) => (
-                              <Badge
-                                key={name}
-                                variant="outline"
-                                className="text-[10px]"
-                              >
-                                {name}
-                              </Badge>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                  {listing.filters.stats &&
-                    listing.filters.stats.length > 0 && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-muted-foreground">
-                          Статы:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {listing.filters.stats.map((stat) => (
-                            <Badge
-                              key={stat}
-                              variant="outline"
-                              className="text-[10px]"
-                            >
-                              {stat}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  {listing.filters.type && listing.filters.type.length > 0 && (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] text-muted-foreground">
-                        Типы:
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {listing.filters.type.map((type) => (
-                          <Badge
-                            key={type}
-                            variant="outline"
-                            className="text-[10px]"
-                          >
-                            {type}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-2 flex flex-wrap gap-2 border-t pt-2">
-                    {listing.filters.minCardPrice && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Мин. Цена: {listing.filters.minCardPrice}🪙
-                      </Badge>
-                    )}
-                    {listing.filters.minCardCount && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Мин. Карт: {listing.filters.minCardCount}
-                      </Badge>
-                    )}
-                    {listing.filters.maxCardCount && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Макс. Карт: {listing.filters.maxCardCount}
-                      </Badge>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            <ListingFilterDisplay 
+              filters={listing.filters} 
+              filterOptions={filterOptions} 
+            />
           </div>
         )}
 
@@ -377,9 +245,9 @@ export default function MarketViewPage({ id }: { id: string }) {
                   </div>
 
                   <div className="pt-2">
-                    <AcceptOfferDialog 
-                      offer={offer} 
-                      listingCards={listing.cards} 
+                    <AcceptOfferDialog
+                      offer={offer}
+                      listingCards={listing.cards}
                       onAccept={() => handleAcceptOffer(offer.id)}
                       isLoading={isAccepting}
                     />
@@ -412,16 +280,16 @@ export default function MarketViewPage({ id }: { id: string }) {
   );
 }
 
-function AcceptOfferDialog({ 
-  offer, 
-  listingCards, 
+function AcceptOfferDialog({
+  offer,
+  listingCards,
   onAccept,
-  isLoading
-}: { 
-  offer: MarketOffer, 
-  listingCards: FullCard[], 
-  onAccept: () => void,
-  isLoading: boolean
+  isLoading,
+}: {
+  offer: MarketOffer;
+  listingCards: FullCard[];
+  onAccept: () => void;
+  isLoading: boolean;
 }) {
   const [step, setStep] = useState(1);
 
@@ -438,15 +306,25 @@ function AcceptOfferDialog({
             {step === 1 ? "Обзор обмена" : "Подтверждение"}
           </DialogTitle>
         </DialogHeader>
-        
+
         {step === 1 ? (
           <div className="space-y-6 py-4">
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">Вы отдаете:</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">
+                Вы отдаете:
+              </h4>
               <div className="grid grid-cols-5 gap-2">
-                {listingCards.map(card => (
-                  <div key={card.id} className="relative aspect-[3/4] overflow-hidden rounded border">
-                    <Image src={getProxyUrl(card.image)} alt={card.name} fill className="object-cover" />
+                {listingCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="relative aspect-[3/4] overflow-hidden rounded border"
+                  >
+                    <Image
+                      src={getProxyUrl(card.image)}
+                      alt={card.name}
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                 ))}
               </div>
@@ -459,11 +337,21 @@ function AcceptOfferDialog({
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">Вы получите от {offer.buyer.name}:</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">
+                Вы получите от {offer.buyer.name}:
+              </h4>
               <div className="grid grid-cols-5 gap-2">
-                {offer.cards.map(card => (
-                  <div key={card.id} className="relative aspect-[3/4] overflow-hidden rounded border">
-                    <Image src={getProxyUrl(card.image)} alt={card.name} fill className="object-cover" />
+                {offer.cards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="relative aspect-[3/4] overflow-hidden rounded border"
+                  >
+                    <Image
+                      src={getProxyUrl(card.image)}
+                      alt={card.name}
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                 ))}
               </div>
@@ -475,21 +363,26 @@ function AcceptOfferDialog({
           </div>
         ) : (
           <div className="space-y-6 py-4 text-center">
-            <div className="rounded-full bg-yellow-500/10 p-4 w-fit mx-auto">
+            <div className="mx-auto w-fit rounded-full bg-yellow-500/10 p-4">
               <Info className="h-12 w-12 text-yellow-500" />
             </div>
             <div className="space-y-2">
               <h3 className="text-xl font-bold">Вы уверены?</h3>
               <p className="text-sm text-muted-foreground">
-                Это действие необратимо. Карты будут немедленно перенесены между аккаунтами.
+                Это действие необратимо. Карты будут немедленно перенесены между
+                аккаунтами.
               </p>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setStep(1)} className="w-full">
+              <Button
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="w-full"
+              >
                 Назад
               </Button>
-              <Button 
-                onClick={onAccept} 
+              <Button
+                onClick={onAccept}
                 disabled={isLoading}
                 className="w-full bg-green-600 hover:bg-green-700"
               >

@@ -22,7 +22,19 @@ export type FilterOption = {
   key: FilterOptionKey;
   name: string;
   items: { id: number | string; name: string }[];
-  span?: number;
+};
+
+export type ListingFilterOptionKey =
+  | "rarityIds"
+  | "classIds"
+  | "universeIds"
+  | "stats"
+  | "type";
+
+export type ListingFilterOption = {
+  key: ListingFilterOptionKey;
+  name: string;
+  items: { id: number | string; name: string }[];
 };
 
 export type SortOptions =
@@ -44,6 +56,18 @@ export type Filter = {
   droppable: string[];
   techniques: string[];
   sort: SortOptions;
+  minPrice?: number;
+};
+
+export type ListingFilters = {
+  classIds: number[];
+  rarityIds: number[];
+  universeIds: number[];
+  type: string[];
+  stats: CardStats[];
+  minCardPrice?: number;
+  minCardCount?: number;
+  maxCardCount?: number;
 };
 
 export type TechniqueType =
@@ -124,7 +148,6 @@ export async function getFilterOptions() {
       key: "universeIds",
       name: "Вселенная",
       items: universes,
-      span: 2,
     },
     statsOptions,
     typeOptions,
@@ -162,7 +185,6 @@ export async function getUserFilterOptions(userId: string) {
       key: "universeIds",
       name: "Вселенная",
       items: universes,
-      span: 2,
     },
     statsOptions,
     typeOptions,
@@ -175,4 +197,78 @@ export async function getUserFilterOptions(userId: string) {
     sortOptions,
   ];
   return filterOptions;
+}
+
+export async function getListingFilterOptions() {
+  const [rarities, classes, universes, authors] = await Promise.all([
+    getRarities(),
+    getClasses(),
+    getUniverses(),
+    getAuthors(),
+  ]);
+
+  const filterOptions: FilterOption[] = [
+    {
+      key: "rarityIds",
+      name: "Редкость",
+      items: rarities,
+    },
+    {
+      key: "classIds",
+      name: "Класс",
+      items: classes,
+    },
+    {
+      key: "universeIds",
+      name: "Вселенная",
+      items: universes,
+    },
+    statsOptions,
+    typeOptions,
+    {
+      key: "authorIds",
+      name: "Автор",
+      items: authors.map(({ id, username }) => ({ id, name: username })),
+    },
+    techniqueOptions,
+    sortOptions,
+  ];
+
+  const listingFilterOptions: ListingFilterOption[] = [
+    {
+      key: "rarityIds",
+      name: "Редкость",
+      items: rarities,
+    },
+    {
+      key: "classIds",
+      name: "Класс",
+      items: classes,
+    },
+    {
+      key: "universeIds",
+      name: "Вселенная",
+      items: universes,
+    },
+    {
+      key: "stats",
+      name: "Характеристики",
+      items: [
+        { id: "full", name: "Фулл" },
+        { id: "pre-full", name: "Пре-Фулл" },
+        { id: "basic", name: "Базовый" },
+      ],
+    },
+    {
+      key: "type",
+      name: "Тип",
+      items: [
+        { id: "limited", name: "Лимитированный" },
+        { id: "basic", name: "Базовый" },
+        { id: "upgradable", name: "Улучшаемый" },
+        { id: "upgrade", name: "Улучшение" },
+      ],
+    },
+  ];
+  return { filterOptions, listingFilterOptions };
 }
