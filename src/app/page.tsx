@@ -1,8 +1,6 @@
 import { getFilterOptions } from "@/components/get-filte-options";
 import { CardsPage } from "@/components/pages/all-cards";
 
-export const revalidate = 60;
-
 export default async function Home() {
   const filterOptions = await getFilterOptions();
 
