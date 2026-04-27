@@ -9,7 +9,7 @@ export const streakPoolEnum = pgEnum("StreakPool", [
 ]);
 export type StreakPool = "base" | "epic" | "legendary";
 
-export const dungeonRewards = pgTable("DungeonReward", {
+export const trialTowerRewards = pgTable("TrialTowerReward", {
   id: serial("id").primaryKey(),
   cardId: text("cardId")
     .notNull()
@@ -19,5 +19,5 @@ export const dungeonRewards = pgTable("DungeonReward", {
   pool: streakPoolEnum("pool").notNull().default("base"),
 });
 
-export type DungeonReward = typeof dungeonRewards.$inferSelect;
-export type NewDungeonReward = typeof dungeonRewards.$inferInsert;
+export type TrialTowerReward = typeof trialTowerRewards.$inferSelect;
+export type NewTrialTowerReward = typeof trialTowerRewards.$inferInsert;
