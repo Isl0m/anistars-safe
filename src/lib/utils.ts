@@ -17,10 +17,19 @@ export function prettyNumbers(data: number) {
   return Intl.NumberFormat("en").format(data);
 }
 
-export const getProxyUrl = (originalUrl: string) => {
+const GCS_ASSET_BASE = "https://storage.googleapis.com/anistars";
+const IMAGE_ASSET_BASE =
+  process.env.NEXT_PUBLIC_IMAGE_ASSET_BASE ??
+  (process.env.NODE_ENV === "production"
+    ? "http://127.0.0.1:8080/assets"
+    : GCS_ASSET_BASE);
+
+function replaceAssetBase(originalUrl: string, assetBase: string) {
   if (!originalUrl) return "";
-  return originalUrl.replace(
-    "https://storage.googleapis.com/anistars",
-    "https://anistars.xyz/assets"
-  );
-};
+  if (!originalUrl.startsWith(GCS_ASSET_BASE)) return originalUrl;
+
+  return `${assetBase}${originalUrl.slice(GCS_ASSET_BASE.length)}`;
+}
+
+export const getImageProxyUrl = (originalUrl: string) =>
+  replaceAssetBase(originalUrl, IMAGE_ASSET_BASE);

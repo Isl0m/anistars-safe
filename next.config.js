@@ -1,12 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    minimumCacheTTL: 604800,
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "anistars.xyz",
-        port: "",
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "8080",
         pathname: "/assets/**",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+        port: "",
+        pathname: "/anistars/**",
       },
     ],
   },

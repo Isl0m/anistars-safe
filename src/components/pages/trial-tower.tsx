@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 
 import type { TrialTowerRewardWithCard } from "@/lib/queries";
-import { getProxyUrl, prettyNumbers } from "@/lib/utils";
+import { getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 
 import Pagination from "@/components/pagination";
 import { Card } from "@/ui/card";
@@ -116,7 +116,7 @@ export function TrialTowerPage() {
                       >
                         <div className="relative aspect-[3/4] w-full">
                           <Image
-                            src={getProxyUrl(reward.card.image)}
+                            src={getImageProxyUrl(reward.card.image)}
                             fill
                             alt={reward.card.name}
                             className="object-cover"
