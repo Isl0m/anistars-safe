@@ -45,6 +45,7 @@ import {
   SelectMultiTrade,
   tradeLogs,
 } from "@/db/schema/trade";
+import { trialTowerRewards } from "@/db/schema/trialTower";
 import { tgUsers, User, userPasses } from "@/db/schema/user";
 
 export async function getMarketListings() {
@@ -233,6 +234,31 @@ export function addMarketOfferCards(offerId: number, cardIds: string[]) {
 
 export async function getRarities() {
   return db.select().from(tRarities).orderBy(tRarities.chance);
+}
+
+export type TrialTowerRewardWithCard = Awaited<
+  ReturnType<typeof getTrialTowerRewards>
+>[number];
+
+export async function getTrialTowerRewards() {
+  return db
+    .select({
+      id: trialTowerRewards.id,
+      cardId: trialTowerRewards.cardId,
+      stock: trialTowerRewards.stock,
+      initialStock: trialTowerRewards.initialStock,
+      pool: trialTowerRewards.pool,
+      card: {
+        name: tCards.name,
+        image: tCards.image,
+        rarity: tRarities.name,
+        price: tCards.price,
+      },
+    })
+    .from(trialTowerRewards)
+    .innerJoin(tCards, eq(trialTowerRewards.cardId, tCards.id))
+    .innerJoin(tRarities, eq(tCards.rarityId, tRarities.id))
+    .orderBy(desc(tCards.price));
 }
 
 export async function getClasses() {

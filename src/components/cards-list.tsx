@@ -3,7 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import { cn, getProxyUrl, prettyNumbers } from "@/lib/utils";
+import {
+  cn,
+  getImageProxyUrl,
+  prettyNumbers,
+} from "@/lib/utils";
 
 import { Card, FullCard, Technique } from "@/db/schema/card";
 
@@ -96,7 +100,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
                 <TabsContent value="image">
                   <div className="relative h-64 w-full">
                     <Image
-                      src={getProxyUrl(pageCards[selectedCard].image)}
+                      src={getImageProxyUrl(pageCards[selectedCard].image)}
                       alt={pageCards[selectedCard].name}
                       layout="fill"
                       loading="lazy"
@@ -107,7 +111,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
                 <TabsContent value="video">
                   <div className="relative h-64 w-full">
                     <video
-                      src={getProxyUrl(pageCards[selectedCard].gif!)}
+                      src={pageCards[selectedCard].gif!}
                       autoPlay
                       muted
                       className="h-full w-full object-contain"
@@ -174,7 +178,7 @@ function CardImage({ card }: { card: Card }) {
       )}
 
       <Image
-        src={getProxyUrl(card.image)}
+        src={getImageProxyUrl(card.image)}
         width={240}
         height={320}
         alt={card.slug}

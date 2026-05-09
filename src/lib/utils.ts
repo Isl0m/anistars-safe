@@ -1,8 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-import { CardStats } from "@/db/schema/card";
-
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -19,24 +17,19 @@ export function prettyNumbers(data: number) {
   return Intl.NumberFormat("en").format(data);
 }
 
-export const getProxyUrl = (originalUrl: string) => {
+const GCS_ASSET_BASE = "https://storage.googleapis.com/anistars";
+const IMAGE_ASSET_BASE =
+  process.env.NEXT_PUBLIC_IMAGE_ASSET_BASE ??
+  (process.env.NODE_ENV === "production"
+    ? "http://127.0.0.1:8080/assets"
+    : GCS_ASSET_BASE);
+
+function replaceAssetBase(originalUrl: string, assetBase: string) {
   if (!originalUrl) return "";
-  return originalUrl.replace(
-    "https://storage.googleapis.com/anistars",
-    "https://anistars.xyz/assets"
-  );
-};
+  if (!originalUrl.startsWith(GCS_ASSET_BASE)) return originalUrl;
 
-export const statMapper: Record<CardStats, string> = {
-  full: "Фулл",
-  "pre-full": "Пре-Фулл",
-  basic: "Базовый",
-};
+  return `${assetBase}${originalUrl.slice(GCS_ASSET_BASE.length)}`;
+}
 
-export type CardTypes = "upgrade" | "upgradable" | "limited" | "basic";
-export const typeMapper: Record<CardTypes, string> = {
-  upgrade: "Улучшение",
-  upgradable: "Улучшаемый",
-  limited: "Лимитированный",
-  basic: "Базовый",
-};
+export const getImageProxyUrl = (originalUrl: string) =>
+  replaceAssetBase(originalUrl, IMAGE_ASSET_BASE);

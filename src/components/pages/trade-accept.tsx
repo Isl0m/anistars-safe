@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { getProxyUrl } from "@/lib/utils";
+import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -314,7 +314,7 @@ export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
       {cards.map((card) => (
         <li key={card.id}>
           <Image
-            src={getProxyUrl(card.image)}
+            src={getImageProxyUrl(card.image)}
             width={240}
             height={320}
             className="rounded"
