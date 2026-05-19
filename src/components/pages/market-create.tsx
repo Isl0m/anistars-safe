@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -22,6 +22,7 @@ import {
 } from "../get-filte-options";
 import { Header } from "../header";
 import ListingFilter from "../listing-filter";
+import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
@@ -153,7 +154,10 @@ function MarketCreateContent({
         }
       );
 
-      if (!response.ok) throw new Error("Failed to create listing");
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to create listing");
+      }
 
       toast({
         title: "Успешно",
@@ -162,9 +166,13 @@ function MarketCreateContent({
 
       router.push("/market");
     } catch (e) {
+      const message =
+        e instanceof Error && e.message !== "Failed to create listing"
+          ? e.message
+          : "Не удалось создать объявление";
       toast({
         title: "Ошибка",
-        description: "Не удалось создать объявление",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -267,32 +275,10 @@ function MarketCreateContent({
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {!desiredFilters ||
-                (desiredFilters.rarityIds.length === 0 &&
-                  desiredFilters.universeIds.length === 0 &&
-                  desiredFilters.classIds.length === 0) ? (
-                  <p className="text-xs text-muted-foreground">Любые карты</p>
-                ) : (
-                  <>
-                    {desiredFilters.rarityIds.length > 0 && (
-                      <div className="rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
-                        Редкости: {desiredFilters.rarityIds.length}
-                      </div>
-                    )}
-                    {desiredFilters.universeIds.length > 0 && (
-                      <div className="rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
-                        Вселенные: {desiredFilters.universeIds.length}
-                      </div>
-                    )}
-                    {desiredFilters.classIds.length > 0 && (
-                      <div className="rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">
-                        Классы: {desiredFilters.classIds.length}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              <ListingFilterDisplay
+                filters={desiredFilters ?? null}
+                filterOptions={filterOptions}
+              />
             </div>
             <div className="space-y-2">
               <h3 className="text-sm font-medium">
@@ -339,7 +325,14 @@ function MarketCreateContent({
               disabled={isLoading}
               onClick={handleCreateListing}
             >
-              Выставить
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Выставить"
+              )}
             </Button>
           </>
         )}

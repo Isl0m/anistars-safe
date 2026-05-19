@@ -35,8 +35,10 @@ import {
 import {
   marketListingCards,
   marketListings,
+  MarketListingStatus,
   marketOfferCards,
   marketOffers,
+  MarketOfferStatus,
 } from "@/db/schema/market";
 import {
   InsertMultiTrade,
@@ -212,6 +214,82 @@ export async function getMarketOffersForListing(listingId: number) {
   return results;
 }
 
+export async function getUserMarketOffers(userId: string) {
+  const offerColumns = getTableColumns(marketOffers);
+  const buyerColumns = getTableColumns(tgUsers);
+
+  const offers = await db
+    .select({
+      ...offerColumns,
+      buyer: buyerColumns,
+    })
+    .from(marketOffers)
+    .where(eq(marketOffers.buyerId, userId))
+    .innerJoin(tgUsers, eq(marketOffers.buyerId, tgUsers.id))
+    .orderBy(desc(marketOffers.createdAt));
+
+  const results = await Promise.all(
+    offers.map(async (offer) => {
+      const listing = await db
+        .select({
+          ...getTableColumns(marketListings),
+          seller: getTableColumns(tgUsers),
+        })
+        .from(marketListings)
+        .where(eq(marketListings.id, offer.listingId))
+        .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
+        .then((res) => res[0]);
+
+      const offerCards = await db
+        .select({
+          ...getTableColumns(tCards),
+          rarity: tRarities.name,
+          universe: tUniverses.name,
+          class: tClasses.name,
+          author: tAuthors.username,
+        })
+        .from(marketOfferCards)
+        .where(eq(marketOfferCards.offerId, offer.id))
+        .innerJoin(tCards, eq(tCards.id, marketOfferCards.cardId))
+        .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+        .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+        .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+        .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
+
+      const listingCards = listing
+        ? await db
+            .select({
+              ...getTableColumns(tCards),
+              rarity: tRarities.name,
+              universe: tUniverses.name,
+              class: tClasses.name,
+              author: tAuthors.username,
+            })
+            .from(marketListingCards)
+            .where(eq(marketListingCards.listingId, offer.listingId))
+            .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId))
+            .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+            .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+            .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+            .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+        : [];
+
+      return {
+        ...offer,
+        cards: offerCards,
+        listing: listing
+          ? {
+              ...listing,
+              cards: listingCards,
+            }
+          : null,
+      };
+    })
+  );
+
+  return results;
+}
+
 export function createMarketListing(data: typeof marketListings.$inferInsert) {
   return db.insert(marketListings).values(data).returning();
 }
@@ -230,6 +308,51 @@ export function addMarketOfferCards(offerId: number, cardIds: string[]) {
   return db
     .insert(marketOfferCards)
     .values(cardIds.map((cardId) => ({ offerId, cardId })));
+}
+
+export async function verifyCardOwnership(cardIds: string[], userId: string) {
+  const owned = await db
+    .select({ cardId: cardToTgUser.cardId, isLocked: cardToTgUser.isLocked })
+    .from(cardToTgUser)
+    .where(
+      and(
+        inArray(cardToTgUser.cardId, cardIds),
+        eq(cardToTgUser.tgUserId, userId)
+      )
+    );
+  return owned;
+}
+
+export function updateMarketOfferStatus(
+  offerId: number,
+  status: MarketOfferStatus
+) {
+  return db
+    .update(marketOffers)
+    .set({ status })
+    .where(eq(marketOffers.id, offerId));
+}
+
+export function updateMarketListingStatus(
+  listingId: number,
+  status: MarketListingStatus
+) {
+  return db
+    .update(marketListings)
+    .set({ status })
+    .where(eq(marketListings.id, listingId));
+}
+
+export async function cancelPendingOffersForListing(listingId: number) {
+  return db
+    .update(marketOffers)
+    .set({ status: "cancelled" as MarketOfferStatus })
+    .where(
+      and(
+        eq(marketOffers.listingId, listingId),
+        eq(marketOffers.status, "pending")
+      )
+    );
 }
 
 export async function getRarities() {

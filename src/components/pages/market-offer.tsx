@@ -4,25 +4,23 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Info } from "lucide-react";
+import { ChevronLeft, Info, Loader2 } from "lucide-react";
 
-import { getProxyUrl } from "@/lib/utils";
+import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
-import { Badge } from "@/ui/badge";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption, ListingFilters } from "../get-filte-options";
 import { Header } from "../header";
+import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
-
-import { ListingFilterDisplay } from "../listing-filter-display";
 
 type MarketListing = {
   id: number;
@@ -124,7 +122,7 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
     };
 
     return (
-      <main className="fixed inset-0 flex flex-col md:container">
+      <main className="flex h-full flex-col">
         <MarketOfferContent
           listing={listingQuery.data}
           user={cardsQuery.data.user}
@@ -227,7 +225,10 @@ function MarketOfferContent({
         }
       );
 
-      if (!response.ok) throw new Error("Failed to create offer");
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Failed to create offer");
+      }
 
       toast({
         title: "Предложение отправлено",
@@ -236,9 +237,13 @@ function MarketOfferContent({
 
       router.push("/market");
     } catch (e) {
+      const message =
+        e instanceof Error && e.message !== "Failed to create offer"
+          ? e.message
+          : "Не удалось отправить предложение";
       toast({
         title: "Ошибка",
-        description: "Не удалось отправить предложение",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -320,9 +325,9 @@ function MarketOfferContent({
                 Требования продавца:
               </span>
             </div>
-            <ListingFilterDisplay 
-              filters={listing.filters} 
-              filterOptions={filterOptions} 
+            <ListingFilterDisplay
+              filters={listing.filters}
+              filterOptions={filterOptions}
             />
           </div>
         )}
@@ -356,7 +361,7 @@ function MarketOfferContent({
                     className="relative h-12 w-9 overflow-hidden rounded border"
                   >
                     <Image
-                      src={getProxyUrl(c.image)}
+                      src={getImageProxyUrl(c.image)}
                       alt={c.name}
                       fill
                       className="object-cover"
@@ -409,7 +414,14 @@ function MarketOfferContent({
                 disabled={isLoading}
                 onClick={handleCreateOffer}
               >
-                Подтвердить
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  "Подтвердить"
+                )}
               </Button>
             </>
           )}

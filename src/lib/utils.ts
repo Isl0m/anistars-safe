@@ -33,3 +33,18 @@ function replaceAssetBase(originalUrl: string, assetBase: string) {
 
 export const getImageProxyUrl = (originalUrl: string) =>
   replaceAssetBase(originalUrl, IMAGE_ASSET_BASE);
+
+export type CardTypes = "upgrade" | "upgradable" | "limited" | "basic";
+
+export const statMapper: Record<string, string> = {
+  full: "Фулл",
+  "pre-full": "Пре-Фулл",
+  basic: "Базовый",
+};
+
+export const typeMapper: Record<CardTypes, string> = {
+  limited: "Лимитированный",
+  basic: "Базовый",
+  upgradable: "Улучшаемый",
+  upgrade: "Улучшение",
+};
