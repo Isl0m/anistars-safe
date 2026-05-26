@@ -7,7 +7,7 @@ import { ChevronLeft, Info, Loader2 } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
-import { FullCard } from "@/db/schema/card";
+import { Card } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -47,7 +47,7 @@ type MarketListing = {
   status: string;
   createdAt: Date;
   seller: User;
-  cards: FullCard[];
+  cards: Card[];
   filters: ListingFilters | null;
 };
 
@@ -57,7 +57,7 @@ type MarketOffer = {
   status: string;
   createdAt: Date;
   buyer: User;
-  cards: FullCard[];
+  cards: Card[];
 };
 
 export default function MarketViewPage({ id }: { id: string }) {
@@ -147,15 +147,33 @@ export default function MarketViewPage({ id }: { id: string }) {
   const handleAcceptOffer = async (offerId: number) => {
     setIsAccepting(true);
     try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/market/offers/accept`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            offerId,
+            sellerId: tgUser?.id.toString(),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to accept offer");
+      }
+
       toast({
         title: "Успешно",
         description: "Вы приняли предложение обмена!",
       });
-      router.push("/trade/history");
+      router.push("/market");
     } catch (e) {
       toast({
         title: "Ошибка",
-        description: "Не удалось принять предложение",
+        description:
+          e instanceof Error ? e.message : "Не удалось принять предложение",
         variant: "destructive",
       });
     } finally {
@@ -439,7 +457,7 @@ function AcceptOfferDialog({
   isLoading,
 }: {
   offer: MarketOffer;
-  listingCards: FullCard[];
+  listingCards: Card[];
   onAccept: () => void;
   isLoading: boolean;
 }) {

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 
-import {
-  getMarketListing,
-  updateMarketListingStatus,
-  cancelPendingOffersForListing,
-} from "@/lib/queries";
+import { getMarketListing } from "@/lib/queries";
+import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(
   request: Request,
@@ -42,8 +39,17 @@ export async function POST(
     );
   }
 
-  await updateMarketListingStatus(listingId, "cancelled");
-  await cancelPendingOffersForListing(listingId);
-
-  return NextResponse.json({ success: true });
+  try {
+    await addMarketJob({
+      type: "market-cancel-listing",
+      listingId,
+      sellerId,
+    });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to cancel listing" },
+      { status: 500 }
+    );
+  }
 }

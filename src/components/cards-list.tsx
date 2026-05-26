@@ -3,11 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import {
-  cn,
-  getImageProxyUrl,
-  prettyNumbers,
-} from "@/lib/utils";
+import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 
 import { Card, FullCard, Technique } from "@/db/schema/card";
 
@@ -102,7 +98,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
                     <Image
                       src={getImageProxyUrl(pageCards[selectedCard].image)}
                       alt={pageCards[selectedCard].name}
-                      layout="fill"
+                      fill
                       loading="lazy"
                       className="object-contain"
                     />

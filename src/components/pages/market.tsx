@@ -7,7 +7,7 @@ import { Loader2, Package, Plus, Send } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
-import { FullCard } from "@/db/schema/card";
+import { Card } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
@@ -52,7 +52,7 @@ type MarketListing = {
   status: string;
   createdAt: Date;
   seller: User;
-  cards: FullCard[];
+  cards: Card[];
 };
 
 type UserOffer = {
@@ -61,13 +61,13 @@ type UserOffer = {
   buyerId: string;
   status: string;
   createdAt: Date;
-  cards: FullCard[];
+  cards: Card[];
   listing: {
     id: number;
     sellerId: string;
     status: string;
     seller: User;
-    cards: FullCard[];
+    cards: Card[];
   } | null;
 };
 

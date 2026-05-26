@@ -10,7 +10,7 @@ import { getImageProxyUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { UpdateTradeType } from "@/app/api/trade/update/route";
-import { FullCard } from "@/db/schema/card";
+import { Card, FullCard } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
 import { UserExtended } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
@@ -28,7 +28,7 @@ type Steps = "show" | "select" | "confirm";
 export default function AcceptTradePage({
   trade,
 }: {
-  trade: SelectMultiTrade & { senderName: string; senderCards: FullCard[] };
+  trade: SelectMultiTrade & { senderName: string; senderCards: (Card & { rarity: string })[] };
 }) {
   const { tgUser } = useTelegram();
   const [filter, setFilter] = useState<Filter>();
@@ -87,7 +87,7 @@ export function AcceptTradePageContent({
   trade,
   setFilters,
 }: {
-  trade: SelectMultiTrade & { senderName: string; senderCards: FullCard[] };
+  trade: SelectMultiTrade & { senderName: string; senderCards: (Card & { rarity: string })[] };
   cards: FullCard[];
   filterOptions: FilterOption[];
   setFilters: (filters: Filter) => void;
@@ -305,7 +305,7 @@ export function AcceptTradePageContent({
 }
 
 type SuggestedCardsListProps = {
-  cards: FullCard[];
+  cards: Card[];
 };
 
 export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {

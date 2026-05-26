@@ -10,7 +10,7 @@ import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
-import { FullCard } from "@/db/schema/card";
+import { Card, FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
 
 import CardsFilter from "../cards-filter";
@@ -26,7 +26,7 @@ type MarketListing = {
   id: number;
   sellerId: string;
   filters: ListingFilters | null;
-  cards: FullCard[];
+  cards: Card[];
 };
 
 export default function MarketOfferPage({ listingId }: { listingId: string }) {

@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+
+import { getMarketListing } from "@/lib/queries";
+import { addMarketJob } from "@/lib/trade-queue";
 
 import { db } from "@/db";
 import { marketOffers } from "@/db/schema/market";
-import { getMarketListing } from "@/lib/queries";
-import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -38,12 +39,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  try {
-    await addMarketJob({ type: "market-reject-offer", offerId, sellerId });
-    return NextResponse.json({ success: true });
-  } catch {
+  if (listing.status !== "active") {
     return NextResponse.json(
-      { error: "Failed to reject offer" },
+      { error: "Listing is not active" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await addMarketJob({
+      type: "market-accept",
+      offerId,
+      sellerId,
+    });
+    return NextResponse.json(result);
+  } catch (e) {
+    console.log(e);
+    return NextResponse.json(
+      { error: "Failed to process trade" },
       { status: 500 }
     );
   }

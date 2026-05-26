@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   init,
   on,
@@ -71,10 +71,8 @@ export const TelegramProvider = ({
     fetchData();
   }, []);
 
-  const value = useMemo(() => ({ tgUser }), [tgUser]);
-
   return (
-    <TelegramContext.Provider value={value}>
+    <TelegramContext.Provider value={{ tgUser }}>
       {isLoading ? <LoadingScreen /> : children}
     </TelegramContext.Provider>
   );

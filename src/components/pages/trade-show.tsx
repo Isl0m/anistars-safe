@@ -4,7 +4,7 @@ import Image from "next/image";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
-import { FullCard } from "@/db/schema/card";
+import { Card } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
 import { Badge } from "@/ui/badge";
 
@@ -16,8 +16,8 @@ export default function TradeShowPage({
   trade: SelectMultiTrade & {
     senderName: string;
     receiverName: string;
-    senderCards: FullCard[];
-    receiverCards: FullCard[];
+    senderCards: Card[];
+    receiverCards: Card[];
   };
 }) {
   return (
@@ -36,7 +36,7 @@ export default function TradeShowPage({
   );
 }
 type SuggestedCardsListProps = {
-  cards: FullCard[];
+  cards: Card[];
 };
 
 export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {

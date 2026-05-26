@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { marketOffers } from "@/db/schema/market";
-import { updateMarketOfferStatus } from "@/lib/queries";
+import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -36,7 +36,13 @@ export async function POST(request: Request) {
     );
   }
 
-  await updateMarketOfferStatus(offerId, "cancelled");
-
-  return NextResponse.json({ success: true });
+  try {
+    await addMarketJob({ type: "market-cancel-offer", offerId, buyerId });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to cancel offer" },
+      { status: 500 }
+    );
+  }
 }
