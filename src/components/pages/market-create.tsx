@@ -96,6 +96,7 @@ function MarketCreateContent({
   listingFilterOptions: ListingFilterOption[];
   setFilters: (filters: Filter) => void;
 }) {
+  const { initDataRaw } = useTelegram();
   const [page, setPage] = useState(1);
   const cardsPerPage = 16;
   const router = useRouter();
@@ -130,9 +131,9 @@ function MarketCreateContent({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-telegram-init-data": initDataRaw ?? "",
           },
           body: JSON.stringify({
-            sellerId: user.id,
             cardIds: selectedCards.map((c) => c.id),
             filters: desiredFilters
               ? {

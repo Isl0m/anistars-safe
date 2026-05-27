@@ -47,7 +47,7 @@ type MarketOffer = {
 };
 
 export default function MarketViewPage({ id }: { id: string }) {
-  const { tgUser } = useTelegram();
+  const { tgUser, initDataRaw } = useTelegram();
   const router = useRouter();
   const [listing, setListing] = useState<MarketListing | null>(null);
   const [offers, setOffers] = useState<MarketOffer[]>([]);
@@ -137,11 +137,11 @@ export default function MarketViewPage({ id }: { id: string }) {
         `${process.env.NEXT_PUBLIC_URL}/api/market/offers/accept`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            offerId,
-            sellerId: tgUser?.id.toString(),
-          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-telegram-init-data": initDataRaw ?? "",
+          },
+          body: JSON.stringify({ offerId }),
         }
       );
 
@@ -174,11 +174,11 @@ export default function MarketViewPage({ id }: { id: string }) {
         `${process.env.NEXT_PUBLIC_URL}/api/market/offers/reject`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            offerId,
-            sellerId: tgUser?.id.toString(),
-          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-telegram-init-data": initDataRaw ?? "",
+          },
+          body: JSON.stringify({ offerId }),
         }
       );
 
@@ -210,10 +210,11 @@ export default function MarketViewPage({ id }: { id: string }) {
         `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${listing.id}/cancel`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sellerId: tgUser?.id.toString(),
-          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-telegram-init-data": initDataRaw ?? "",
+          },
+          body: JSON.stringify({}),
         }
       );
 

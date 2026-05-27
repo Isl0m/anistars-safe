@@ -5,6 +5,7 @@ import {
   addMarketListingCards,
   validateCardsForTrade,
 } from "@/lib/queries";
+import { authenticateRequest } from "@/lib/telegram-auth";
 
 export async function GET() {
   const listings = await getMarketListings();
@@ -12,10 +13,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { sellerId, cardIds, filters } = body;
+  const sellerId = authenticateRequest(request);
+  if (!sellerId) {
+    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+  }
 
-  if (!sellerId || !cardIds || cardIds.length === 0) {
+  const body = await request.json();
+  const { cardIds, filters } = body;
+
+  if (!cardIds || cardIds.length === 0) {
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 }

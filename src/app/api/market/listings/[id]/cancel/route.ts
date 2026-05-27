@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
 
 import { getMarketListing } from "@/lib/queries";
+import { authenticateRequest } from "@/lib/telegram-auth";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { id } = params;
-  const body = await request.json();
-  const { sellerId } = body;
-
+  const sellerId = authenticateRequest(request);
   if (!sellerId) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
 
+  const { id } = params;
   const listingId = parseInt(id);
   const listing = await getMarketListing(listingId);
 

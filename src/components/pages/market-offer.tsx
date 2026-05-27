@@ -168,6 +168,7 @@ function MarketOfferContent({
   filter?: Filter;
   lockedFilters: Partial<Filter>;
 }) {
+  const { initDataRaw } = useTelegram();
   const [page, setPage] = useState(1);
   const cardsPerPage = 16;
   const router = useRouter();
@@ -182,7 +183,6 @@ function MarketOfferContent({
   const handleCreateOffer = async () => {
     setIsLoading(true);
 
-    // Basic validation based on seller filters
     if (
       listing.filters?.minCardCount &&
       selectedCards.length < listing.filters.minCardCount
@@ -216,10 +216,10 @@ function MarketOfferContent({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-telegram-init-data": initDataRaw ?? "",
           },
           body: JSON.stringify({
             listingId: listing.id,
-            buyerId: user.id,
             cardIds: selectedCards.map((c) => c.id),
           }),
         }

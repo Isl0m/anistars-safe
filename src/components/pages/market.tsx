@@ -46,7 +46,7 @@ type UserOffer = {
 };
 
 export default function MarketPage() {
-  const { tgUser } = useTelegram();
+  const { tgUser, initDataRaw } = useTelegram();
   const [listings, setListings] = useState<MarketListing[]>([]);
   const [userListings, setUserListings] = useState<MarketListing[]>([]);
   const [userOffers, setUserOffers] = useState<UserOffer[]>([]);
@@ -94,11 +94,11 @@ export default function MarketPage() {
         `${process.env.NEXT_PUBLIC_URL}/api/market/offers/cancel`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            offerId,
-            buyerId: tgUser.id.toString(),
-          }),
+          headers: {
+            "Content-Type": "application/json",
+            "x-telegram-init-data": initDataRaw ?? "",
+          },
+          body: JSON.stringify({ offerId }),
         }
       );
 

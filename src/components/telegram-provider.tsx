@@ -15,6 +15,7 @@ import LoadingScreen from "./loading-screen";
 
 export interface ITelegramContext {
   tgUser?: TelegramUser;
+  initDataRaw?: string;
 }
 
 export const TelegramContext = createContext<ITelegramContext>({});
@@ -25,6 +26,7 @@ export const TelegramProvider = ({
   children: React.ReactNode;
 }) => {
   const [tgUser, setTgUser] = useState<ITelegramContext["tgUser"]>();
+  const [initDataRaw, setInitDataRaw] = useState<string>();
   const [isLoading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,6 +62,9 @@ export const TelegramProvider = ({
         if (lp.initData && lp.initData.user) {
           setTgUser(lp.initData.user);
         }
+        if (lp.initDataRaw) {
+          setInitDataRaw(lp.initDataRaw);
+        }
       } catch (e) {
         console.error("Error initializing Telegram SDK:", e);
         setTgUser(undefined);
@@ -72,7 +77,7 @@ export const TelegramProvider = ({
   }, []);
 
   return (
-    <TelegramContext.Provider value={{ tgUser }}>
+    <TelegramContext.Provider value={{ tgUser, initDataRaw }}>
       {isLoading ? <LoadingScreen /> : children}
     </TelegramContext.Provider>
   );

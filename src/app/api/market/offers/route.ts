@@ -6,12 +6,18 @@ import {
   validateCardsForTrade,
   getMarketOffersForListing,
 } from "@/lib/queries";
+import { authenticateRequest } from "@/lib/telegram-auth";
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { listingId, buyerId, cardIds } = body;
+  const buyerId = authenticateRequest(request);
+  if (!buyerId) {
+    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+  }
 
-  if (!listingId || !buyerId || !cardIds || cardIds.length === 0) {
+  const body = await request.json();
+  const { listingId, cardIds } = body;
+
+  if (!listingId || !cardIds || cardIds.length === 0) {
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 }
