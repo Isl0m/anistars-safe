@@ -6,7 +6,7 @@ import { Filter as FilterIcon } from "lucide-react";
 
 import { CardStats } from "@/db/schema/card";
 
-import { ListingFilterOption, ListingFilters } from "./get-filte-options";
+import { ListingFilterOption, ListingFilters } from "./get-filter-options";
 import {
   Accordion,
   AccordionContent,

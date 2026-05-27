@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getUser, getUserCardsDifferenceWithFilter } from "@/lib/queries";
 
-import { Filter, getUserFilterOptions } from "@/components/get-filte-options";
+import { Filter, getUserFilterOptions } from "@/components/get-filter-options";
 
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);

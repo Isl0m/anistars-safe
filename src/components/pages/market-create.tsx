@@ -19,7 +19,7 @@ import {
   FilterOption,
   ListingFilterOption,
   ListingFilters,
-} from "../get-filte-options";
+} from "../get-filter-options";
 import { Header } from "../header";
 import ListingFilter from "../listing-filter";
 import { ListingFilterDisplay } from "../listing-filter-display";

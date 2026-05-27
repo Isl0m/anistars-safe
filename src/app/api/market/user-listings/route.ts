@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
+
+import { getRequiredParam } from "@/lib/api-utils";
 import { getUserMarketListings } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id)
-    return NextResponse.json({ error: "id param required" }, { status: 400 });
+  const param = getRequiredParam(request, "id");
+  if ("error" in param) return param.error;
 
-  const listings = await getUserMarketListings(id);
+  const listings = await getUserMarketListings(param.value);
   return NextResponse.json({ listings });
 }

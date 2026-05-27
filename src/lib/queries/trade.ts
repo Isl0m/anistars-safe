@@ -172,10 +172,12 @@ async function getMultiTradeUserHistory(id: string) {
       )
     );
 
-  const tradesHistory = trades.reduce<TradeHistory[]>((acc, trade) => {
-    let existingTrade = acc.find((t) => t.id === trade.id);
-    if (!existingTrade) {
-      existingTrade = {
+  const tradesMap = new Map<number, TradeHistory>();
+
+  for (const trade of trades) {
+    let entry = tradesMap.get(trade.id);
+    if (!entry) {
+      entry = {
         id: trade.id,
         sender: trade.sender,
         receiver: trade.receiver,
@@ -184,22 +186,19 @@ async function getMultiTradeUserHistory(id: string) {
         createdAt: trade.createdAt!,
         cost: trade.cost,
       };
-      acc.push(existingTrade);
+      tradesMap.set(trade.id, entry);
     }
 
     if (trade.card) {
-      const card = trade.card;
       if (trade.isSenderCard) {
-        existingTrade.senderCards.push(card);
+        entry.senderCards.push(trade.card);
       } else {
-        existingTrade.receiverCards.push(card);
+        entry.receiverCards.push(trade.card);
       }
     }
+  }
 
-    return acc;
-  }, []);
-
-  return tradesHistory;
+  return [...tradesMap.values()];
 }
 
 async function getSingleTradeUserHistory(id: string) {

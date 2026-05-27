@@ -13,7 +13,7 @@ import {
   SQL,
 } from "drizzle-orm";
 
-import { Filter } from "@/components/get-filte-options";
+import { Filter } from "@/components/get-filter-options";
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
 import {

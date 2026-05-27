@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ import { UserExtended } from "@/db/schema/user";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filte-options";
+import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
@@ -88,12 +88,16 @@ function TradePageContent({
   receiver: string;
   setFilters: (filters: Filter) => void;
 }) {
-  let cardsPerPage = 16;
+  const cardsPerPage = 16;
   const [page, setPage] = useState(1);
 
-  if (page != 1 && Math.ceil(cards.length / cardsPerPage) < page) {
-    setPage(1);
-  }
+  const maxPage = Math.ceil(cards.length / cardsPerPage);
+  useEffect(() => {
+    if (page !== 1 && maxPage < page) {
+      setPage(1);
+    }
+  }, [page, maxPage]);
+
   const cardsLeft = cards.length - page * cardsPerPage;
   const skip = (page - 1) * cardsPerPage;
   const pageCards = cards.slice(skip, skip + cardsPerPage);

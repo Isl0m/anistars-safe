@@ -1,4 +1,4 @@
-import { getFilterOptions } from "@/components/get-filte-options";
+import { getFilterOptions } from "@/components/get-filter-options";
 import { Missing } from "@/components/pages/missing";
 
 export default async function MissingPage() {

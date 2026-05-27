@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
 import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
@@ -21,13 +21,17 @@ import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export function CardsList({ cards }: { cards: FullCard[] }) {
-  let cardsPerPage = 16;
+  const cardsPerPage = 16;
   const [page, setPage] = useState(1);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
 
-  if (page != 1 && Math.ceil(cards.length / cardsPerPage) < page) {
-    setPage(1);
-  }
+  const maxPage = Math.ceil(cards.length / cardsPerPage);
+  useEffect(() => {
+    if (page !== 1 && maxPage < page) {
+      setPage(1);
+    }
+  }, [page, maxPage]);
+
   const cardsLeft = cards.length - page * cardsPerPage;
   const skip = (page - 1) * cardsPerPage;
   const pageCards = cards.slice(skip, skip + cardsPerPage);
@@ -164,7 +168,7 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
   );
 }
 
-function CardImage({ card }: { card: Card }) {
+const CardImage = memo(function CardImage({ card }: { card: Card }) {
   const [loaded, setLoaded] = useState(false);
 
   return (
@@ -187,4 +191,4 @@ function CardImage({ card }: { card: Card }) {
       />
     </>
   );
-}
+});

@@ -1,9 +1,6 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { db } from "@/db";
-import { marketOffers } from "@/db/schema/market";
-import { getMarketListing } from "@/lib/queries";
+import { getMarketListing, getMarketOffer } from "@/lib/queries";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
@@ -17,10 +14,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const [offer] = await db
-    .select()
-    .from(marketOffers)
-    .where(eq(marketOffers.id, offerId));
+  const offer = await getMarketOffer(offerId);
 
   if (!offer) {
     return NextResponse.json({ error: "Offer not found" }, { status: 404 });

@@ -9,7 +9,7 @@ import { User } from "@/db/schema/user";
 import CardsFilter from "../cards-filter";
 import { CardsList } from "../cards-list";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filte-options";
+import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 

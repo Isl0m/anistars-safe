@@ -8,7 +8,7 @@ import { FullCard } from "@/db/schema/card";
 import CardsFilter from "../cards-filter";
 import { CardsList } from "../cards-list";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filte-options";
+import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 
 type Props = {

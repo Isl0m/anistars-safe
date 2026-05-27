@@ -3,7 +3,7 @@ import {
   createMarketOffer,
   addMarketOfferCards,
   getMarketListing,
-  verifyCardOwnership,
+  validateCardsForTrade,
   getMarketOffersForListing,
 } from "@/lib/queries";
 
@@ -40,33 +40,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const uniqueCardIds = [...new Set(cardIds as string[])];
-
-  const owned = await verifyCardOwnership(uniqueCardIds, buyerId);
-  if (owned.length !== uniqueCardIds.length) {
+  const validation = await validateCardsForTrade(cardIds, buyerId);
+  if ("error" in validation) {
     return NextResponse.json(
-      { error: "You don't own all selected cards" },
-      { status: 403 }
-    );
-  }
-
-  const lockedCards = owned.filter((c) => c.isLocked);
-  if (lockedCards.length > 0) {
-    return NextResponse.json(
-      { error: "Some cards are locked" },
-      { status: 403 }
+      { error: validation.error },
+      { status: validation.status }
     );
   }
 
   if (listing.filters) {
     const { minCardCount, maxCardCount } = listing.filters;
-    if (minCardCount && uniqueCardIds.length < minCardCount) {
+    if (minCardCount && validation.cardIds.length < minCardCount) {
       return NextResponse.json(
         { error: `Minimum ${minCardCount} cards required` },
         { status: 400 }
       );
     }
-    if (maxCardCount && uniqueCardIds.length > maxCardCount) {
+    if (maxCardCount && validation.cardIds.length > maxCardCount) {
       return NextResponse.json(
         { error: `Maximum ${maxCardCount} cards allowed` },
         { status: 400 }
@@ -91,7 +81,7 @@ export async function POST(request: Request) {
     status: "pending",
   });
 
-  await addMarketOfferCards(offer.id, uniqueCardIds);
+  await addMarketOfferCards(offer.id, validation.cardIds);
 
   return NextResponse.json({ offer });
 }

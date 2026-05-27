@@ -15,7 +15,7 @@ import { UserExtended } from "@/db/schema/user";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption, ListingFilters } from "../get-filte-options";
+import { Filter, FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";

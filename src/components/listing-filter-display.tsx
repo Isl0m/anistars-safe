@@ -5,7 +5,7 @@ import { CardTypes, statMapper, typeMapper } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CardStats } from "@/db/schema/card";
 
-import { FilterOption, ListingFilters } from "./get-filte-options";
+import { FilterOption, ListingFilters } from "./get-filter-options";
 
 interface Props {
   filters: ListingFilters | null;

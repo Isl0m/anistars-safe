@@ -264,6 +264,33 @@ export async function verifyCardOwnership(cardIds: string[], userId: string) {
   return owned;
 }
 
+export async function getMarketOffer(offerId: number) {
+  const [offer] = await db
+    .select()
+    .from(marketOffers)
+    .where(eq(marketOffers.id, offerId));
+  return offer ?? null;
+}
+
+export async function validateCardsForTrade(cardIds: string[], userId: string) {
+  const uniqueCardIds = [...new Set(cardIds)];
+  if (uniqueCardIds.length !== cardIds.length) {
+    return { error: "Duplicate card IDs", status: 400 as const };
+  }
+
+  const owned = await verifyCardOwnership(uniqueCardIds, userId);
+  if (owned.length !== uniqueCardIds.length) {
+    return { error: "You don't own all selected cards", status: 403 as const };
+  }
+
+  const lockedCards = owned.filter((c) => c.isLocked);
+  if (lockedCards.length > 0) {
+    return { error: "Some cards are locked", status: 403 as const };
+  }
+
+  return { cardIds: uniqueCardIds };
+}
+
 export function updateMarketOfferStatus(
   offerId: number,
   status: MarketOfferStatus

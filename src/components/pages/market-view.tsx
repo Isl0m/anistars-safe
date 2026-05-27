@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Info, Loader2 } from "lucide-react";
 
+import { offerStatusMap } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
@@ -21,25 +22,10 @@ import {
 import { Skeleton } from "@/ui/skeleton";
 import { toast } from "@/ui/use-toast";
 
-import { FilterOption, ListingFilters } from "../get-filte-options";
+import { FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
-
-const offerStatusMap: Record<string, { label: string; className: string }> = {
-  pending: {
-    label: "Ожидание",
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-600",
-  },
-  accepted: {
-    label: "Принято",
-    className: "border-green-500/30 bg-green-500/10 text-green-600",
-  },
-  cancelled: {
-    label: "Отклонено",
-    className: "border-red-500/30 bg-red-500/10 text-red-600",
-  },
-};
 
 type MarketListing = {
   id: number;

@@ -18,7 +18,7 @@ export function CardUpgradesPage() {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_URL}/api/cards/upgrade`
       );
-      return (await response.json()).upgrdes as Promise<CardUpgrades[]>;
+      return (await response.json()).upgrades as Promise<CardUpgrades[]>;
     },
     placeholderData: keepPreviousData,
   });

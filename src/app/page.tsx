@@ -1,4 +1,4 @@
-import { getFilterOptions } from "@/components/get-filte-options";
+import { getFilterOptions } from "@/components/get-filter-options";
 import { CardsPage } from "@/components/pages/all-cards";
 
 export default async function Home() {
