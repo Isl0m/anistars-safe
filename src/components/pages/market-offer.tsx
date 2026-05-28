@@ -4,7 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Info, Loader2 } from "lucide-react";
+import {
+  ArrowRightLeft,
+  CheckCircle2,
+  ChevronLeft,
+  Info,
+  Loader2,
+  Package,
+} from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
@@ -12,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
+import { Badge } from "@/ui/badge";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
@@ -28,6 +36,55 @@ type MarketListing = {
   filters: ListingFilters | null;
   cards: Card[];
 };
+
+function StepIndicator({
+  currentStep,
+  steps,
+}: {
+  currentStep: number;
+  steps: string[];
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {steps.map((label, i) => {
+        const stepNum = i + 1;
+        const isActive = stepNum === currentStep;
+        const isCompleted = stepNum < currentStep;
+        return (
+          <div key={label} className="flex items-center gap-2">
+            {i > 0 && (
+              <div
+                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
+              />
+            )}
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : isCompleted
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : (
+                  stepNum
+                )}
+              </div>
+              <span
+                className={`text-[11px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const { tgUser } = useTelegram();
@@ -138,11 +195,11 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
-      <p>Не удалось загрузить данные</p>
-      <Button onClick={() => router.back()} className="mt-4">
-        Назад
-      </Button>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <p className="text-sm text-muted-foreground">
+        Не удалось загрузить данные
+      </p>
+      <Button onClick={() => router.back()}>Назад</Button>
     </main>
   );
 }
@@ -189,7 +246,7 @@ function MarketOfferContent({
     ) {
       toast({
         title: "Ошибка",
-        description: `Минимальное количество карт для этого предложения: ${listing.filters.minCardCount}`,
+        description: `Минимальное количество карт: ${listing.filters.minCardCount}`,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -202,7 +259,7 @@ function MarketOfferContent({
     ) {
       toast({
         title: "Ошибка",
-        description: `Максимальное количество карт для этого предложения: ${listing.filters.maxCardCount}`,
+        description: `Максимальное количество карт: ${listing.filters.maxCardCount}`,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -251,7 +308,6 @@ function MarketOfferContent({
     }
   };
 
-  // Helper to check if a card matches listing filters
   const matchesFilters = (card: FullCard) => {
     if (!listing.filters) return true;
     const f = listing.filters;
@@ -299,7 +355,7 @@ function MarketOfferContent({
   return (
     <>
       <Header
-        title={step === "select" ? "Ваше предложение" : "Подтверждение"}
+        title="Предложение"
         element={
           step === "select" ? (
             <CardsFilter
@@ -316,13 +372,20 @@ function MarketOfferContent({
         }
       />
 
+      <div className="px-3 pb-1">
+        <StepIndicator
+          currentStep={step === "select" ? 1 : 2}
+          steps={["Выбор карт", "Подтверждение"]}
+        />
+      </div>
+
       <div className="flex-1 overflow-y-auto px-2 pb-6">
         {step === "select" && listing.filters && (
-          <div className="mb-4 mt-2 rounded-lg border border-blue-500/20 bg-blue-500/10 p-3">
+          <div className="mb-3 mt-2 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
             <div className="mb-2 flex items-center gap-2">
               <Info className="h-4 w-4 text-blue-500" />
               <span className="text-xs font-semibold text-blue-500">
-                Требования продавца:
+                Требования продавца
               </span>
             </div>
             <ListingFilterDisplay
@@ -335,9 +398,11 @@ function MarketOfferContent({
         {step === "select" ? (
           <>
             {!allSelectedMatch && selectedCards.length > 0 && (
-              <p className="mb-2 text-[10px] font-medium text-destructive">
-                ⚠️ Некоторые выбранные карты не соответствуют фильтрам продавца
-              </p>
+              <div className="mb-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
+                <p className="text-[11px] font-medium text-destructive">
+                  Некоторые выбранные карты не соответствуют требованиям продавца
+                </p>
+              </div>
             )}
             <CardsSelectList
               pageCards={pageCards}
@@ -352,13 +417,16 @@ function MarketOfferContent({
           </>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/30 p-4">
-              <h4 className="mb-2 text-xs font-semibold">Вы предлагаете за:</h4>
-              <div className="flex -space-x-2 overflow-hidden">
+            <div className="rounded-xl border bg-muted/20 p-3.5">
+              <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+                Карты продавца ({listing.cards.length})
+              </h4>
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
                 {listing.cards.map((c) => (
                   <div
                     key={c.id}
-                    className="relative h-12 w-9 overflow-hidden rounded border"
+                    className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-md border shadow-sm"
                   >
                     <Image
                       src={getImageProxyUrl(c.image)}
@@ -371,7 +439,13 @@ function MarketOfferContent({
               </div>
             </div>
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold">Ваши карты:</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold">Ваши карты</h4>
+                <Badge variant="secondary" className="text-[10px]">
+                  <Package className="mr-1 h-3 w-3" />
+                  {selectedCards.length} карт
+                </Badge>
+              </div>
               <SelectedCardsList
                 selectedCards={selectedCards}
                 onClick={onCardSelect}
@@ -381,14 +455,15 @@ function MarketOfferContent({
         )}
       </div>
 
-      <div className="border-t bg-background p-4">
-        <div className="flex gap-4">
+      <div className="border-t bg-card p-4">
+        <div className="flex gap-3">
           {step === "select" ? (
             <>
               <Button
-                variant="destructive"
+                variant="outline"
                 className="w-full"
                 onClick={resetSelected}
+                disabled={selectedCards.length === 0}
               >
                 Сбросить
               </Button>
@@ -397,13 +472,13 @@ function MarketOfferContent({
                 disabled={selectedCards.length === 0}
                 onClick={() => setStep("confirm")}
               >
-                Продолжить ({selectedCards.length})
+                Далее ({selectedCards.length})
               </Button>
             </>
           ) : (
             <>
               <Button
-                variant="secondary"
+                variant="outline"
                 className="w-full"
                 onClick={() => setStep("select")}
               >
@@ -420,7 +495,7 @@ function MarketOfferContent({
                     Загрузка...
                   </>
                 ) : (
-                  "Подтвердить"
+                  "Отправить"
                 )}
               </Button>
             </>

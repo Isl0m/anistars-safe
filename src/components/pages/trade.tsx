@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CheckIcon } from "lucide-react";
+import { CheckCircle2, CheckIcon, Loader2, Package } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/use-toast";
 import { CreateTradeType } from "@/app/api/trade/create/route";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
+import { Badge } from "@/ui/badge";
 
 import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
@@ -21,6 +22,51 @@ import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
+
+function StepIndicator({
+  currentStep,
+  steps,
+}: {
+  currentStep: number;
+  steps: string[];
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {steps.map((label, i) => {
+        const stepNum = i + 1;
+        const isActive = stepNum === currentStep;
+        const isCompleted = stepNum < currentStep;
+        return (
+          <div key={label} className="flex items-center gap-2">
+            {i > 0 && (
+              <div
+                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
+              />
+            )}
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : isCompleted
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : stepNum}
+              </div>
+              <span
+                className={`text-[11px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function TradePage({ receiver }: { receiver: string }) {
   const { tgUser } = useTelegram();
@@ -67,7 +113,7 @@ export default function TradePage({ receiver }: { receiver: string }) {
   }
   return (
     <main className="flex min-h-screen flex-col gap-4">
-      <Header title={"Трейд"} />
+      <Header title="Трейд" />
       <CardsListSkeleton />
     </main>
   );
@@ -101,10 +147,6 @@ function TradePageContent({
   const cardsLeft = cards.length - page * cardsPerPage;
   const skip = (page - 1) * cardsPerPage;
   const pageCards = cards.slice(skip, skip + cardsPerPage);
-
-  const handleChangePage = (page: number) => {
-    setPage(page);
-  };
 
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const router = useRouter();
@@ -149,95 +191,110 @@ function TradePageContent({
 
     toast({
       title: "Трейд отправлен",
-      description: `Трейд ${selectedCards.length} карт отправлен ${receiver}`,
+      description: `Трейд ${selectedCards.length} карт отправлен`,
     });
 
-    // Reset the form
     router.push(`/trade`);
-  };
-
-  const headerSection: Record<Steps, JSX.Element> = {
-    select: (
-      <Header
-        title="Трейд"
-        element={
-          <CardsFilter filterOptions={filterOptions} setFilters={setFilters} />
-        }
-      />
-    ),
-    confirm: <Header title="Подтверждение" />,
-  };
-
-  const mainSection: Record<Steps, JSX.Element> = {
-    select: (
-      <CardsSelectList
-        pageCards={pageCards}
-        selectedCards={selectedCards}
-        onClick={onCardSelect}
-        pagination={{
-          cardsLeft,
-          changePage: handleChangePage,
-          page,
-        }}
-      />
-    ),
-    confirm: (
-      <SelectedCardsList selectedCards={selectedCards} onClick={onCardSelect} />
-    ),
-  };
-
-  const footerSection: Record<Steps, JSX.Element> = {
-    select: (
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
-        <Button
-          onClick={resetSelected}
-          className="w-full"
-          size={"sm"}
-          variant={"destructive"}
-        >
-          Сбросить
-        </Button>
-        <Button
-          onClick={() => setStep("confirm")}
-          className="w-full"
-          size={"sm"}
-          disabled={selectedCards.length === 0}
-        >
-          Продолжить ({selectedCards.length})
-        </Button>
-      </div>
-    ),
-    confirm: (
-      <div className="fixed bottom-0 left-0 w-full border-t bg-background p-4">
-        <div className="flex gap-4">
-          <Button
-            onClick={() => setStep("select")}
-            size={"sm"}
-            className="w-full"
-            variant={"secondary"}
-          >
-            Назад
-          </Button>
-          <Button
-            onClick={handleTrade}
-            size={"sm"}
-            disabled={isLoading}
-            className="w-full"
-          >
-            Подтвердить
-          </Button>
-        </div>
-      </div>
-    ),
   };
 
   return (
     <>
-      {headerSection[step]}
+      <Header
+        title="Трейд"
+        element={
+          step === "select" ? (
+            <CardsFilter
+              filterOptions={filterOptions}
+              setFilters={setFilters}
+            />
+          ) : undefined
+        }
+      />
 
-      <div className="px-2">{mainSection[step]}</div>
+      <div className="flex items-center justify-between px-3 pb-1">
+        <StepIndicator
+          currentStep={step === "select" ? 1 : 2}
+          steps={["Выбор карт", "Подтверждение"]}
+        />
+        <Badge variant="secondary" className="text-[10px]">
+          {selectedCards.length}/{maxCardsPerTrade}
+        </Badge>
+      </div>
 
-      {footerSection[step]}
+      <div className="px-2 pb-20">
+        {step === "select" ? (
+          <CardsSelectList
+            pageCards={pageCards}
+            selectedCards={selectedCards}
+            onClick={onCardSelect}
+            pagination={{
+              cardsLeft,
+              changePage: setPage,
+              page,
+            }}
+          />
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Выбранные карты</h3>
+              <Badge variant="secondary" className="text-[10px]">
+                <Package className="mr-1 h-3 w-3" />
+                {selectedCards.length} карт
+              </Badge>
+            </div>
+            <SelectedCardsList
+              selectedCards={selectedCards}
+              onClick={onCardSelect}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
+        {step === "select" ? (
+          <>
+            <Button
+              onClick={resetSelected}
+              className="w-full"
+              variant="outline"
+              disabled={selectedCards.length === 0}
+            >
+              Сбросить
+            </Button>
+            <Button
+              onClick={() => setStep("confirm")}
+              className="w-full"
+              disabled={selectedCards.length === 0}
+            >
+              Далее ({selectedCards.length})
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={() => setStep("select")}
+              className="w-full"
+              variant="outline"
+            >
+              Назад
+            </Button>
+            <Button
+              onClick={handleTrade}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Подтвердить"
+              )}
+            </Button>
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -260,37 +317,38 @@ export function CardsSelectList({
   pagination: { page, cardsLeft, changePage },
 }: CardsSelectListProps) {
   return (
-    <section className="flex flex-col gap-12">
+    <section className="flex flex-col gap-4">
       {pageCards.length > 0 ? (
         <div className="mb-12 space-y-4">
           <ul className="grid grid-cols-4 gap-2">
-            {pageCards.map((card) => (
-              <li
-                key={card.id}
-                className={`relative w-fit cursor-pointer overflow-hidden transition-all duration-100 ease-in-out ${
-                  Boolean(selectedCards.find((s) => s.id === card.id))
-                    ? "rounded-md ring-2 ring-primary"
-                    : "hover:ring-1 hover:ring-primary-foreground"
-                }`}
-                onClick={onClick(card)}
-              >
-                <div>
+            {pageCards.map((card) => {
+              const isSelected = selectedCards.some((s) => s.id === card.id);
+              return (
+                <li
+                  key={card.id}
+                  className={`relative cursor-pointer overflow-hidden rounded-lg transition-all duration-100 ease-in-out ${
+                    isSelected
+                      ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                      : "hover:ring-1 hover:ring-primary/50"
+                  }`}
+                  onClick={onClick(card)}
+                >
                   <Image
                     src={getImageProxyUrl(card.image)}
                     width={240}
                     height={320}
-                    className="rounded"
+                    className="rounded-lg"
                     loading="lazy"
                     alt={card.slug}
                   />
-                  {Boolean(selectedCards.find((s) => s.id === card.id)) && (
-                    <div className="absolute right-1 top-1 rounded-full bg-primary p-1 transition-opacity duration-100 ease-in-out">
+                  {isSelected && (
+                    <div className="absolute right-1 top-1 rounded-full bg-primary p-1">
                       <CheckIcon className="h-3 w-3 text-primary-foreground" />
                     </div>
                   )}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           <CardsPagination
             page={page}
@@ -299,7 +357,12 @@ export function CardsSelectList({
           />
         </div>
       ) : (
-        <h1>Нет подходящих карт</h1>
+        <div className="flex flex-col items-center gap-3 py-16">
+          <div className="rounded-full bg-muted p-4">
+            <Package className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm text-muted-foreground">Нет подходящих карт</p>
+        </div>
       )}
     </section>
   );
@@ -319,20 +382,18 @@ export function SelectedCardsList({
       {selectedCards.map((card) => (
         <li
           key={card.id}
-          className={`relative w-fit cursor-pointer overflow-hidden rounded ring-1 ring-primary transition-all duration-100 ease-in-out`}
+          className="relative cursor-pointer overflow-hidden rounded-lg ring-2 ring-primary ring-offset-1 ring-offset-background transition-all duration-100 ease-in-out"
           onClick={onClick(card)}
         >
-          <div>
-            <Image
-              src={getImageProxyUrl(card.image)}
-              width={240}
-              height={320}
-              alt={card.slug}
-            />
-
-            <div className="absolute right-1 top-1 rounded-full bg-primary p-[2px] transition-opacity duration-100 ease-in-out">
-              <CheckIcon className="h-2 w-2 text-primary-foreground" />
-            </div>
+          <Image
+            src={getImageProxyUrl(card.image)}
+            width={240}
+            height={320}
+            className="rounded-lg"
+            alt={card.slug}
+          />
+          <div className="absolute right-0.5 top-0.5 rounded-full bg-primary p-[3px]">
+            <CheckIcon className="h-2.5 w-2.5 text-primary-foreground" />
           </div>
         </li>
       ))}

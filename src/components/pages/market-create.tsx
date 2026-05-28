@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Loader2, Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
+import { Badge } from "@/ui/badge";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 
@@ -26,6 +27,55 @@ import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
+
+function StepIndicator({
+  currentStep,
+  steps,
+}: {
+  currentStep: number;
+  steps: string[];
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {steps.map((label, i) => {
+        const stepNum = i + 1;
+        const isActive = stepNum === currentStep;
+        const isCompleted = stepNum < currentStep;
+        return (
+          <div key={label} className="flex items-center gap-2">
+            {i > 0 && (
+              <div
+                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
+              />
+            )}
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : isCompleted
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : (
+                  stepNum
+                )}
+              </div>
+              <span
+                className={`text-[11px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MarketCreatePage() {
   const { tgUser } = useTelegram();
@@ -184,7 +234,7 @@ function MarketCreateContent({
   return (
     <>
       <Header
-        title={step === "select" ? "Выбрать карты" : "Подтверждение"}
+        title="Новое объявление"
         element={
           step === "select" ? (
             <div className="flex items-center gap-2">
@@ -201,6 +251,13 @@ function MarketCreateContent({
         }
       />
 
+      <div className="px-3 pb-1">
+        <StepIndicator
+          currentStep={step === "select" ? 1 : 2}
+          steps={["Выбор карт", "Настройка"]}
+        />
+      </div>
+
       <div className="px-2 pb-24">
         {step === "select" ? (
           <CardsSelectList
@@ -214,10 +271,17 @@ function MarketCreateContent({
             }}
           />
         ) : (
-          <div className="flex flex-col gap-6">
-            <div className="space-y-4 rounded-lg border bg-card p-4">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-4 rounded-xl border bg-card p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Что вы ищете взамен?</h3>
+                <div>
+                  <h3 className="text-sm font-semibold">
+                    Требования к обмену
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Укажите, какие карты вы хотите получить
+                  </p>
+                </div>
                 <ListingFilter
                   filterOptions={listingFilterOptions}
                   setFilters={setDesiredFilters}
@@ -226,52 +290,55 @@ function MarketCreateContent({
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="minPrice" className="text-[10px]">
-                    Мин. Цена
+                <div className="space-y-1.5">
+                  <Label htmlFor="minPrice" className="text-[11px]">
+                    Мин. цена
                   </Label>
                   <Input
                     id="minPrice"
                     type="number"
+                    placeholder="0"
                     value={minCardPrice}
                     onChange={(e) =>
                       setMinCardPrice(
                         e.target.value ? Number(e.target.value) : undefined
                       )
                     }
-                    className="h-8 text-xs"
+                    className="h-9 text-xs"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="minCount" className="text-[10px]">
-                    Мин. Карт
+                <div className="space-y-1.5">
+                  <Label htmlFor="minCount" className="text-[11px]">
+                    Мин. карт
                   </Label>
                   <Input
                     id="minCount"
                     type="number"
+                    placeholder="0"
                     value={minCardCount}
                     onChange={(e) =>
                       setMinCardCount(
                         e.target.value ? Number(e.target.value) : undefined
                       )
                     }
-                    className="h-8 text-xs"
+                    className="h-9 text-xs"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="maxCount" className="text-[10px]">
-                    Макс. Карт
+                <div className="space-y-1.5">
+                  <Label htmlFor="maxCount" className="text-[11px]">
+                    Макс. карт
                   </Label>
                   <Input
                     id="maxCount"
                     type="number"
+                    placeholder="--"
                     value={maxCardCount}
                     onChange={(e) =>
                       setMaxCardCount(
                         e.target.value ? Number(e.target.value) : undefined
                       )
                     }
-                    className="h-8 text-xs"
+                    className="h-9 text-xs"
                   />
                 </div>
               </div>
@@ -281,10 +348,15 @@ function MarketCreateContent({
                 filterOptions={filterOptions}
               />
             </div>
+
             <div className="space-y-2">
-              <h3 className="text-sm font-medium">
-                Выбранные карты ({selectedCards.length})
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Выбранные карты</h3>
+                <Badge variant="secondary" className="text-[10px]">
+                  <Package className="mr-1 h-3 w-3" />
+                  {selectedCards.length} карт
+                </Badge>
+              </div>
               <SelectedCardsList
                 selectedCards={selectedCards}
                 onClick={onCardSelect}
@@ -294,13 +366,14 @@ function MarketCreateContent({
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
+      <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
         {step === "select" ? (
           <>
             <Button
-              variant="destructive"
+              variant="outline"
               className="w-full"
               onClick={resetSelected}
+              disabled={selectedCards.length === 0}
             >
               Сбросить
             </Button>
@@ -309,13 +382,13 @@ function MarketCreateContent({
               disabled={selectedCards.length === 0}
               onClick={() => setStep("confirm")}
             >
-              Продолжить ({selectedCards.length})
+              Далее ({selectedCards.length})
             </Button>
           </>
         ) : (
           <>
             <Button
-              variant="secondary"
+              variant="outline"
               className="w-full"
               onClick={() => setStep("select")}
             >

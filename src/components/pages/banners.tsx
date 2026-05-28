@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Play } from "lucide-react";
+import { Check, ImageIcon, Play } from "lucide-react";
 
 import { cn, getImageProxyUrl } from "@/lib/utils";
 
@@ -35,70 +35,78 @@ export function BannersPage() {
   const closeDialog = (open: boolean) => !open && setSelected(undefined);
   const onBannerClick = (banner: BannersWithOwners) => () =>
     banner.type === "video" && setSelected(banner);
+
   return (
     <div className="flex h-full flex-col">
-      <Header title={"Фоны"} />
+      <Header title="Фоны" />
 
-      <section className="flex-1 overflow-y-auto px-2 py-4">
-        <div className="grid grid-cols-1 gap-2 md:container md:grid-cols-2 md:gap-4 lg:grid-cols-3">
+      <section className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="grid grid-cols-2 gap-3 md:container md:grid-cols-3 lg:grid-cols-4">
           {query.isLoading
-            ? new Array(6)
-                .fill(null)
-                .map((_, i) => <Skeleton key={i} className="h-56 rounded-lg" />)
+            ? [1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="aspect-[16/10] rounded-xl" />
+              ))
             : query.data?.map((banner) => (
                 <div
                   key={banner.id}
                   className={cn(
-                    "overflow-hidden rounded-lg border bg-card shadow-md",
-                    banner.type === "video" && "cursor-pointer"
+                    "group overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+                    banner.type === "video" &&
+                      "cursor-pointer hover:border-primary/30",
+                    banner.isOwned && "border-green-500/30"
                   )}
                   onClick={onBannerClick(banner)}
                 >
-                  {banner.type === "photo" && (
-                    <div className="relative h-40 w-full overflow-hidden">
+                  <div className="relative aspect-[16/10] w-full overflow-hidden">
+                    {banner.type === "photo" ? (
                       <Image
                         src={getImageProxyUrl(banner.file)}
                         width={320}
-                        height={180}
+                        height={200}
                         alt={banner.name}
                         loading="lazy"
                         className="h-full w-full object-cover"
                       />
-                      {banner.isOwned && (
-                        <Badge className="absolute right-3 top-3">
-                          Ваш фон
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                  {banner.type === "video" && (
-                    <div className="relative h-40 w-full overflow-hidden">
-                      <video
-                        src={banner.file + "#t=0.1"}
-                        preload="metadata"
-                        width={320}
-                        height={180}
-                        playsInline
-                        className="h-full w-full object-cover"
-                      />
-                      {banner.isOwned && (
-                        <Badge className="absolute right-3 top-3">
-                          Ваш фон
-                        </Badge>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Play className="h-12 w-12 opacity-80" />
+                    ) : (
+                      <>
+                        <video
+                          src={banner.file + "#t=0.1"}
+                          preload="metadata"
+                          width={320}
+                          height={200}
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/30">
+                          <div className="rounded-full bg-black/50 p-2">
+                            <Play className="h-5 w-5 text-white" />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {banner.isOwned && (
+                      <div className="absolute right-1.5 top-1.5 rounded-full bg-green-500 p-1">
+                        <Check className="h-2.5 w-2.5 text-white" />
                       </div>
-                    </div>
-                  )}
-
-                  <div className="p-4">
-                    <h3 className="font-semibold">{banner.name}</h3>
+                    )}
+                  </div>
+                  <div className="px-2.5 py-2">
+                    <span className="text-xs font-medium">{banner.name}</span>
                   </div>
                 </div>
               ))}
         </div>
+
+        {!query.isLoading && query.data?.length === 0 && (
+          <div className="flex flex-col items-center gap-4 py-16">
+            <div className="rounded-full bg-muted p-4">
+              <ImageIcon className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <p className="text-sm text-muted-foreground">Нет доступных фонов</p>
+          </div>
+        )}
       </section>
+
       <Dialog open={selected !== undefined} onOpenChange={closeDialog}>
         <DialogContent>
           <DialogHeader>
@@ -109,7 +117,7 @@ export function BannersPage() {
             controls
             width={1280}
             height={720}
-            className="rounded-md md:rounded-lg"
+            className="rounded-lg"
             playsInline
           />
         </DialogContent>

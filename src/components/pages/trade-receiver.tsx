@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { UserIcon } from "lucide-react";
+import { Clock, Loader2, Repeat2, UserIcon } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -70,7 +70,7 @@ export default function TradeReceiverPage() {
         }
       }
       setIsLoading(false);
-    } catch (e) {
+    } catch {
       toast({
         title: "Ошибка",
         description: "Пользователь не найден",
@@ -81,39 +81,58 @@ export default function TradeReceiverPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col gap-4">
+    <main className="flex min-h-screen flex-col">
       <Header
         title="Трейд"
         element={
           <Link
-            href={"/trade/history"}
-            className={buttonVariants({
-              variant: "outline",
-            })}
+            href="/trade/history"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            История трейдов
+            <Clock className="mr-1.5 h-3.5 w-3.5" />
+            История
           </Link>
         }
       />
-      <div className="mb-2 flex items-center space-x-4 px-2">
-        <UserIcon className="ml-2 h-4 w-4 text-muted-foreground" />
-        <Input
-          id="recipient"
-          type="text"
-          placeholder="Введите ид получателя"
-          value={receiver}
-          onChange={(e) => setReceiver(e.target.value)}
-          className="w-full"
-        />
+
+      <div className="flex flex-1 flex-col items-center px-4 pt-16">
+        <div className="mb-6 rounded-full bg-primary/10 p-4">
+          <Repeat2 className="h-10 w-10 text-primary" />
+        </div>
+        <h2 className="mb-2 text-lg font-bold">Отправить трейд</h2>
+        <p className="mb-8 max-w-[280px] text-center text-sm text-muted-foreground">
+          Введите ID получателя, чтобы предложить обмен картами
+        </p>
+
+        <div className="w-full max-w-sm">
+          <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted">
+              <UserIcon className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <Input
+              id="recipient"
+              type="text"
+              placeholder="ID получателя"
+              value={receiver}
+              onChange={(e) => setReceiver(e.target.value)}
+              className="border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleReceiver();
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 flex w-full gap-4 border-t bg-background p-4">
+      <div className="border-t bg-card p-4">
         <Button
           onClick={handleReceiver}
           className="w-full"
-          size={"sm"}
           disabled={!receiver || isLoading || query.isLoading || !query.data}
         >
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : null}
           Продолжить
         </Button>
       </div>

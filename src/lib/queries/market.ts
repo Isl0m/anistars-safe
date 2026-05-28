@@ -1,9 +1,11 @@
 import {
   and,
+  count,
   desc,
   eq,
   getTableColumns,
   inArray,
+  sql,
 } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -35,25 +37,40 @@ export async function getMarketListings() {
 
   if (listings.length === 0) return [];
 
-  const allCards = await db
-    .select({
-      listingId: marketListingCards.listingId,
-      ...cardBaseColumns,
-    })
-    .from(marketListingCards)
-    .where(
-      inArray(
-        marketListingCards.listingId,
-        listings.map((l) => l.id)
-      )
-    )
-    .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId));
+  const listingIds = listings.map((l) => l.id);
+
+  const [allCards, offerCounts] = await Promise.all([
+    db
+      .select({
+        listingId: marketListingCards.listingId,
+        ...cardBaseColumns,
+      })
+      .from(marketListingCards)
+      .where(inArray(marketListingCards.listingId, listingIds))
+      .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId)),
+    db
+      .select({
+        listingId: marketOffers.listingId,
+        total: count(),
+        pending: count(
+          sql`CASE WHEN ${marketOffers.status} = 'pending' THEN 1 END`
+        ),
+      })
+      .from(marketOffers)
+      .where(inArray(marketOffers.listingId, listingIds))
+      .groupBy(marketOffers.listingId),
+  ]);
 
   const cardsByListing = Map.groupBy(allCards, (c) => c.listingId);
+  const offersMap = new Map(
+    offerCounts.map((o) => [o.listingId, { total: o.total, pending: o.pending }])
+  );
 
   return listings.map((listing) => ({
     ...listing,
     cards: cardsByListing.get(listing.id) ?? [],
+    offerCount: offersMap.get(listing.id)?.total ?? 0,
+    pendingOfferCount: offersMap.get(listing.id)?.pending ?? 0,
   }));
 }
 
@@ -101,25 +118,40 @@ export async function getUserMarketListings(userId: string) {
 
   if (listings.length === 0) return [];
 
-  const allCards = await db
-    .select({
-      listingId: marketListingCards.listingId,
-      ...cardBaseColumns,
-    })
-    .from(marketListingCards)
-    .where(
-      inArray(
-        marketListingCards.listingId,
-        listings.map((l) => l.id)
-      )
-    )
-    .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId));
+  const listingIds = listings.map((l) => l.id);
+
+  const [allCards, offerCounts] = await Promise.all([
+    db
+      .select({
+        listingId: marketListingCards.listingId,
+        ...cardBaseColumns,
+      })
+      .from(marketListingCards)
+      .where(inArray(marketListingCards.listingId, listingIds))
+      .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId)),
+    db
+      .select({
+        listingId: marketOffers.listingId,
+        total: count(),
+        pending: count(
+          sql`CASE WHEN ${marketOffers.status} = 'pending' THEN 1 END`
+        ),
+      })
+      .from(marketOffers)
+      .where(inArray(marketOffers.listingId, listingIds))
+      .groupBy(marketOffers.listingId),
+  ]);
 
   const cardsByListing = Map.groupBy(allCards, (c) => c.listingId);
+  const offersMap = new Map(
+    offerCounts.map((o) => [o.listingId, { total: o.total, pending: o.pending }])
+  );
 
   return listings.map((listing) => ({
     ...listing,
     cards: cardsByListing.get(listing.id) ?? [],
+    offerCount: offersMap.get(listing.id)?.total ?? 0,
+    pendingOfferCount: offersMap.get(listing.id)?.pending ?? 0,
   }));
 }
 

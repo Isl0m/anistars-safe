@@ -15,6 +15,7 @@ import {
 } from "./ui/accordion";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
+import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
   Sheet,
@@ -23,8 +24,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-
-import { Input } from "./ui/input";
 
 type Props = {
   filterOptions: FilterOption[];
