@@ -2,6 +2,9 @@ import {
   and,
   eq,
   getTableColumns,
+  isNull,
+  ne,
+  or,
   sql,
 } from "drizzle-orm";
 
@@ -20,6 +23,19 @@ export async function getUser(id: string) {
     .where(eq(tgUsers.id, id))
     .leftJoin(userPasses, eq(userPasses.id, tgUsers.id))
     .then((res) => res[0] ?? null);
+}
+
+export function updateUserPhotoUrl(id: string, photoUrl: string | undefined) {
+  if (!photoUrl) return;
+  return db
+    .update(tgUsers)
+    .set({ photoUrl })
+    .where(
+      and(
+        eq(tgUsers.id, id),
+        or(isNull(tgUsers.photoUrl), ne(tgUsers.photoUrl, photoUrl))
+      )
+    );
 }
 
 export async function getBanners(userId?: string | null) {

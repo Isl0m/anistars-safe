@@ -1,8 +1,10 @@
 import crypto from "crypto";
 
+export type AuthResult = { id: string; photoUrl?: string };
+
 const MAX_AGE_SECONDS = 5 * 60;
 
-function validateTelegramInitData(initDataRaw: string): string | null {
+function validateTelegramInitData(initDataRaw: string): AuthResult | null {
   const botToken = process.env.TG_BOT_TOKEN;
   if (!botToken) return null;
 
@@ -42,13 +44,13 @@ function validateTelegramInitData(initDataRaw: string): string | null {
 
   try {
     const user = JSON.parse(userStr);
-    return String(user.id);
+    return { id: String(user.id), photoUrl: user.photo_url };
   } catch {
     return null;
   }
 }
 
-export function authenticateRequest(request: Request): string | null {
+export function authenticateRequest(request: Request): AuthResult | null {
   const initData = request.headers.get("x-telegram-init-data");
   if (!initData) return null;
   return validateTelegramInitData(initData);

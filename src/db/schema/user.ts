@@ -22,6 +22,7 @@ export const tgUsers = pgTable(
 
     tgName: text("tgName"),
     tgUserName: text("tgUserName"),
+    photoUrl: text("photoUrl"),
 
     coins: integer("coins").default(0).notNull(),
     sparkles: integer("sparkles").default(0).notNull(),

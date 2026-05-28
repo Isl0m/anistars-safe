@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getMarketListing } from "@/lib/queries";
+import { getMarketListing, updateUserPhotoUrl } from "@/lib/queries";
 import { authenticateRequest } from "@/lib/telegram-auth";
 import { addMarketJob } from "@/lib/trade-queue";
 
@@ -8,10 +8,12 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const sellerId = authenticateRequest(request);
-  if (!sellerId) {
+  const auth = authenticateRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
+  const sellerId = auth.id;
+  updateUserPhotoUrl(sellerId, auth.photoUrl);
 
   const { id } = params;
   const listingId = parseInt(id);

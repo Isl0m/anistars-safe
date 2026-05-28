@@ -2,8 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Info, Loader2 } from "lucide-react";
+import {
+  ArrowRightLeft,
+  ChevronLeft,
+  Clock,
+  Eye,
+  Info,
+  Loader2,
+  MessageSquare,
+  ShieldAlert,
+  UserIcon,
+} from "lucide-react";
 
 import { offerStatusMap } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
@@ -11,7 +22,7 @@ import { getImageProxyUrl } from "@/lib/utils";
 import { Card } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
-import { Button } from "@/ui/button";
+import { Button, buttonVariants } from "@/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +37,7 @@ import { FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
+import { UserAvatar } from "../user-avatar";
 
 type MarketListing = {
   id: number;
@@ -45,6 +57,19 @@ type MarketOffer = {
   buyer: User;
   cards: Card[];
 };
+
+function timeAgo(date: Date): string {
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "только что";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} мин. назад`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ч. назад`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} дн. назад`;
+  return new Date(date).toLocaleDateString("ru-RU");
+}
 
 export default function MarketViewPage({ id }: { id: string }) {
   const { tgUser, initDataRaw } = useTelegram();
@@ -71,20 +96,15 @@ export default function MarketViewPage({ id }: { id: string }) {
       setListing(listingData.listing);
       setFilterOptions(filtersData.filterOptions);
 
+      const offersRes = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${id}/offers`
+      );
+      const offersData = await offersRes.json();
+      setOffers(offersData.offers);
+
       if (tgUser) {
         const isSeller = listingData.listing.sellerId === tgUser.id.toString();
-
-        if (isSeller) {
-          const offersRes = await fetch(
-            `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${id}/offers`
-          );
-          const offersData = await offersRes.json();
-          setOffers(offersData.offers);
-        } else {
-          const offersRes = await fetch(
-            `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${id}/offers`
-          );
-          const offersData = await offersRes.json();
+        if (!isSeller) {
           const hasOffer = (offersData.offers as MarketOffer[]).some(
             (o) => o.buyerId === tgUser.id.toString() && o.status === "pending"
           );
@@ -105,10 +125,28 @@ export default function MarketViewPage({ id }: { id: string }) {
   if (isLoading) {
     return (
       <main className="flex min-h-screen flex-col gap-4">
-        <Header title="Загрузка..." />
+        <Header
+          title="Объявление"
+          element={
+            <Button variant="ghost" size="sm" onClick={() => router.back()}>
+              <ChevronLeft className="mr-1 h-4 w-4" /> Назад
+            </Button>
+          }
+        />
         <div className="flex flex-col gap-4 p-4">
-          <Skeleton className="h-64 rounded" />
-          <Skeleton className="h-20 rounded" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="flex flex-col gap-1">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
+            ))}
+          </div>
+          <Skeleton className="h-24 rounded-lg" />
         </div>
       </main>
     );
@@ -117,11 +155,23 @@ export default function MarketViewPage({ id }: { id: string }) {
   if (!listing) {
     return (
       <main className="flex min-h-screen flex-col gap-4">
-        <Header title="Не найдено" />
-        <div className="flex flex-col items-center justify-center p-10">
-          <p>Объявление не найдено или было удалено</p>
-          <Button onClick={() => router.back()} className="mt-4">
-            Назад
+        <Header
+          title="Не найдено"
+          element={
+            <Button variant="ghost" size="sm" onClick={() => router.back()}>
+              <ChevronLeft className="mr-1 h-4 w-4" /> Назад
+            </Button>
+          }
+        />
+        <div className="flex flex-col items-center justify-center gap-4 p-10">
+          <div className="rounded-full bg-muted p-4">
+            <ShieldAlert className="h-10 w-10 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Объявление не найдено или было удалено
+          </p>
+          <Button onClick={() => router.push("/market")}>
+            К маркетплейсу
           </Button>
         </div>
       </main>
@@ -129,6 +179,7 @@ export default function MarketViewPage({ id }: { id: string }) {
   }
 
   const isSeller = tgUser?.id?.toString() === listing.sellerId;
+  const pendingOffers = offers.filter((o) => o.status === "pending");
 
   const handleAcceptOffer = async (offerId: number) => {
     setIsAccepting(true);
@@ -192,7 +243,7 @@ export default function MarketViewPage({ id }: { id: string }) {
       setOffers((prev) =>
         prev.map((o) => (o.id === offerId ? { ...o, status: "cancelled" } : o))
       );
-    } catch (e) {
+    } catch {
       toast({
         title: "Ошибка",
         description: "Не удалось отклонить предложение",
@@ -226,7 +277,7 @@ export default function MarketViewPage({ id }: { id: string }) {
       });
 
       router.push("/market");
-    } catch (e) {
+    } catch {
       toast({
         title: "Ошибка",
         description: "Не удалось отменить объявление",
@@ -247,13 +298,29 @@ export default function MarketViewPage({ id }: { id: string }) {
           </Button>
         }
       />
-      <section className="flex-1 gap-4 overflow-y-auto px-2 py-4 md:container">
-        <div className="flex items-center justify-between border-b pb-2">
-          <div className="flex flex-col">
-            <span className="text-lg font-bold">{listing.seller.name}</span>
-            <span className="text-xs text-muted-foreground">
-              ID Продавца: {listing.sellerId}
-            </span>
+      <section className="flex-1 space-y-4 overflow-y-auto px-3 py-4 pb-24 md:container">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <UserAvatar name={listing.seller.name} photoUrl={listing.seller.photoUrl} size={40} />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold">
+                  {listing.seller.name}
+                </span>
+                {isSeller && (
+                  <Badge
+                    variant="outline"
+                    className="h-4 px-1.5 py-0 text-[9px] text-muted-foreground"
+                  >
+                    Вы
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {timeAgo(listing.createdAt)}
+              </div>
+            </div>
           </div>
           <Badge
             variant={listing.status === "active" ? "default" : "secondary"}
@@ -266,8 +333,14 @@ export default function MarketViewPage({ id }: { id: string }) {
           </Badge>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-md font-semibold">Карты в предложении:</h3>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Карты на обмен</h3>
+            <Badge variant="secondary" className="text-[10px]">
+              <ArrowRightLeft className="mr-1 h-3 w-3" />
+              {listing.cards.length} карт
+            </Badge>
+          </div>
           <ul className="grid grid-cols-4 gap-2">
             {listing.cards.map((card) => (
               <li
@@ -286,8 +359,13 @@ export default function MarketViewPage({ id }: { id: string }) {
         </div>
 
         {listing.filters && (
-          <div className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-semibold">Желаемые карты:</h3>
+          <div className="space-y-2.5 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3.5">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-blue-500" />
+              <h3 className="text-sm font-semibold text-blue-500">
+                Требования к обмену
+              </h3>
+            </div>
             <ListingFilterDisplay
               filters={listing.filters}
               filterOptions={filterOptions}
@@ -296,142 +374,191 @@ export default function MarketViewPage({ id }: { id: string }) {
         )}
 
         {isSeller && listing.status === "active" && (
-          <div className="mt-4">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="w-full"
-              disabled={isCancelling}
-              onClick={handleCancelListing}
-            >
-              {isCancelling ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Отмена...
-                </>
-              ) : (
-                "Отменить объявление"
-              )}
-            </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-full"
+            disabled={isCancelling}
+            onClick={handleCancelListing}
+          >
+            {isCancelling ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Отмена...
+              </>
+            ) : (
+              "Отменить объявление"
+            )}
+          </Button>
+        )}
+
+        {!isSeller && listing.status === "active" && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+            <p className="mb-3 text-sm text-muted-foreground">
+              Предложите свои карты в обмен на карты продавца
+            </p>
+            {buyerHasOffer ? (
+              <Badge
+                variant="secondary"
+                className="mx-auto px-4 py-2 text-sm"
+              >
+                Вы уже отправили предложение
+              </Badge>
+            ) : (
+              <Link
+                href={`/market/${listing.id}/offer`}
+                className={buttonVariants({
+                  size: "lg",
+                  className: "w-full font-bold",
+                })}
+              >
+                Предложить обмен
+              </Link>
+            )}
           </div>
         )}
 
-        {isSeller && offers.length > 0 ? (
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-1">
-              <h3 className="text-lg font-bold">Входящие предложения</h3>
-              <Badge variant="secondary">{offers.length}</Badge>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b pb-2">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-bold">Предложения</h3>
             </div>
-            <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              {pendingOffers.length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
+                >
+                  {pendingOffers.length} ожидает
+                </Badge>
+              )}
+              <Badge variant="secondary" className="text-[10px]">
+                {offers.length} всего
+              </Badge>
+            </div>
+          </div>
+
+          {offers.length === 0 ? (
+            <div className="rounded-xl border border-dashed bg-muted/20 py-8 text-center">
+              <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">
+                {isSeller
+                  ? "Ожидайте предложения от других пользователей"
+                  : "Пока нет предложений по этому объявлению"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
               {offers.map((offer) => {
                 const statusInfo =
                   offerStatusMap[offer.status] ?? offerStatusMap.pending;
                 const isPending = offer.status === "pending";
+                const isMyOffer =
+                  tgUser?.id?.toString() === offer.buyerId;
 
                 return (
                   <div
                     key={offer.id}
-                    className={`space-y-4 rounded-xl border bg-card p-4 shadow-md transition-all ${!isPending ? "opacity-70" : ""}`}
+                    className={`rounded-xl border bg-card shadow-sm transition-opacity ${
+                      !isPending ? "opacity-60" : ""
+                    } ${isMyOffer ? "border-primary/30" : "border-border"}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                          {offer.buyer.name.charAt(0).toUpperCase()}
+                    <div className="p-3">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <UserAvatar name={offer.buyer.name} photoUrl={offer.buyer.photoUrl} size={28} />
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-semibold">
+                                {offer.buyer.name}
+                              </span>
+                              {isMyOffer && (
+                                <Badge
+                                  variant="outline"
+                                  className="h-4 px-1 py-0 text-[9px] text-muted-foreground"
+                                >
+                                  Вы
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Clock className="h-2.5 w-2.5" />
+                              {timeAgo(offer.createdAt)}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold">
-                            {offer.buyer.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(offer.createdAt).toLocaleString("ru-RU", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={statusInfo.className}>
-                        {statusInfo.label}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {offer.cards.map((card) => (
-                        <div
-                          key={card.id}
-                          className="relative aspect-[3/4] overflow-hidden rounded-md border shadow-sm"
+                        <Badge
+                          variant="outline"
+                          className={statusInfo.className}
                         >
-                          <Image
-                            src={getImageProxyUrl(card.image)}
-                            alt={card.name}
-                            fill
-                            className="object-cover"
+                          {statusInfo.label}
+                        </Badge>
+                      </div>
+
+                      <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <ArrowRightLeft className="h-3 w-3" />
+                        {offer.cards.length} карт предложено
+                      </div>
+
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {offer.cards.slice(0, 10).map((card) => (
+                          <div
+                            key={card.id}
+                            className="relative aspect-[3/4] overflow-hidden rounded-md border shadow-sm"
+                          >
+                            <Image
+                              src={getImageProxyUrl(card.image)}
+                              alt={card.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ))}
+                        {offer.cards.length > 10 && (
+                          <div className="relative flex aspect-[3/4] items-center justify-center rounded-md border bg-muted/50 text-xs font-bold text-muted-foreground">
+                            +{offer.cards.length - 10}
+                          </div>
+                        )}
+                      </div>
+
+                      {isSeller && isPending && (
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-8 w-full text-xs"
+                            disabled={isRejecting === offer.id}
+                            onClick={() => handleRejectOffer(offer.id)}
+                          >
+                            {isRejecting === offer.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              "Отклонить"
+                            )}
+                          </Button>
+                          <AcceptOfferDialog
+                            offer={offer}
+                            listingCards={listing.cards}
+                            onAccept={() => handleAcceptOffer(offer.id)}
+                            isLoading={isAccepting}
                           />
                         </div>
-                      ))}
-                    </div>
+                      )}
 
-                    {isPending && (
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="w-full"
-                          disabled={isRejecting === offer.id}
-                          onClick={() => handleRejectOffer(offer.id)}
-                        >
-                          {isRejecting === offer.id ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : null}
-                          Отклонить
-                        </Button>
-                        <AcceptOfferDialog
-                          offer={offer}
-                          listingCards={listing.cards}
-                          onAccept={() => handleAcceptOffer(offer.id)}
-                          isLoading={isAccepting}
-                        />
-                      </div>
-                    )}
+                      {!isSeller && !isMyOffer && (
+                        <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">
+                          <Eye className="h-3 w-3" />
+                          Только просмотр
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        ) : isSeller ? (
-          <div className="mt-8 flex flex-col gap-4 rounded-2xl border border-dashed bg-muted/30 p-8 text-center">
-            <p className="text-sm italic text-muted-foreground">
-              Это ваше объявление. Как только кто-то сделает предложение, оно
-              появится здесь.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-8 flex flex-col gap-4 rounded-2xl border border-dashed bg-muted/30 p-8 text-center">
-            <p className="text-sm italic text-muted-foreground">
-              Вы можете предложить свои карты в обмен на карты продавца.
-            </p>
-
-            {listing.status === "active" &&
-              (buyerHasOffer ? (
-                <Badge
-                  variant="secondary"
-                  className="mx-auto px-4 py-2 text-sm"
-                >
-                  Вы уже предложили обмен
-                </Badge>
-              ) : (
-                <Button
-                  size="lg"
-                  className="w-full font-bold shadow-xl"
-                  onClick={() => router.push(`/market/${listing.id}/offer`)}
-                >
-                  Предложить обмен
-                </Button>
-              ))}
-          </div>
-        )}
+          )}
+        </div>
       </section>
     </div>
   );
@@ -453,7 +580,7 @@ function AcceptOfferDialog({
   return (
     <Dialog onOpenChange={(open) => !open && setStep(1)}>
       <DialogTrigger asChild>
-        <Button className="h-10 w-full font-bold shadow-lg shadow-primary/20">
+        <Button className="h-8 w-full text-xs font-bold shadow-lg shadow-primary/20">
           Принять
         </Button>
       </DialogTrigger>
@@ -465,10 +592,11 @@ function AcceptOfferDialog({
         </DialogHeader>
 
         {step === 1 ? (
-          <div className="space-y-6 py-4">
+          <div className="space-y-5 py-2">
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">
-                Вы отдаете:
+              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-destructive/80">
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+                Вы отдаете ({listingCards.length}):
               </h4>
               <div className="grid grid-cols-5 gap-2">
                 {listingCards.map((card) => (
@@ -487,15 +615,16 @@ function AcceptOfferDialog({
               </div>
             </div>
 
-            <div className="flex justify-center py-2">
+            <div className="flex justify-center">
               <div className="rounded-full bg-muted p-2">
-                <ChevronLeft className="h-6 w-6 rotate-[-90deg]" />
+                <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">
-                Вы получите от {offer.buyer.name}:
+              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-green-600">
+                <UserIcon className="h-3.5 w-3.5" />
+                Вы получите от {offer.buyer.name} ({offer.cards.length}):
               </h4>
               <div className="grid grid-cols-5 gap-2">
                 {offer.cards.map((card) => (
@@ -519,18 +648,18 @@ function AcceptOfferDialog({
             </Button>
           </div>
         ) : (
-          <div className="space-y-6 py-4 text-center">
+          <div className="space-y-5 py-2 text-center">
             <div className="mx-auto w-fit rounded-full bg-yellow-500/10 p-4">
-              <Info className="h-12 w-12 text-yellow-500" />
+              <Info className="h-10 w-10 text-yellow-500" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-bold">Вы уверены?</h3>
+              <h3 className="text-lg font-bold">Вы уверены?</h3>
               <p className="text-sm text-muted-foreground">
                 Это действие необратимо. Карты будут немедленно перенесены между
                 аккаунтами.
               </p>
             </div>
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setStep(1)}
@@ -543,7 +672,14 @@ function AcceptOfferDialog({
                 disabled={isLoading}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
-                {isLoading ? "Обработка..." : "Подтверждаю"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Обработка...
+                  </>
+                ) : (
+                  "Подтверждаю"
+                )}
               </Button>
             </div>
           </div>

@@ -5,14 +5,17 @@ import {
   getMarketListing,
   validateCardsForTrade,
   getMarketOffersForListing,
+  updateUserPhotoUrl,
 } from "@/lib/queries";
 import { authenticateRequest } from "@/lib/telegram-auth";
 
 export async function POST(request: Request) {
-  const buyerId = authenticateRequest(request);
-  if (!buyerId) {
+  const auth = authenticateRequest(request);
+  if (!auth) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
+  const buyerId = auth.id;
+  updateUserPhotoUrl(buyerId, auth.photoUrl);
 
   const body = await request.json();
   const { listingId, cardIds } = body;

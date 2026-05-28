@@ -64,6 +64,10 @@ export const TelegramProvider = ({
         }
         if (lp.initDataRaw) {
           setInitDataRaw(lp.initDataRaw);
+          fetch(`${process.env.NEXT_PUBLIC_URL}/api/user/sync`, {
+            method: "POST",
+            headers: { "x-telegram-init-data": lp.initDataRaw },
+          }).catch(() => {});
         }
       } catch (e) {
         console.error("Error initializing Telegram SDK:", e);
