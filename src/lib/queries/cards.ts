@@ -71,12 +71,13 @@ export async function getUserUniverses(userId: string) {
     .select({
       id: tUniverses.id,
       name: tUniverses.name,
+      type: tUniverses.type,
     })
     .from(cardToTgUser)
     .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .where(eq(cardToTgUser.tgUserId, userId))
-    .groupBy(tUniverses.id, tUniverses.name);
+    .groupBy(tUniverses.id, tUniverses.name, tUniverses.type);
 }
 
 export async function getCardsFullWithFilter(

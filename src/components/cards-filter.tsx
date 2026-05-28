@@ -6,7 +6,12 @@ import { Filter as FilterIcon } from "lucide-react";
 
 import { CardStats } from "@/db/schema/card";
 
-import { Filter, FilterOption, SortOptions } from "./get-filter-options";
+import {
+  Filter,
+  FilterOption,
+  FilterOptionItem,
+  SortOptions,
+} from "./get-filter-options";
 import {
   Accordion,
   AccordionContent,
@@ -15,7 +20,6 @@ import {
 } from "./ui/accordion";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
-import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
   Sheet,
@@ -43,6 +47,7 @@ export default function CardsFilter({
   lockedFilters,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState("Базовые");
   const form = useForm({
     defaultValues: {
       authorIds: initialValues?.authorIds ?? ([] as number[]),
@@ -60,6 +65,75 @@ export default function CardsFilter({
       setOpen(false);
     },
   });
+
+  const hasGroups = (items: FilterOptionItem[]) =>
+    items.some((item) => item.group);
+
+  const getGroupLabels = (items: FilterOptionItem[]) => {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const item of items) {
+      const g = item.group ?? "";
+      if (g && !seen.has(g)) {
+        seen.add(g);
+        labels.push(g);
+      }
+    }
+    return labels;
+  };
+
+  const renderCheckboxItem = (
+    key: string,
+    item: FilterOptionItem,
+    isCategoryLocked: boolean,
+    lockedValues: any
+  ) => {
+    const isItemLocked =
+      isCategoryLocked && (lockedValues as any[]).includes(item.id);
+    const isOtherDisabled = isCategoryLocked && !isItemLocked;
+
+    return (
+      <form.Field
+        key={item.id}
+        name={key as any}
+        children={(field: any) => (
+          <Label
+            htmlFor={`${key}-${item.id}`}
+            className={`flex cursor-pointer p-2 ${
+              isOtherDisabled ? "opacity-50" : ""
+            }`}
+          >
+            <Checkbox
+              id={`${key}-${item.id}`}
+              disabled={isItemLocked || isOtherDisabled}
+              checked={
+                Array.isArray(field.state.value)
+                  ? field.state.value.includes(item.id)
+                  : field.state.value === item.id
+              }
+              onCheckedChange={(checked) => {
+                if (isItemLocked || isOtherDisabled) return;
+                const currentId = item.id;
+                if (checked) {
+                  Array.isArray(field.state.value)
+                    ? field.pushValue(currentId)
+                    : field.setValue(currentId);
+                } else if (Array.isArray(field.state.value)) {
+                  const valueIdx = field.state.value.findIndex(
+                    (value: any) => value === currentId
+                  );
+                  field.removeValue(valueIdx);
+                }
+              }}
+              className="mr-2 h-4 w-4"
+            />
+            {item.name}
+            {isItemLocked && " 🔒"}
+          </Label>
+        )}
+      />
+    );
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -86,33 +160,13 @@ export default function CardsFilter({
           className="mt-4"
         >
           <div className="space-y-3">
-            <div className="space-y-2 px-1">
-              <Label htmlFor="minPrice">Минимальная цена</Label>
-              <form.Field
-                name="minPrice"
-                children={(field) => (
-                  <Input
-                    id="minPrice"
-                    type="number"
-                    placeholder="0"
-                    value={field.state.value ?? ""}
-                    disabled={lockedFilters?.minPrice !== undefined}
-                    onChange={(e) => field.setValue(Number(e.target.value))}
-                  />
-                )}
-              />
-              {lockedFilters?.minPrice !== undefined && (
-                <p className="text-[10px] text-muted-foreground">
-                  🔒 Заблокировано продавцом
-                </p>
-              )}
-            </div>
-
             <Accordion type="multiple">
               {filterOptions.map(({ key, name, items }) => {
                 const lockedValues = lockedFilters?.[key as keyof Filter];
                 const isCategoryLocked =
                   Array.isArray(lockedValues) && lockedValues.length > 0;
+
+                const grouped = hasGroups(items);
 
                 return (
                   <AccordionItem key={key} value={key}>
@@ -127,125 +181,66 @@ export default function CardsFilter({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      {items.slice(0, 7).map(({ id, name }) => {
-                        const isItemLocked =
-                          isCategoryLocked &&
-                          (lockedValues as any[]).includes(id);
-                        const isOtherDisabled =
-                          isCategoryLocked && !isItemLocked;
-
-                        return (
-                          <form.Field
-                            key={id}
-                            name={key}
-                            children={(field) => (
-                              <Label
-                                htmlFor={`${key}-${id}`}
-                                className={`flex cursor-pointer p-2 ${
-                                  isOtherDisabled ? "opacity-50" : ""
+                      {grouped ? (
+                        <div className="space-y-2">
+                          <div className="flex gap-1.5 overflow-x-auto pb-1">
+                            {getGroupLabels(items).map((label) => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => setActiveGroup(label)}
+                                className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                  activeGroup === label
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted text-muted-foreground"
                                 }`}
                               >
-                                <Checkbox
-                                  id={`${key}-${id}`}
-                                  disabled={isItemLocked || isOtherDisabled}
-                                  checked={
-                                    Array.isArray(field.state.value)
-                                      ? // @ts-ignore
-                                        field.state.value.includes(id)
-                                      : field.state.value === id
-                                  }
-                                  onCheckedChange={(checked) => {
-                                    if (isItemLocked || isOtherDisabled) return;
-                                    const currentId = id;
-                                    if (checked) {
-                                      Array.isArray(field.state.value)
-                                        ? field.pushValue(currentId)
-                                        : // @ts-ignore
-                                          field.setValue(currentId);
-                                    } else if (
-                                      Array.isArray(field.state.value)
-                                    ) {
-                                      const valueIdx =
-                                        field.state.value.findIndex(
-                                          (value) => value === currentId
-                                        );
-                                      field.removeValue(valueIdx);
-                                    }
-                                  }}
-                                  className="mr-2 h-4 w-4"
-                                />
-                                {name}
-                                {isItemLocked && " 🔒"}
-                              </Label>
-                            )}
-                          />
-                        );
-                      })}
-                      {items.length > 8 && (
-                        <AccordionItem value={key + "more"}>
-                          <AccordionTrigger>
-                            Показать больше/меньше ({items.length - 7} скрытых)
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            {items.slice(7).map(({ id, name }) => {
-                              const isItemLocked =
-                                isCategoryLocked &&
-                                (lockedValues as any[]).includes(id);
-                              const isOtherDisabled =
-                                isCategoryLocked && !isItemLocked;
-
-                              return (
-                                <form.Field
-                                  key={id}
-                                  name={key}
-                                  children={(field) => (
-                                    <Label
-                                      htmlFor={`${key}-${id}`}
-                                      className={`flex cursor-pointer p-2 ${
-                                        isOtherDisabled ? "opacity-50" : ""
-                                      }`}
-                                    >
-                                      <Checkbox
-                                        id={`${key}-${id}`}
-                                        disabled={
-                                          isItemLocked || isOtherDisabled
-                                        }
-                                        checked={
-                                          Array.isArray(field.state.value)
-                                            ? // @ts-ignore
-                                              field.state.value.includes(id)
-                                            : field.state.value === id
-                                        }
-                                        onCheckedChange={(checked) => {
-                                          if (isItemLocked || isOtherDisabled)
-                                            return;
-                                          const currentId = id;
-                                          if (checked) {
-                                            Array.isArray(field.state.value)
-                                              ? field.pushValue(currentId)
-                                              : // @ts-ignore
-                                                field.setValue(currentId);
-                                          } else if (
-                                            Array.isArray(field.state.value)
-                                          ) {
-                                            const valueIdx =
-                                              field.state.value.findIndex(
-                                                (value) => value === currentId
-                                              );
-                                            field.removeValue(valueIdx);
-                                          }
-                                        }}
-                                        className="mr-2 h-4 w-4"
-                                      />
-                                      {name}
-                                      {isItemLocked && " 🔒"}
-                                    </Label>
-                                  )}
-                                />
-                              );
-                            })}
-                          </AccordionContent>
-                        </AccordionItem>
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          <div>
+                            {items
+                              .filter((item) => item.group === activeGroup)
+                              .map((item) =>
+                                renderCheckboxItem(
+                                  key,
+                                  item,
+                                  isCategoryLocked,
+                                  lockedValues
+                                )
+                              )}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {items.slice(0, 7).map((item) =>
+                            renderCheckboxItem(
+                              key,
+                              item,
+                              isCategoryLocked,
+                              lockedValues
+                            )
+                          )}
+                          {items.length > 8 && (
+                            <AccordionItem value={key + "more"}>
+                              <AccordionTrigger>
+                                Показать больше/меньше ({items.length - 7}{" "}
+                                скрытых)
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                {items.slice(7).map((item) =>
+                                  renderCheckboxItem(
+                                    key,
+                                    item,
+                                    isCategoryLocked,
+                                    lockedValues
+                                  )
+                                )}
+                              </AccordionContent>
+                            </AccordionItem>
+                          )}
+                        </>
                       )}
                     </AccordionContent>
                   </AccordionItem>

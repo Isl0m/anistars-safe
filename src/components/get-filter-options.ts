@@ -18,10 +18,16 @@ export type FilterOptionKey =
   | "techniques"
   | "sort";
 
+export type FilterOptionItem = {
+  id: number | string;
+  name: string;
+  group?: string;
+};
+
 export type FilterOption = {
   key: FilterOptionKey;
   name: string;
-  items: { id: number | string; name: string }[];
+  items: FilterOptionItem[];
 };
 
 export type ListingFilterOptionKey =
@@ -141,16 +147,31 @@ async function fetchBaseData() {
   return Promise.all([getRarities(), getClasses(), getUniverses(), getAuthors()]);
 }
 
+const universeTypeLabels: Record<string, string> = {
+  basic: "Базовые",
+  chromo: "Хромо",
+  event: "Ивентовые",
+  limited: "Лимитированные",
+};
+
 function buildFilterOptions(
   rarities: Awaited<ReturnType<typeof getRarities>>,
   classes: Awaited<ReturnType<typeof getClasses>>,
-  universes: { id: number; name: string }[],
+  universes: { id: number; name: string; type?: string }[],
   authors: Awaited<ReturnType<typeof getAuthors>>
 ): FilterOption[] {
   return [
     { key: "rarityIds", name: "Редкость", items: rarities },
     { key: "classIds", name: "Класс", items: classes },
-    { key: "universeIds", name: "Вселенная", items: universes },
+    {
+      key: "universeIds",
+      name: "Вселенная",
+      items: universes.map((u) => ({
+        id: u.id,
+        name: u.name,
+        group: universeTypeLabels[u.type ?? "basic"] ?? u.type,
+      })),
+    },
     statsOptions,
     typeOptions,
     {

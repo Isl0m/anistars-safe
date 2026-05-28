@@ -112,14 +112,6 @@ export function ListingFilterDisplay({
           ))}
       </div>
       <div className="flex flex-wrap gap-3">
-        {filters.minCardPrice && (
-          <Badge
-            variant="secondary"
-            className="h-5 border-yellow-500/20 bg-yellow-500/10 py-0 text-[10px] text-yellow-700"
-          >
-            Мин. Цена: {filters.minCardPrice}🪙
-          </Badge>
-        )}
         {filters.minCardCount && (
           <Badge
             variant="secondary"
