@@ -10,6 +10,7 @@ import { SelectMultiTrade } from "@/db/schema/trade";
 import { Badge } from "@/ui/badge";
 
 import { Header } from "../header";
+import { UserLink } from "../user-link";
 
 export default function TradeShowPage({
   trade,
@@ -41,14 +42,16 @@ export default function TradeShowPage({
               </Badge>
             )}
           </div>
-          <div className="mb-2 flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-              {trade.senderName.charAt(0).toUpperCase()}
-            </div>
+          <UserLink
+            userId={trade.senderId}
+            name={trade.senderName}
+            size={24}
+            className="mb-2"
+          >
             <span className="text-xs text-muted-foreground">
               {trade.senderName}
             </span>
-          </div>
+          </UserLink>
           <SuggestedCardsList cards={trade.senderCards} />
         </div>
 
@@ -63,14 +66,17 @@ export default function TradeShowPage({
             <UserIcon className="h-3.5 w-3.5" />
             Получено ({trade.receiverCards.length})
           </h4>
-          <div className="mb-2 flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-secondary-foreground">
-              {trade.receiverName.charAt(0).toUpperCase()}
-            </div>
+          <UserLink
+            userId={trade.receiverId}
+            name={trade.receiverName}
+            size={24}
+            avatarClassName="bg-secondary text-secondary-foreground"
+            className="mb-2"
+          >
             <span className="text-xs text-muted-foreground">
               {trade.receiverName}
             </span>
-          </div>
+          </UserLink>
           <SuggestedCardsList cards={trade.receiverCards} />
         </div>
       </div>

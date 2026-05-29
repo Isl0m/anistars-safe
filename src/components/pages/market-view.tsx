@@ -37,7 +37,7 @@ import { FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
-import { UserAvatar } from "../user-avatar";
+import { UserLink } from "../user-link";
 
 type MarketListing = {
   id: number;
@@ -300,8 +300,13 @@ export default function MarketViewPage({ id }: { id: string }) {
       />
       <section className="flex-1 space-y-4 overflow-y-auto px-3 py-4 pb-24 md:container">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <UserAvatar name={listing.seller.name} photoUrl={listing.seller.photoUrl} size={40} />
+          <UserLink
+            userId={listing.sellerId}
+            name={listing.seller.name}
+            photoUrl={listing.seller.photoUrl}
+            size={40}
+            className="gap-3"
+          >
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold">
@@ -321,7 +326,7 @@ export default function MarketViewPage({ id }: { id: string }) {
                 {timeAgo(listing.createdAt)}
               </div>
             </div>
-          </div>
+          </UserLink>
           <Badge
             variant={listing.status === "active" ? "default" : "secondary"}
           >
@@ -466,8 +471,12 @@ export default function MarketViewPage({ id }: { id: string }) {
                   >
                     <div className="p-3">
                       <div className="mb-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <UserAvatar name={offer.buyer.name} photoUrl={offer.buyer.photoUrl} size={28} />
+                        <UserLink
+                          userId={offer.buyerId}
+                          name={offer.buyer.name}
+                          photoUrl={offer.buyer.photoUrl}
+                          size={28}
+                        >
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1.5">
                               <span className="text-sm font-semibold">
@@ -487,7 +496,7 @@ export default function MarketViewPage({ id }: { id: string }) {
                               {timeAgo(offer.createdAt)}
                             </div>
                           </div>
-                        </div>
+                        </UserLink>
                         <Badge
                           variant="outline"
                           className={statusInfo.className}

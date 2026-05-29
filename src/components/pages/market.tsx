@@ -29,6 +29,7 @@ import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { UserAvatar } from "../user-avatar";
+import { UserLink } from "../user-link";
 
 type ListingFilters = {
   classIds?: number[];
@@ -577,7 +578,16 @@ function OffersList({
               <div className="p-3">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <UserAvatar name={offer.listing?.seller.name ?? "?"} photoUrl={offer.listing?.seller.photoUrl} size={32} />
+                    {offer.listing ? (
+                      <UserLink
+                        userId={offer.listing.sellerId}
+                        name={offer.listing.seller.name}
+                        photoUrl={offer.listing.seller.photoUrl}
+                        size={32}
+                      />
+                    ) : (
+                      <UserAvatar name="?" size={32} />
+                    )}
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold leading-tight">
                         {offer.listing?.seller.name ?? "Удалено"}

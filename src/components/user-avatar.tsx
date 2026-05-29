@@ -15,7 +15,10 @@ export function UserAvatar({ name, photoUrl, size = 32, className }: Props) {
   return (
     <div
       className={cn(
-        "relative flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-bold text-primary",
+        "relative flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full font-bold",
+        photoUrl
+          ? "bg-primary/10 text-primary"
+          : "bg-secondary text-secondary-foreground",
         className
       )}
       style={{ width: size, height: size, fontSize: size * 0.375 }}

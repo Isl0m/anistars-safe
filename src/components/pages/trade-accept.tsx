@@ -28,6 +28,7 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
+import { UserLink } from "../user-link";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
@@ -273,17 +274,19 @@ export function AcceptTradePageContent({
         {step === "show" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  {trade.senderName.charAt(0).toUpperCase()}
-                </div>
+              <UserLink
+                userId={trade.senderId}
+                name={trade.senderName}
+                size={40}
+                className="mb-3 gap-3"
+              >
                 <div>
                   <p className="text-sm font-semibold">{trade.senderName}</p>
                   <p className="text-xs text-muted-foreground">
                     предлагает обмен
                   </p>
                 </div>
-              </div>
+              </UserLink>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ArrowRightLeft className="h-3.5 w-3.5" />
                 <span>

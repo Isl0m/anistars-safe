@@ -46,6 +46,7 @@ const navGroups = [
     label: "Профиль",
     items: [
       { name: "Мой профиль", href: "/profile", Icon: User },
+      { name: "Мои карты", href: "/profile/cards", Icon: Grid3X3 },
       { name: "Поиск игроков", href: "/profile/search", Icon: Users },
     ],
   },

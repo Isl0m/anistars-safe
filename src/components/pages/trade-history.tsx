@@ -23,7 +23,7 @@ import { Skeleton } from "@/ui/skeleton";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
-import { UserAvatar } from "../user-avatar";
+import { UserLink } from "../user-link";
 
 function timeAgo(date: Date): string {
   const now = new Date();
@@ -141,12 +141,17 @@ function TradeHistoryCard({ trade }: { trade: TradeHistoryType }) {
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 p-3">
         <div>
-          <div className="mb-2 flex items-center gap-1.5">
-            <UserAvatar name={trade.sender.name} photoUrl={trade.sender.photoUrl} size={24} />
+          <UserLink
+            userId={trade.sender.id}
+            name={trade.sender.name}
+            photoUrl={trade.sender.photoUrl}
+            size={24}
+            className="mb-2 gap-1.5"
+          >
             <span className="truncate text-[11px] font-semibold">
               {trade.sender.name}
             </span>
-          </div>
+          </UserLink>
           <CardPreview cards={trade.senderCards} />
         </div>
 
@@ -155,12 +160,18 @@ function TradeHistoryCard({ trade }: { trade: TradeHistoryType }) {
         </div>
 
         <div>
-          <div className="mb-2 flex items-center justify-end gap-1.5">
+          <UserLink
+            userId={trade.receiver.id}
+            name={trade.receiver.name}
+            photoUrl={trade.receiver.photoUrl}
+            size={24}
+            className="mb-2 flex-row-reverse justify-end gap-1.5"
+            avatarClassName="bg-secondary text-secondary-foreground"
+          >
             <span className="truncate text-[11px] font-semibold">
               {trade.receiver.name}
             </span>
-            <UserAvatar name={trade.receiver.name} photoUrl={trade.receiver.photoUrl} size={24} className="bg-secondary text-secondary-foreground" />
-          </div>
+          </UserLink>
           <CardPreview cards={trade.receiverCards} />
         </div>
       </div>

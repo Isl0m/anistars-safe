@@ -1,5 +1,5 @@
-import { Profile } from "@/components/pages/profile";
+import { ProfileInfo } from "@/components/pages/profile-info";
 
 export default async function ProfilePage() {
-  return <Profile />;
+  return <ProfileInfo />;
 }
