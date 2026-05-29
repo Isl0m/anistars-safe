@@ -27,6 +27,7 @@ import { Filter, FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
@@ -90,6 +91,7 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const { tgUser } = useTelegram();
   const [filter, setFilter] = useState<Filter>();
   const router = useRouter();
+  useTelegramBackButton(`/market/${listingId}`);
 
   const listingQuery = useQuery({
     queryKey: ["market-listing", listingId],

@@ -28,6 +28,7 @@ import { Skeleton } from "@/ui/skeleton";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserAvatar } from "../user-avatar";
 
 type ProfileStats = {
@@ -341,6 +342,7 @@ export function ProfileInfo() {
 
 export function PublicProfileInfo({ userId }: { userId: string }) {
   const { tgUser } = useTelegram();
+  useTelegramBackButton();
 
   const query = useQuery({
     queryKey: ["public-profile", userId],

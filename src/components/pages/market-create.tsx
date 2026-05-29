@@ -25,6 +25,7 @@ import { Header } from "../header";
 import ListingFilter from "../listing-filter";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
@@ -79,6 +80,7 @@ function StepIndicator({
 
 export default function MarketCreatePage() {
   const { tgUser } = useTelegram();
+  useTelegramBackButton("/market");
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({

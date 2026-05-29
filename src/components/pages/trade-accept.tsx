@@ -28,6 +28,7 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
@@ -94,6 +95,7 @@ export default function AcceptTradePage({
   };
 }) {
   const { tgUser } = useTelegram();
+  useTelegramBackButton("/trade");
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({

@@ -3,7 +3,6 @@
 import { ChangeEvent, KeyboardEvent, useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { on, postEvent } from "@telegram-apps/sdk-react";
 import { Calendar, ChevronRight, Crown, Loader2, Search, Users } from "lucide-react";
 
 import { FullCard } from "@/db/schema/card";
@@ -19,6 +18,7 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 type ProfileCardsData = {
@@ -92,15 +92,7 @@ type SearchProfileProps = {
 };
 
 export function SearchProfile({ user }: SearchProfileProps) {
-  const router = useRouter();
-  const { tgUser } = useTelegram();
-  if (tgUser) {
-    postEvent("web_app_setup_back_button", { is_visible: true });
-    on("back_button_pressed", () => {
-      postEvent("web_app_setup_back_button", { is_visible: false });
-      router.replace("/profile/search");
-    });
-  }
+  useTelegramBackButton();
 
   const [filter, setFilter] = useState<Filter>();
 

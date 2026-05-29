@@ -21,6 +21,7 @@ import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { useCardSelect } from "../use-card-select";
 
 function StepIndicator({
@@ -70,6 +71,7 @@ function StepIndicator({
 
 export default function TradePage({ receiver }: { receiver: string }) {
   const { tgUser } = useTelegram();
+  useTelegramBackButton("/trade");
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({

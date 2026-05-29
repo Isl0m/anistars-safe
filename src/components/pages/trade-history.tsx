@@ -23,6 +23,7 @@ import { Skeleton } from "@/ui/skeleton";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 function timeAgo(date: Date): string {
@@ -44,6 +45,7 @@ function timeAgo(date: Date): string {
 
 export function TradeHistory() {
   const { tgUser } = useTelegram();
+  useTelegramBackButton("/trade");
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryType[] | null>(
     null
   );

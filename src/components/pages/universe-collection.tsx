@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { on, postEvent } from "@telegram-apps/sdk-react";
 import { Check } from "lucide-react";
 
 import { cn, getImageProxyUrl } from "@/lib/utils";
@@ -21,6 +18,7 @@ import { Skeleton } from "@/ui/skeleton";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 
 type CardWithOwner = CardType & { isOwned: boolean };
 
@@ -44,22 +42,7 @@ const rarityColors: Record<string, string> = {
 
 export function UniverseCollection({ universeId }: { universeId: number }) {
   const { tgUser } = useTelegram();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!tgUser) return;
-
-    postEvent("web_app_setup_back_button", { is_visible: true });
-
-    const off = on("back_button_pressed", () => {
-      router.replace("/profile/collection");
-    });
-
-    return () => {
-      off();
-      postEvent("web_app_setup_back_button", { is_visible: false });
-    };
-  }, [router, tgUser]);
+  useTelegramBackButton("/profile/collection");
 
   const query = useQuery({
     queryKey: ["universe-collection", universeId],

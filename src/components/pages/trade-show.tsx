@@ -10,6 +10,7 @@ import { SelectMultiTrade } from "@/db/schema/trade";
 import { Badge } from "@/ui/badge";
 
 import { Header } from "../header";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 export default function TradeShowPage({
@@ -22,6 +23,8 @@ export default function TradeShowPage({
     receiverCards: Card[];
   };
 }) {
+  useTelegramBackButton("/trade/history");
+
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
       <Header title="Детали трейда" />

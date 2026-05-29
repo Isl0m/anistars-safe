@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRightLeft,
-  ChevronLeft,
   Clock,
   Eye,
   Info,
@@ -37,6 +36,7 @@ import { FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 type MarketListing = {
@@ -74,6 +74,7 @@ function timeAgo(date: Date): string {
 export default function MarketViewPage({ id }: { id: string }) {
   const { tgUser, initDataRaw } = useTelegram();
   const router = useRouter();
+  useTelegramBackButton("/market");
   const [listing, setListing] = useState<MarketListing | null>(null);
   const [offers, setOffers] = useState<MarketOffer[]>([]);
   const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
@@ -125,14 +126,7 @@ export default function MarketViewPage({ id }: { id: string }) {
   if (isLoading) {
     return (
       <main className="flex min-h-screen flex-col gap-4">
-        <Header
-          title="Объявление"
-          element={
-            <Button variant="ghost" size="sm" onClick={() => router.back()}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Назад
-            </Button>
-          }
-        />
+        <Header title="Объявление" />
         <div className="flex flex-col gap-4 p-4">
           <div className="flex items-center gap-3">
             <Skeleton className="h-10 w-10 rounded-full" />
@@ -155,14 +149,7 @@ export default function MarketViewPage({ id }: { id: string }) {
   if (!listing) {
     return (
       <main className="flex min-h-screen flex-col gap-4">
-        <Header
-          title="Не найдено"
-          element={
-            <Button variant="ghost" size="sm" onClick={() => router.back()}>
-              <ChevronLeft className="mr-1 h-4 w-4" /> Назад
-            </Button>
-          }
-        />
+        <Header title="Не найдено" />
         <div className="flex flex-col items-center justify-center gap-4 p-10">
           <div className="rounded-full bg-muted p-4">
             <ShieldAlert className="h-10 w-10 text-muted-foreground/50" />
@@ -290,14 +277,7 @@ export default function MarketViewPage({ id }: { id: string }) {
 
   return (
     <div className="flex h-full flex-col">
-      <Header
-        title="Объявление"
-        element={
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ChevronLeft className="mr-1 h-4 w-4" /> Назад
-          </Button>
-        }
-      />
+      <Header title="Объявление" />
       <section className="flex-1 space-y-4 overflow-y-auto px-3 py-4 pb-24 md:container">
         <div className="flex items-center justify-between">
           <UserLink
