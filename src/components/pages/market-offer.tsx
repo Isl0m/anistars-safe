@@ -372,14 +372,14 @@ function MarketOfferContent({
         }
       />
 
-      <div className="px-3 pb-1">
+      <div className="px-3 pb-2 pt-3">
         <StepIndicator
           currentStep={step === "select" ? 1 : 2}
           steps={["Выбор карт", "Подтверждение"]}
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-6">
+      <div className="flex-1 overflow-y-auto px-3 pb-6">
         {step === "select" && listing.filters && (
           <div className="mb-3 mt-2 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
             <div className="mb-2 flex items-center gap-2">
