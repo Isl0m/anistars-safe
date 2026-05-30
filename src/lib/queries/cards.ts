@@ -7,6 +7,7 @@ import {
   eq,
   gte,
   inArray,
+  isNotNull,
   notExists,
   Param,
   sql,
@@ -330,6 +331,131 @@ export async function getCardUpgrades() {
       )
     )
     .orderBy(cardUpgradePaths.createdAt);
+}
+
+export const MAX_FAVOURITE_CARDS = 8;
+
+export async function getUserFavouriteCards(userId: string): Promise<FullCard[]> {
+  return db
+    .select({
+      ...cardDetailColumns,
+      techniques: techniquesSql,
+    })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+    .where(
+      and(
+        eq(cardToTgUser.tgUserId, userId),
+        isNotNull(cardToTgUser.favouritePosition)
+      )
+    )
+    .orderBy(asc(cardToTgUser.favouritePosition));
+}
+
+export async function getUserFavouriteCardIds(userId: string) {
+  return db
+    .select({ cardId: cardToTgUser.cardId })
+    .from(cardToTgUser)
+    .where(
+      and(
+        eq(cardToTgUser.tgUserId, userId),
+        isNotNull(cardToTgUser.favouritePosition)
+      )
+    )
+    .orderBy(asc(cardToTgUser.favouritePosition))
+    .then((rows) => rows.map((r) => r.cardId));
+}
+
+export async function addFavouriteCard(userId: string, cardId: string) {
+  const row = await db
+    .select({
+      cardId: cardToTgUser.cardId,
+      favouritePosition: cardToTgUser.favouritePosition,
+    })
+    .from(cardToTgUser)
+    .where(
+      and(eq(cardToTgUser.tgUserId, userId), eq(cardToTgUser.cardId, cardId))
+    )
+    .then((res) => res[0] ?? null);
+
+  if (!row) {
+    return { error: "not_owned" as const };
+  }
+
+  if (row.favouritePosition !== null) {
+    return { error: "already_exists" as const };
+  }
+
+  const favCount = await db
+    .select({ count: count() })
+    .from(cardToTgUser)
+    .where(
+      and(
+        eq(cardToTgUser.tgUserId, userId),
+        isNotNull(cardToTgUser.favouritePosition)
+      )
+    )
+    .then((res) => res[0]?.count ?? 0);
+
+  if (favCount >= MAX_FAVOURITE_CARDS) {
+    return { error: "max_reached" as const };
+  }
+
+  await db
+    .update(cardToTgUser)
+    .set({ favouritePosition: favCount })
+    .where(
+      and(eq(cardToTgUser.tgUserId, userId), eq(cardToTgUser.cardId, cardId))
+    );
+
+  return { success: true };
+}
+
+export async function removeFavouriteCard(userId: string, cardId: string) {
+  await db
+    .update(cardToTgUser)
+    .set({ favouritePosition: null })
+    .where(
+      and(
+        eq(cardToTgUser.tgUserId, userId),
+        eq(cardToTgUser.cardId, cardId)
+      )
+    );
+  return { success: true };
+}
+
+export async function reorderFavouriteCards(userId: string, cardIds: string[]) {
+  if (cardIds.length > MAX_FAVOURITE_CARDS) {
+    return { error: "max_reached" as const };
+  }
+
+  await db
+    .update(cardToTgUser)
+    .set({ favouritePosition: null })
+    .where(
+      and(
+        eq(cardToTgUser.tgUserId, userId),
+        isNotNull(cardToTgUser.favouritePosition)
+      )
+    );
+
+  for (let i = 0; i < cardIds.length; i++) {
+    await db
+      .update(cardToTgUser)
+      .set({ favouritePosition: i })
+      .where(
+        and(
+          eq(cardToTgUser.tgUserId, userId),
+          eq(cardToTgUser.cardId, cardIds[i])
+        )
+      );
+  }
+
+  return { success: true };
 }
 
 export async function getUniverseData(userId: string, universeId: number) {

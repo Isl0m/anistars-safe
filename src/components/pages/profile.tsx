@@ -2,7 +2,12 @@
 
 import { ChangeEvent, KeyboardEvent, useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Calendar, ChevronRight, Crown, Loader2, Search, Users } from "lucide-react";
 
 import { FullCard } from "@/db/schema/card";
@@ -37,7 +42,8 @@ function formatDate(date: Date | string | null | undefined) {
 }
 
 export function Profile() {
-  const { tgUser } = useTelegram();
+  const { tgUser, initDataRaw } = useTelegram();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({
@@ -59,6 +65,58 @@ export function Profile() {
     placeholderData: keepPreviousData,
   });
 
+  const favouritesQuery = useQuery({
+    queryKey: ["favourite-card-ids"],
+    queryFn: async () => {
+      if (!tgUser) return [];
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites?id=${tgUser.id}`
+      );
+      const data = await res.json();
+      return (data.cards as { id: string }[]).map((c) => c.id);
+    },
+    enabled: !!tgUser,
+  });
+
+  const toggleFavourite = useMutation({
+    mutationFn: async (cardId: string) => {
+      const isFav = favouritesQuery.data?.includes(cardId);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites`,
+        {
+          method: isFav ? "DELETE" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(initDataRaw
+              ? { "x-telegram-init-data": initDataRaw }
+              : {}),
+          },
+          body: JSON.stringify({ cardId }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error);
+      }
+      return data.favouriteCardIds as string[];
+    },
+    onSuccess: (newIds) => {
+      queryClient.setQueryData(["favourite-card-ids"], newIds);
+      queryClient.invalidateQueries({ queryKey: ["favourite-cards"] });
+    },
+    onError: (error: Error) => {
+      const messages: Record<string, string> = {
+        max_reached: "Достигнут лимит избранных карт (8)",
+        not_owned: "Вы не владеете этой картой",
+      };
+      toast({
+        title: "Ошибка",
+        description: messages[error.message] ?? "Не удалось обновить избранное",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFilterChange = (data: Filter) => {
     setFilter(data);
   };
@@ -78,7 +136,11 @@ export function Profile() {
       />
       <section className="flex-1 overflow-y-auto">
         {query.data ? (
-          <CardsList cards={query.data.cards} />
+          <CardsList
+            cards={query.data.cards}
+            favouriteCardIds={favouritesQuery.data}
+            onToggleFavourite={(cardId) => toggleFavourite.mutate(cardId)}
+          />
         ) : (
           <CardsListSkeleton />
         )}

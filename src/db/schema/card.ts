@@ -57,6 +57,7 @@ export const cardToTgUser = pgTable("CardToTgUser", {
     .notNull()
     .references(() => tgUsers.id, { onDelete: "cascade" }),
   isLocked: boolean("isLocked").notNull().default(false),
+  favouritePosition: integer("favouritePosition"),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 

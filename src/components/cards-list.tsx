@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { Star } from "lucide-react";
 
 import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 
@@ -20,7 +21,17 @@ import {
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
-export function CardsList({ cards }: { cards: FullCard[] }) {
+type CardsListProps = {
+  cards: FullCard[];
+  favouriteCardIds?: string[];
+  onToggleFavourite?: (cardId: string) => void;
+};
+
+export function CardsList({
+  cards,
+  favouriteCardIds,
+  onToggleFavourite,
+}: CardsListProps) {
   const cardsPerPage = 16;
   const [page, setPage] = useState(1);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
@@ -157,9 +168,33 @@ export function CardsList({ cards }: { cards: FullCard[] }) {
               </div>
             </div>
           )}
-          <DrawerFooter>
+          <DrawerFooter className="flex-row gap-2">
+            {onToggleFavourite && selectedCard !== null && (
+              <Button
+                variant={
+                  favouriteCardIds?.includes(pageCards[selectedCard].id)
+                    ? "default"
+                    : "outline"
+                }
+                className="flex-1 gap-2"
+                onClick={() => onToggleFavourite(pageCards[selectedCard].id)}
+              >
+                <Star
+                  className={cn(
+                    "h-4 w-4",
+                    favouriteCardIds?.includes(pageCards[selectedCard].id) &&
+                      "fill-current"
+                  )}
+                />
+                {favouriteCardIds?.includes(pageCards[selectedCard].id)
+                  ? "В избранном"
+                  : "В избранное"}
+              </Button>
+            )}
             <DrawerClose asChild onClick={closeDrawer}>
-              <Button variant="outline">Закрыть</Button>
+              <Button variant="outline" className="flex-1">
+                Закрыть
+              </Button>
             </DrawerClose>
           </DrawerFooter>
         </DrawerContent>
