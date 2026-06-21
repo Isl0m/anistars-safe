@@ -29,6 +29,11 @@ export const tgUsers = pgTable(
     tries: integer("tries").default(3).notNull(),
     event: integer("event").default(0).notNull(),
     astrals: integer("astrals").default(0).notNull(),
+
+    customEmojiId: text("customEmojiId"),
+    emojiFileId: text("emojiFileId"),
+    emojiPackId: integer("emojiPackId"),
+
     referrals: integer("referrals").default(0).notNull(),
     universes: integer("universes")
       .array()
