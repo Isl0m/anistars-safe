@@ -25,30 +25,46 @@ type CardsListProps = {
   cards: FullCard[];
   favouriteCardIds?: string[];
   onToggleFavourite?: (cardId: string) => void;
+  total?: number;
+  page?: number;
+  onPageChange?: (page: number) => void;
 };
 
 export function CardsList({
   cards,
   favouriteCardIds,
   onToggleFavourite,
+  total,
+  page: controlledPage,
+  onPageChange,
 }: CardsListProps) {
   const cardsPerPage = 16;
-  const [page, setPage] = useState(1);
+  const isServerPaginated =
+    total !== undefined &&
+    controlledPage !== undefined &&
+    onPageChange !== undefined;
+
+  const [internalPage, setInternalPage] = useState(1);
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
 
-  const maxPage = Math.ceil(cards.length / cardsPerPage);
+  const page = isServerPaginated ? controlledPage! : internalPage;
+  const totalCount = isServerPaginated ? total! : cards.length;
+  const maxPage = Math.ceil(totalCount / cardsPerPage);
+
   useEffect(() => {
-    if (page !== 1 && maxPage < page) {
-      setPage(1);
+    if (!isServerPaginated && page !== 1 && maxPage < page) {
+      setInternalPage(1);
     }
-  }, [page, maxPage]);
+  }, [isServerPaginated, page, maxPage]);
 
-  const cardsLeft = cards.length - page * cardsPerPage;
-  const skip = (page - 1) * cardsPerPage;
-  const pageCards = cards.slice(skip, skip + cardsPerPage);
+  const cardsLeft = totalCount - page * cardsPerPage;
+  const pageCards = isServerPaginated
+    ? cards
+    : cards.slice((page - 1) * cardsPerPage, page * cardsPerPage);
 
-  const handleChangePage = (page: number) => {
-    setPage(page);
+  const handleChangePage = (next: number) => {
+    if (isServerPaginated) onPageChange!(next);
+    else setInternalPage(next);
   };
 
   const parseTechnique = (technique: Technique) => {

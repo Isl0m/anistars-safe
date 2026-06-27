@@ -1,55 +1,23 @@
-type InlineButton = {
-  text: string;
-  web_app?: { url: string };
-  callback_data?: string;
-};
+import { unstable_cache } from "next/cache";
+import { Api } from "grammy";
+import type { UserFromGetMe } from "grammy/types";
 
-export async function sendTelegramMessage(
-  chatId: string,
-  text: string,
-  buttons?: InlineButton[][]
-) {
-  const BOT_TOKEN = process.env.TG_BOT_TOKEN!;
-  const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+let _api: Api | undefined;
 
-  try {
-    const response = await fetch(TELEGRAM_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: "HTML",
-        reply_markup: {
-          inline_keyboard: buttons,
-        },
-      }),
-    });
-    return response.json();
-  } catch (error) {
-    console.error("Error sending Telegram message:", error);
+export function getApi(): Api {
+  if (!_api) {
+    const token = process.env.TG_BOT_TOKEN;
+    if (!token) throw new Error("TG_BOT_TOKEN is not set");
+    _api = new Api(token);
   }
+  return _api;
 }
 
-type GetMeResponse = {
-  ok: boolean;
-  result: {
-    id: number;
-    is_bot: boolean;
-    first_name: string;
-    username: string;
-  };
-};
-
-export async function getMe(): Promise<GetMeResponse> {
-  const BOT_TOKEN = process.env.TG_BOT_TOKEN!;
-  const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}/getMe`;
-
-  const response = await fetch(TELEGRAM_API);
-  return response.json();
-}
+export const getMe = unstable_cache(
+  async (): Promise<UserFromGetMe> => getApi().getMe(),
+  ["telegram-get-me"],
+  { revalidate: 86400 }
+);
 
 export function getProfileLink(
   botUsername: string,

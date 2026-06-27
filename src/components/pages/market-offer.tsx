@@ -26,6 +26,8 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
+import { useApi } from "../use-api";
+import { useFilterOptions } from "../use-filter-options";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { useCardSelect } from "../use-card-select";
@@ -92,6 +94,7 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const [filter, setFilter] = useState<Filter>();
   const router = useRouter();
   useTelegramBackButton(`/market/${listingId}`);
+  const { data: filterData } = useFilterOptions();
 
   const listingQuery = useQuery({
     queryKey: ["market-listing", listingId],
@@ -139,19 +142,17 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
       const userCards = (await cardsResponse.json()) as {
         cards: FullCard[];
         user: UserExtended;
-        filterOptions: FilterOption[];
       };
 
       return {
         cards: userCards.cards,
         user: userCards.user,
-        filterOptions: userCards.filterOptions,
         initialFilter: initialFilter,
       };
     },
   });
 
-  if (listingQuery.isLoading || cardsQuery.isLoading) {
+  if (listingQuery.isLoading || cardsQuery.isLoading || !filterData) {
     return (
       <main className="flex min-h-screen flex-col gap-4">
         <Header title="Загрузка..." />
@@ -160,7 +161,7 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
     );
   }
 
-  if (listingQuery.data && cardsQuery.data) {
+  if (listingQuery.data && cardsQuery.data && filterData) {
     const lockedFilters: Partial<Filter> = {
       rarityIds: listingQuery.data.filters?.rarityIds?.length
         ? listingQuery.data.filters.rarityIds
@@ -186,7 +187,7 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
           listing={listingQuery.data}
           user={cardsQuery.data.user}
           cards={cardsQuery.data.cards}
-          filterOptions={cardsQuery.data.filterOptions}
+          filterOptions={filterData.filterOptions}
           setFilters={setFilter}
           initialFilter={cardsQuery.data.initialFilter}
           filter={filter}
@@ -227,7 +228,7 @@ function MarketOfferContent({
   filter?: Filter;
   lockedFilters: Partial<Filter>;
 }) {
-  const { initDataRaw } = useTelegram();
+  const api = useApi();
   const [page, setPage] = useState(1);
   const cardsPerPage = 16;
   const router = useRouter();
@@ -269,25 +270,13 @@ function MarketOfferContent({
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/offers`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-telegram-init-data": initDataRaw ?? "",
-          },
-          body: JSON.stringify({
-            listingId: listing.id,
-            cardIds: selectedCards.map((c) => c.id),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error || "Failed to create offer");
-      }
+      await api("/api/market/offers", {
+        method: "POST",
+        body: {
+          listingId: listing.id,
+          cardIds: selectedCards.map((c) => c.id),
+        },
+      });
 
       toast({
         title: "Предложение отправлено",
@@ -296,13 +285,10 @@ function MarketOfferContent({
 
       router.push("/market");
     } catch (e) {
-      const message =
-        e instanceof Error && e.message !== "Failed to create offer"
-          ? e.message
-          : "Не удалось отправить предложение";
       toast({
         title: "Ошибка",
-        description: message,
+        description:
+          e instanceof Error ? e.message : "Не удалось отправить предложение",
         variant: "destructive",
       });
     } finally {

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const isOwner = auth?.id === param.value;
 
   const [stats, banner] = await Promise.all([
-    getUserProfileStats(param.value),
+    getUserProfileStats(param.value, isOwner),
     getUserBanner(user.bannerId),
   ]);
 
@@ -37,10 +37,7 @@ export async function GET(request: Request) {
     },
     stats: {
       totalCards: stats.totalCards,
-      totalValue: 0,
-      completedTrades: stats.completedTrades,
-      activeListings: 0,
-      completedSales: 0,
+      totalValue: stats.totalValue,
     },
     banner,
   });

@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { InlineKeyboard } from "grammy";
 import { z } from "zod";
 
-import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
-import { addTradeCards, getUser, updateTrade } from "@/lib/queries";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { getApi, getMe, getProfileLink } from "@/lib/bot";
+import {
+  fulfillTradeWithCards,
+  getTrade,
+  getUser,
+  validateCardsForTrade,
+} from "@/lib/queries";
 
 const updateTradeSchema = z.object({
   tradeId: z.number(),
@@ -12,51 +19,58 @@ const updateTradeSchema = z.object({
 export type UpdateTradeType = z.infer<typeof updateTradeSchema>;
 
 export async function POST(request: Request) {
-  const res = await request.json();
-  const parsedData = updateTradeSchema.safeParse(res);
-  if (!parsedData.success)
-    return NextResponse.json(
-      { error: "Data schema not correct" },
-      {
-        status: 400,
-      }
-    );
-  const { data } = parsedData;
-  try {
-    const [trade] = await updateTrade(data.tradeId, {
-      cost: data.cost,
-      status: "fulfilled",
-    });
-    const receiver = await getUser(trade.receiverId);
-    const me = await getMe();
-    await addTradeCards(trade.id, data.cardIds, false);
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
-    await sendTelegramMessage(
-      trade.senderId,
-      `${getProfileLink(me.result.username, receiver.id, receiver.name)} предлагает вам трейд`,
-      [
-        [
-          {
-            text: "Посмотреть",
-            web_app: {
-              url: `${process.env.HOST_URL}/trade/show?tradeId=${trade.id}`,
-            },
-          },
-        ],
-        [
-          {
-            text: "Подтвердить",
-            callback_data: `acceptMultiTrade,${trade.id}`,
-          },
-        ],
-      ]
+  const parsed = updateTradeSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return errorResponse("Data schema not correct", 400);
+  }
+  const { tradeId, cardIds, cost } = parsed.data;
+
+  const trade = await getTrade(tradeId);
+  if (!trade) {
+    return errorResponse("Trade not found", 404);
+  }
+  // Only the receiver can accept, and only while the trade is still pending.
+  if (trade.receiverId !== userId) {
+    return errorResponse("Forbidden", 403);
+  }
+  if (trade.status !== "pending") {
+    return errorResponse("Trade is not pending", 400);
+  }
+
+  const validation = await validateCardsForTrade(cardIds, userId);
+  if (!validation.ok) {
+    return errorResponse(validation.error, validation.status);
+  }
+
+  try {
+    const updated = await fulfillTradeWithCards(
+      tradeId,
+      cost,
+      validation.cardIds
     );
-    return NextResponse.json(trade);
+    const [receiver, me] = await Promise.all([
+      getUser(updated.receiverId),
+      getMe(),
+    ]);
+    const reply_markup = new InlineKeyboard()
+      .webApp(
+        "Посмотреть",
+        `${process.env.HOST_URL}/trade/show?tradeId=${updated.id}`
+      )
+      .row()
+      .text("Подтвердить", `acceptMultiTrade,${updated.id}`);
+    await getApi().sendMessage(
+      updated.senderId,
+      `${getProfileLink(me.username, receiver.id, receiver.name)} предлагает вам трейд`,
+      { parse_mode: "HTML", reply_markup }
+    );
+    return NextResponse.json(updated);
   } catch (e) {
-    console.log(e);
-    return NextResponse.json(
-      { error: "Something went wrong" },
-      { status: 500 }
-    );
+    console.error("trade update failed:", e);
+    return errorResponse("Something went wrong", 500);
   }
 }

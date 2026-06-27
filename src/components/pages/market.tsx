@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
   Clock,
@@ -17,8 +18,6 @@ import {
 import { listingStatusMap, offerStatusMap } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
 
-import { Card } from "@/db/schema/card";
-import { User } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
 import { Skeleton } from "@/ui/skeleton";
@@ -27,50 +26,20 @@ import { toast } from "@/ui/use-toast";
 
 import { Header } from "../header";
 import CardsPagination from "../pagination";
+import { useApi } from "../use-api";
 import { useTelegram } from "../telegram-provider";
+import {
+  MarketListingSummary,
+  marketKeys,
+  UserMarketOffer,
+  useMarketListings,
+  useUserMarketListings,
+  useUserMarketOffers,
+} from "../use-market";
 import { UserAvatar } from "../user-avatar";
 import { UserLink } from "../user-link";
 
-type ListingFilters = {
-  classIds?: number[];
-  rarityIds?: number[];
-  universeIds?: number[];
-  type?: string[];
-  stats?: string[];
-  minCardPrice?: number;
-  minCardCount?: number;
-  maxCardCount?: number;
-};
-
-type MarketListing = {
-  id: number;
-  sellerId: string;
-  status: string;
-  createdAt: Date;
-  filters: ListingFilters | null;
-  seller: User;
-  cards: Card[];
-  offerCount: number;
-  pendingOfferCount: number;
-};
-
-type UserOffer = {
-  id: number;
-  listingId: number;
-  buyerId: string;
-  status: string;
-  createdAt: Date;
-  cards: Card[];
-  listing: {
-    id: number;
-    sellerId: string;
-    status: string;
-    seller: User;
-    cards: Card[];
-  } | null;
-};
-
-function timeAgo(date: Date): string {
+function timeAgo(date: string | Date): string {
   const now = new Date();
   const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return "только что";
@@ -84,74 +53,39 @@ function timeAgo(date: Date): string {
 }
 
 export default function MarketPage() {
-  const { tgUser, initDataRaw } = useTelegram();
-  const [listings, setListings] = useState<MarketListing[]>([]);
-  const [userListings, setUserListings] = useState<MarketListing[]>([]);
-  const [userOffers, setUserOffers] = useState<UserOffer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tgUser } = useTelegram();
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const userId = tgUser?.id?.toString();
+
+  const { data: listings = [], isLoading: listingsLoading } =
+    useMarketListings();
+  const { data: userListings = [], isLoading: userListingsLoading } =
+    useUserMarketListings(userId);
+  const { data: userOffers = [], isLoading: userOffersLoading } =
+    useUserMarketOffers(userId);
+
+  const isLoading =
+    listingsLoading || (!!userId && (userListingsLoading || userOffersLoading));
+
   const [activeTab, setActiveTab] = useState("all");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_URL}/api/market/listings`
-        );
-        const data = await res.json();
-        setListings(data.listings);
-
-        if (tgUser) {
-          const [userRes, offersRes] = await Promise.all([
-            fetch(
-              `${process.env.NEXT_PUBLIC_URL}/api/market/user-listings?id=${tgUser.id.toString()}`
-            ),
-            fetch(
-              `${process.env.NEXT_PUBLIC_URL}/api/market/user-offers?id=${tgUser.id.toString()}`
-            ),
-          ]);
-          const userData = await userRes.json();
-          const offersData = await offersRes.json();
-          setUserListings(userData.listings);
-          setUserOffers(offersData.offers);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [tgUser]);
-
   const handleCancelOffer = async (offerId: number) => {
-    if (!tgUser) return;
+    if (!userId) return;
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/offers/cancel`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-telegram-init-data": initDataRaw ?? "",
-          },
-          body: JSON.stringify({ offerId }),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to cancel offer");
+      await api("/api/market/offers/cancel", {
+        method: "POST",
+        body: { offerId },
+      });
 
       toast({
         title: "Отменено",
         description: "Предложение отменено",
       });
 
-      setUserOffers((prev) =>
-        prev.map((o) =>
-          o.id === offerId ? { ...o, status: "cancelled" } : o
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: marketKeys.userOffers(userId) });
+      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
     } catch {
       toast({
         title: "Ошибка",
@@ -162,7 +96,6 @@ export default function MarketPage() {
   };
 
   const isMyTab = activeTab === "my";
-  const isOffersTab = activeTab === "offers";
   const currentListings = isMyTab ? userListings : listings;
   const [page, setPage] = useState(1);
   const cardsPerPage = 10;
@@ -278,7 +211,7 @@ function ListingCard({
   showStatus,
   isOwn,
 }: {
-  listing: MarketListing;
+  listing: MarketListingSummary;
   showStatus: boolean;
   isOwn: boolean;
 }) {
@@ -402,7 +335,7 @@ function ListingsList({
   showStatus,
   currentUserId,
 }: {
-  listings: MarketListing[];
+  listings: MarketListingSummary[];
   isLoading: boolean;
   page: number;
   cardsLeft: number;
@@ -493,7 +426,7 @@ function OffersList({
   handleChangePage,
   onCancel,
 }: {
-  offers: UserOffer[];
+  offers: UserMarketOffer[];
   isLoading: boolean;
   page: number;
   cardsLeft: number;

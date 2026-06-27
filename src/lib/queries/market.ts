@@ -1,3 +1,4 @@
+import { revalidateTag, unstable_cache } from "next/cache";
 import {
   and,
   count,
@@ -19,22 +20,25 @@ import {
   MarketOfferStatus,
 } from "@/db/schema/market";
 import { tgUsers } from "@/db/schema/user";
-import { cardBaseColumns } from "./shared";
+import { cardPreviewColumns, userPublicColumns } from "./shared";
 
-export async function getMarketListings() {
-  const listingColumns = getTableColumns(marketListings);
-  const sellerColumns = getTableColumns(tgUsers);
+const MARKET_LISTINGS_TAG = "market-listings";
 
-  const listings = await db
+// Base listing select joined to its public seller fields. Callers add the
+// WHERE / ORDER BY they need before awaiting.
+function baseListingsQuery() {
+  return db
     .select({
-      ...listingColumns,
-      seller: sellerColumns,
+      ...getTableColumns(marketListings),
+      seller: userPublicColumns,
     })
     .from(marketListings)
-    .where(eq(marketListings.status, "active"))
-    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
-    .orderBy(desc(marketListings.createdAt));
+    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id));
+}
 
+// Attaches each listing's card previews and offer counts in two batched
+// queries (avoids an N+1 over the listings).
+async function attachCardsAndOffers<T extends { id: number }>(listings: T[]) {
   if (listings.length === 0) return [];
 
   const listingIds = listings.map((l) => l.id);
@@ -43,7 +47,7 @@ export async function getMarketListings() {
     db
       .select({
         listingId: marketListingCards.listingId,
-        ...cardBaseColumns,
+        ...cardPreviewColumns,
       })
       .from(marketListingCards)
       .where(inArray(marketListingCards.listingId, listingIds))
@@ -74,24 +78,35 @@ export async function getMarketListings() {
   }));
 }
 
-export async function getMarketListing(id: number) {
-  const listingColumns = getTableColumns(marketListings);
-  const sellerColumns = getTableColumns(tgUsers);
+export async function getMarketListings() {
+  const listings = await baseListingsQuery()
+    .where(eq(marketListings.status, "active"))
+    .orderBy(desc(marketListings.createdAt));
 
-  const listing = await db
-    .select({
-      ...listingColumns,
-      seller: sellerColumns,
-    })
-    .from(marketListings)
+  return attachCardsAndOffers(listings);
+}
+
+// The public marketplace feed is read far more often than it changes, so we
+// cache it and let mutation routes bust it via revalidateMarketListings().
+export const getCachedMarketListings = unstable_cache(
+  getMarketListings,
+  ["market-listings"],
+  { revalidate: 30, tags: [MARKET_LISTINGS_TAG] }
+);
+
+export function revalidateMarketListings() {
+  revalidateTag(MARKET_LISTINGS_TAG);
+}
+
+export async function getMarketListing(id: number) {
+  const listing = await baseListingsQuery()
     .where(eq(marketListings.id, id))
-    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
     .then((res) => res[0]);
 
   if (!listing) return null;
 
   const cards = await db
-    .select(cardBaseColumns)
+    .select(cardPreviewColumns)
     .from(marketListingCards)
     .where(eq(marketListingCards.listingId, id))
     .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId));
@@ -102,67 +117,31 @@ export async function getMarketListing(id: number) {
   };
 }
 
-export async function getUserMarketListings(userId: string) {
-  const listingColumns = getTableColumns(marketListings);
-  const sellerColumns = getTableColumns(tgUsers);
-
-  const listings = await db
-    .select({
-      ...listingColumns,
-      seller: sellerColumns,
-    })
+// Listing row only (status / sellerId / filters) for authorization checks in
+// mutation routes that don't need the joined seller or cards.
+export async function getMarketListingMeta(id: number) {
+  const [listing] = await db
+    .select()
     .from(marketListings)
+    .where(eq(marketListings.id, id));
+  return listing ?? null;
+}
+
+export async function getUserMarketListings(userId: string) {
+  const listings = await baseListingsQuery()
     .where(eq(marketListings.sellerId, userId))
-    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
     .orderBy(desc(marketListings.createdAt));
 
-  if (listings.length === 0) return [];
-
-  const listingIds = listings.map((l) => l.id);
-
-  const [allCards, offerCounts] = await Promise.all([
-    db
-      .select({
-        listingId: marketListingCards.listingId,
-        ...cardBaseColumns,
-      })
-      .from(marketListingCards)
-      .where(inArray(marketListingCards.listingId, listingIds))
-      .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId)),
-    db
-      .select({
-        listingId: marketOffers.listingId,
-        total: count(),
-        pending: count(
-          sql`CASE WHEN ${marketOffers.status} = 'pending' THEN 1 END`
-        ),
-      })
-      .from(marketOffers)
-      .where(inArray(marketOffers.listingId, listingIds))
-      .groupBy(marketOffers.listingId),
-  ]);
-
-  const cardsByListing = Map.groupBy(allCards, (c) => c.listingId);
-  const offersMap = new Map(
-    offerCounts.map((o) => [o.listingId, { total: o.total, pending: o.pending }])
-  );
-
-  return listings.map((listing) => ({
-    ...listing,
-    cards: cardsByListing.get(listing.id) ?? [],
-    offerCount: offersMap.get(listing.id)?.total ?? 0,
-    pendingOfferCount: offersMap.get(listing.id)?.pending ?? 0,
-  }));
+  return attachCardsAndOffers(listings);
 }
 
 export async function getMarketOffersForListing(listingId: number) {
   const offerColumns = getTableColumns(marketOffers);
-  const buyerColumns = getTableColumns(tgUsers);
 
   const offers = await db
     .select({
       ...offerColumns,
-      buyer: buyerColumns,
+      buyer: userPublicColumns,
     })
     .from(marketOffers)
     .where(eq(marketOffers.listingId, listingId))
@@ -174,7 +153,7 @@ export async function getMarketOffersForListing(listingId: number) {
   const allCards = await db
     .select({
       offerId: marketOfferCards.offerId,
-      ...cardBaseColumns,
+      ...cardPreviewColumns,
     })
     .from(marketOfferCards)
     .where(
@@ -193,14 +172,33 @@ export async function getMarketOffersForListing(listingId: number) {
   }));
 }
 
+// Targeted existence check — avoids loading every offer + its cards just to
+// see whether this buyer already has a pending offer on the listing.
+export async function hasPendingOfferFromBuyer(
+  listingId: number,
+  buyerId: string
+) {
+  const [existing] = await db
+    .select({ id: marketOffers.id })
+    .from(marketOffers)
+    .where(
+      and(
+        eq(marketOffers.listingId, listingId),
+        eq(marketOffers.buyerId, buyerId),
+        eq(marketOffers.status, "pending")
+      )
+    )
+    .limit(1);
+  return !!existing;
+}
+
 export async function getUserMarketOffers(userId: string) {
   const offerColumns = getTableColumns(marketOffers);
-  const buyerColumns = getTableColumns(tgUsers);
 
   const offers = await db
     .select({
       ...offerColumns,
-      buyer: buyerColumns,
+      buyer: userPublicColumns,
     })
     .from(marketOffers)
     .where(eq(marketOffers.buyerId, userId))
@@ -216,25 +214,18 @@ export async function getUserMarketOffers(userId: string) {
     db
       .select({
         offerId: marketOfferCards.offerId,
-        ...cardBaseColumns,
+        ...cardPreviewColumns,
       })
       .from(marketOfferCards)
       .where(inArray(marketOfferCards.offerId, offerIds))
       .innerJoin(tCards, eq(tCards.id, marketOfferCards.cardId)),
 
-    db
-      .select({
-        ...getTableColumns(marketListings),
-        seller: getTableColumns(tgUsers),
-      })
-      .from(marketListings)
-      .where(inArray(marketListings.id, listingIds))
-      .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id)),
+    baseListingsQuery().where(inArray(marketListings.id, listingIds)),
 
     db
       .select({
         listingId: marketListingCards.listingId,
-        ...cardBaseColumns,
+        ...cardPreviewColumns,
       })
       .from(marketListingCards)
       .where(inArray(marketListingCards.listingId, listingIds))
@@ -304,23 +295,30 @@ export async function getMarketOffer(offerId: number) {
   return offer ?? null;
 }
 
-export async function validateCardsForTrade(cardIds: string[], userId: string) {
+export type CardValidationResult =
+  | { ok: true; cardIds: string[] }
+  | { ok: false; error: string; status: 400 | 403 };
+
+export async function validateCardsForTrade(
+  cardIds: string[],
+  userId: string
+): Promise<CardValidationResult> {
   const uniqueCardIds = [...new Set(cardIds)];
   if (uniqueCardIds.length !== cardIds.length) {
-    return { error: "Duplicate card IDs", status: 400 as const };
+    return { ok: false, error: "Duplicate card IDs", status: 400 };
   }
 
   const owned = await verifyCardOwnership(uniqueCardIds, userId);
   if (owned.length !== uniqueCardIds.length) {
-    return { error: "You don't own all selected cards", status: 403 as const };
+    return { ok: false, error: "You don't own all selected cards", status: 403 };
   }
 
   const lockedCards = owned.filter((c) => c.isLocked);
   if (lockedCards.length > 0) {
-    return { error: "Some cards are locked", status: 403 as const };
+    return { ok: false, error: "Some cards are locked", status: 403 };
   }
 
-  return { cardIds: uniqueCardIds };
+  return { ok: true, cardIds: uniqueCardIds };
 }
 
 export function updateMarketOfferStatus(

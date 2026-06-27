@@ -9,11 +9,7 @@ import {
 } from "drizzle-orm";
 
 import { db } from "@/db";
-import {
-  Card,
-  tCards,
-  tRarities,
-} from "@/db/schema/card";
+import { Card, tCards, tRarities } from "@/db/schema/card";
 import {
   InsertMultiTrade,
   multiTradeCards,
@@ -22,6 +18,7 @@ import {
   tradeLogs,
 } from "@/db/schema/trade";
 import { tgUsers, User } from "@/db/schema/user";
+
 import { cardBaseColumns } from "./shared";
 
 export async function getTradeWithSenderCards(id: number) {
@@ -73,41 +70,47 @@ export async function getTradeFull(id: number) {
     .then((res) => res[0]);
   if (!trade) return;
 
-  const senderCards = await db
-    .select({
-      ...cardBaseColumns,
-      rarity: tRarities.name,
-    })
-    .from(multiTradeCards)
-    .where(
-      and(
-        eq(multiTradeCards.tradeId, id),
-        eq(multiTradeCards.isSenderCard, true)
+  const [senderCards, receiverCards] = await Promise.all([
+    db
+      .select({
+        ...cardBaseColumns,
+        rarity: tRarities.name,
+      })
+      .from(multiTradeCards)
+      .where(
+        and(
+          eq(multiTradeCards.tradeId, id),
+          eq(multiTradeCards.isSenderCard, true)
+        )
       )
-    )
-    .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId));
-
-  const receiverCards = await db
-    .select({
-      ...cardBaseColumns,
-      rarity: tRarities.name,
-    })
-    .from(multiTradeCards)
-    .where(
-      and(
-        eq(multiTradeCards.tradeId, id),
-        eq(multiTradeCards.isSenderCard, false)
+      .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId)),
+    db
+      .select({
+        ...cardBaseColumns,
+        rarity: tRarities.name,
+      })
+      .from(multiTradeCards)
+      .where(
+        and(
+          eq(multiTradeCards.tradeId, id),
+          eq(multiTradeCards.isSenderCard, false)
+        )
       )
-    )
-    .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId));
+      .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
+      .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId)),
+  ]);
 
   return { ...trade, senderCards, receiverCards };
 }
 
-export function createTrade(data: InsertMultiTrade) {
-  return db.insert(multiTrades).values(data).returning();
+// Lightweight trade row for authorization checks (sender/receiver/status).
+export async function getTrade(id: number) {
+  const [trade] = await db
+    .select()
+    .from(multiTrades)
+    .where(eq(multiTrades.id, id));
+  return trade ?? null;
 }
 
 export function updateTrade(id: number, data: Partial<SelectMultiTrade>) {
@@ -122,14 +125,50 @@ export function removeTrade(id: number) {
   return db.delete(multiTrades).where(eq(multiTrades.id, id)).returning();
 }
 
-export function addTradeCards(
-  tradeId: number,
-  cardIds: string[],
-  isSenderCard: boolean
+// Creates the trade and its sender cards atomically so a failed card insert
+// can't leave an empty trade behind.
+export async function createTradeWithCards(
+  data: InsertMultiTrade,
+  cardIds: string[]
 ) {
-  return db
-    .insert(multiTradeCards)
-    .values(cardIds.map((cardId) => ({ tradeId, cardId, isSenderCard })));
+  return db.transaction(async (tx) => {
+    const [trade] = await tx.insert(multiTrades).values(data).returning();
+    await tx
+      .insert(multiTradeCards)
+      .values(
+        cardIds.map((cardId) => ({
+          tradeId: trade.id,
+          cardId,
+          isSenderCard: true,
+        }))
+      );
+    return trade;
+  });
+}
+
+// Marks the trade fulfilled and records the receiver's cards atomically.
+export async function fulfillTradeWithCards(
+  id: number,
+  cost: number,
+  cardIds: string[]
+) {
+  return db.transaction(async (tx) => {
+    const [trade] = await tx
+      .update(multiTrades)
+      .set({ cost, status: "fulfilled" })
+      .where(eq(multiTrades.id, id))
+      .returning();
+    await tx
+      .insert(multiTradeCards)
+      .values(
+        cardIds.map((cardId) => ({
+          tradeId: id,
+          cardId,
+          isSenderCard: false,
+        }))
+      );
+    return trade;
+  });
 }
 
 export type TradeHistory = {
@@ -243,8 +282,10 @@ async function getSingleTradeUserHistory(id: string) {
 }
 
 export async function userTradeHistory(userId: string) {
-  const singleTrades = await getSingleTradeUserHistory(userId);
-  const multiTrades = await getMultiTradeUserHistory(userId);
+  const [singleTrades, multiTrades] = await Promise.all([
+    getSingleTradeUserHistory(userId),
+    getMultiTradeUserHistory(userId),
+  ]);
   return [...singleTrades, ...multiTrades].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );

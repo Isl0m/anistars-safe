@@ -1,42 +1,32 @@
 import { NextResponse } from "next/server";
 import {
-  getMarketListings,
+  getCachedMarketListings,
   createMarketListing,
   addMarketListingCards,
   validateCardsForTrade,
-  updateUserPhotoUrl,
+  revalidateMarketListings,
 } from "@/lib/queries";
-import { authenticateRequest } from "@/lib/telegram-auth";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
 
 export async function GET() {
-  const listings = await getMarketListings();
+  const listings = await getCachedMarketListings();
   return NextResponse.json({ listings });
 }
 
 export async function POST(request: Request) {
-  const auth = authenticateRequest(request);
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-  }
-  const sellerId = auth.id;
-  updateUserPhotoUrl(sellerId, auth.photoUrl);
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const sellerId = authResult.auth.id;
 
-  const body = await request.json();
-  const { cardIds, filters } = body;
+  const { cardIds, filters } = await request.json();
 
   if (!cardIds || cardIds.length === 0) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
-    );
+    return errorResponse("Missing required fields", 400);
   }
 
   const validation = await validateCardsForTrade(cardIds, sellerId);
-  if ("error" in validation) {
-    return NextResponse.json(
-      { error: validation.error },
-      { status: validation.status }
-    );
+  if (!validation.ok) {
+    return errorResponse(validation.error, validation.status);
   }
 
   const [listing] = await createMarketListing({
@@ -46,6 +36,8 @@ export async function POST(request: Request) {
   });
 
   await addMarketListingCards(listing.id, validation.cardIds);
+
+  revalidateMarketListings();
 
   return NextResponse.json({ listing });
 }

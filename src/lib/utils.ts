@@ -18,11 +18,12 @@ export function prettyNumbers(data: number) {
 }
 
 const GCS_ASSET_BASE = "https://storage.googleapis.com/anistars";
-const IMAGE_ASSET_BASE =
-  process.env.NEXT_PUBLIC_IMAGE_ASSET_BASE ??
-  (process.env.NODE_ENV === "production"
-    ? "http://127.0.0.1:8080/assets"
-    : GCS_ASSET_BASE);
+// const IMAGE_ASSET_BASE =
+//   process.env.NEXT_PUBLIC_IMAGE_ASSET_BASE ??
+//   (process.env.NODE_ENV === "production"
+//     ? "http://127.0.0.1:8080/assets"
+//     : GCS_ASSET_BASE);
+const IMAGE_ASSET_BASE = GCS_ASSET_BASE;
 
 function replaceAssetBase(originalUrl: string, assetBase: string) {
   if (!originalUrl) return "";

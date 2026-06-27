@@ -22,7 +22,9 @@ export async function getUser(id: string) {
   return db
     .select({
       ...userColumns,
-      isPremium: userPasses.isPremium || false,
+      isPremium: sql<boolean>`COALESCE(${userPasses.isPremium}, false)`.mapWith(
+        Boolean
+      ),
     })
     .from(tgUsers)
     .where(eq(tgUsers.id, id))
@@ -43,17 +45,30 @@ export function updateUserPhotoUrl(id: string, photoUrl: string | undefined) {
     );
 }
 
-export async function getUserProfileStats(id: string) {
+export async function getUserProfileStats(id: string, full = true) {
+  const cardStatsQuery = db
+    .select({
+      totalCards: count(cardToTgUser.cardId),
+      totalValue: sum(tCards.price).mapWith(Number),
+    })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+    .where(eq(cardToTgUser.tgUserId, id))
+    .then((res) => res[0]);
+
+  if (!full) {
+    const cardStats = await cardStatsQuery;
+    return {
+      totalCards: cardStats?.totalCards ?? 0,
+      totalValue: cardStats?.totalValue ?? 0,
+      completedTrades: 0,
+      activeListings: 0,
+      completedSales: 0,
+    };
+  }
+
   const [cardStats, tradeCount, marketStats] = await Promise.all([
-    db
-      .select({
-        totalCards: count(cardToTgUser.cardId),
-        totalValue: sum(tCards.price).mapWith(Number),
-      })
-      .from(cardToTgUser)
-      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
-      .where(eq(cardToTgUser.tgUserId, id))
-      .then((res) => res[0]),
+    cardStatsQuery,
 
     db
       .select({ count: count() })
@@ -97,27 +112,17 @@ export async function getUserBanner(bannerId: number) {
     .then((res) => res[0] ?? null);
 }
 
-export async function getBanners(userId?: string | null) {
-  const bannerColumns = getTableColumns(banners);
-  if (!userId) {
-    return db
-      .select({
-        ...bannerColumns,
-        isOwned: sql<boolean>`false`,
-      })
-      .from(banners)
-      .where(eq(banners.isPrivate, false))
-      .orderBy(banners.id);
-  }
+export async function getBanners() {
   return db
-    .select({
-      ...bannerColumns,
-      isOwned: sql<boolean>`CASE WHEN ${userBanners.bannerId} IS NOT NULL THEN TRUE ELSE FALSE END`,
-    })
+    .select()
     .from(banners)
-    .leftJoin(
-      userBanners,
-      and(eq(banners.id, userBanners.bannerId), eq(userBanners.userId, userId))
-    )
-    .where(eq(banners.isPrivate, false));
+    .where(eq(banners.isPrivate, false))
+    .orderBy(banners.id);
+}
+
+export async function getUserBanners(userId: string) {
+  return db
+    .select({ bannerId: userBanners.bannerId })
+    .from(userBanners)
+    .where(eq(userBanners.userId, userId));
 }

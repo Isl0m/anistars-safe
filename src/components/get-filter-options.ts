@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import {
   getAuthors,
   getClasses,
@@ -143,9 +145,12 @@ const listingTypeOptions: ListingFilterOption = {
   items: typeOptions.items,
 };
 
-async function fetchBaseData() {
-  return Promise.all([getRarities(), getClasses(), getUniverses(), getAuthors()]);
-}
+const fetchBaseData = unstable_cache(
+  async () =>
+    Promise.all([getRarities(), getClasses(), getUniverses(), getAuthors()]),
+  ["filter-base-data"],
+  { revalidate: 3600, tags: ["filter-options"] }
+);
 
 const universeTypeLabels: Record<string, string> = {
   basic: "Базовые",

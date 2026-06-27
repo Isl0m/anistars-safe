@@ -20,9 +20,10 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
+import { useApi } from "../use-api";
+import { useCardSelect } from "../use-card-select";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
-import { useCardSelect } from "../use-card-select";
 
 function StepIndicator({
   currentStep,
@@ -75,7 +76,7 @@ export default function TradePage({ receiver }: { receiver: string }) {
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({
-    queryKey: ["trade-cards", filter],
+    queryKey: ["trade-cards", tgUser?.id, receiver, filter],
     queryFn: async () => {
       if (!tgUser) return;
       const response = await fetch(
@@ -152,6 +153,7 @@ function TradePageContent({
 
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const router = useRouter();
+  const api = useApi();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const maxCardsPerTrade = user.isPremium ? 10 : 5;
@@ -178,25 +180,27 @@ function TradePageContent({
     }
 
     const data: CreateTradeType = {
-      senderId: user.id,
       receiverId: receiver,
       cardIds: selectedCards.map((c) => c.id),
     };
 
-    await fetch(`${process.env.NEXT_PUBLIC_URL}/api/trade/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    toast({
-      title: "Трейд отправлен",
-      description: `Трейд ${selectedCards.length} карт отправлен`,
-    });
-
-    router.push(`/trade`);
+    try {
+      await api("/api/trade/create", { method: "POST", body: data });
+      toast({
+        title: "Трейд отправлен",
+        description: `Трейд ${selectedCards.length} карт отправлен`,
+      });
+      router.push(`/trade`);
+    } catch (e) {
+      toast({
+        title: "Ошибка",
+        description:
+          e instanceof Error ? e.message : "Не удалось отправить трейд",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

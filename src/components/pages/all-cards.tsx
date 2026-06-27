@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { FullCard } from "@/db/schema/card";
 
@@ -11,31 +15,60 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 
+const PAGE_SIZE = 16;
+const DEFAULT_FILTER = { sort: "createdAt-desc" } as Filter;
+
+export type CardsPageData = { cards: FullCard[]; total: number };
+
 type Props = {
   title: string;
   filterOptions: FilterOption[];
+  initialCards?: CardsPageData;
 };
 
-export function CardsPage({ title, filterOptions }: Props) {
+function buildCardsUrl(filter: Filter, page: number) {
+  const params = new URLSearchParams({ page: String(page) });
+  params.set("filter", JSON.stringify(filter));
+  return `${process.env.NEXT_PUBLIC_URL}/api/cards?${params.toString()}`;
+}
+
+async function fetchCards(
+  filter: Filter,
+  page: number
+): Promise<CardsPageData> {
+  const res = await fetch(buildCardsUrl(filter, page));
+  return res.json();
+}
+
+export function CardsPage({ title, filterOptions, initialCards }: Props) {
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>();
+  const [page, setPage] = useState(1);
+
+  const isDefaultView = !filter;
+  const effectiveFilter = filter ?? DEFAULT_FILTER;
 
   const query = useQuery({
-    queryKey: ["cards", filter],
-    queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/cards`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(filter ?? { sort: "createdAt-desc" }),
-      });
-      return (await response.json()).cards as Promise<FullCard[]>;
-    },
+    queryKey: ["cards", filter, page],
+    queryFn: () => fetchCards(effectiveFilter, page),
     placeholderData: keepPreviousData,
+    initialData: isDefaultView && page === 1 ? initialCards : undefined,
   });
+
+  const total = query.data?.total ?? 0;
+  const hasNextPage = page * PAGE_SIZE < total;
+
+  useEffect(() => {
+    if (!hasNextPage) return;
+    queryClient.prefetchQuery({
+      queryKey: ["cards", filter, page + 1],
+      queryFn: () => fetchCards(filter ?? DEFAULT_FILTER, page + 1),
+    });
+  }, [queryClient, filter, page, hasNextPage]);
 
   const handleFilterChange = (data: Filter) => {
     setFilter(data);
+    setPage(1);
   };
 
   return (
@@ -51,7 +84,16 @@ export function CardsPage({ title, filterOptions }: Props) {
         }
       />
 
-      {query.data ? <CardsList cards={query.data} /> : <CardsListSkeleton />}
+      {query.data ? (
+        <CardsList
+          cards={query.data.cards}
+          total={query.data.total}
+          page={page}
+          onPageChange={setPage}
+        />
+      ) : (
+        <CardsListSkeleton />
+      )}
     </>
   );
 }

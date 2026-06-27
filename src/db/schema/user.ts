@@ -69,6 +69,9 @@ export const tgUsers = pgTable(
     lastActivityAt: timestamp("lastActivityAt", {
       withTimezone: true,
     }),
+    emojiUpdatedAt: timestamp("emojiUpdatedAt", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("createdAt").defaultNow(),
   },
   (table) => {

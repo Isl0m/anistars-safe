@@ -1,38 +1,48 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
-import { getUser, updateTrade } from "@/lib/queries";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { getApi, getMe, getProfileLink } from "@/lib/bot";
+import { getTrade, getUser, updateTrade } from "@/lib/queries";
 
 const deleteTradeSchema = z.object({
   id: z.number(),
 });
 
 export async function DELETE(request: Request) {
-  const res = await request.json();
-  const parsedData = deleteTradeSchema.safeParse(res);
-  if (!parsedData.success)
-    return NextResponse.json(
-      { error: "Data schema not correct" },
-      {
-        status: 400,
-      }
-    );
-  const { data } = parsedData;
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
+
+  const parsed = deleteTradeSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return errorResponse("Data schema not correct", 400);
+  }
+  const { id } = parsed.data;
+
+  const trade = await getTrade(id);
+  if (!trade) {
+    return errorResponse("Trade not found", 404);
+  }
+  // Only a participant of the trade may cancel it.
+  if (trade.senderId !== userId && trade.receiverId !== userId) {
+    return errorResponse("Forbidden", 403);
+  }
+
   try {
-    const [trade] = await updateTrade(data.id, { status: "cancelled" });
-    const receiver = await getUser(trade.receiverId);
-    const me = await getMe();
-    await sendTelegramMessage(
-      trade.senderId,
-      `⚠️ Трейд с ${getProfileLink(me.result.username, receiver.id, receiver.name)} был отменен`
+    const [updated] = await updateTrade(id, { status: "cancelled" });
+    const [receiver, me] = await Promise.all([
+      getUser(updated.receiverId),
+      getMe(),
+    ]);
+    await getApi().sendMessage(
+      updated.senderId,
+      `⚠️ Трейд с ${getProfileLink(me.username, receiver.id, receiver.name)} был отменен`,
+      { parse_mode: "HTML" }
     );
-    return NextResponse.json(trade);
+    return NextResponse.json(updated);
   } catch (e) {
-    console.log(e);
-    return NextResponse.json(
-      { error: "Something went wrong" },
-      { status: 500 }
-    );
+    console.error("trade cancel failed:", e);
+    return errorResponse("Something went wrong", 500);
   }
 }

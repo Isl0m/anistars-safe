@@ -8,7 +8,14 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Calendar, ChevronRight, Crown, Loader2, Search, Users } from "lucide-react";
+import {
+  Calendar,
+  ChevronRight,
+  Crown,
+  Loader2,
+  Search,
+  Users,
+} from "lucide-react";
 
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
@@ -20,8 +27,10 @@ import { toast } from "@/ui/use-toast";
 import CardsFilter from "../cards-filter";
 import { CardsList } from "../cards-list";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filter-options";
+import { Filter } from "../get-filter-options";
 import { Header } from "../header";
+import { useApi } from "../use-api";
+import { useFilterOptions } from "../use-filter-options";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
@@ -29,7 +38,6 @@ import { UserLink } from "../user-link";
 type ProfileCardsData = {
   cards: FullCard[];
   user: UserExtended;
-  filterOptions: FilterOption[];
 };
 
 function formatDate(date: Date | string | null | undefined) {
@@ -42,9 +50,11 @@ function formatDate(date: Date | string | null | undefined) {
 }
 
 export function Profile() {
-  const { tgUser, initDataRaw } = useTelegram();
+  const { tgUser } = useTelegram();
+  const api = useApi();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>();
+  const { data: filterData } = useFilterOptions();
 
   const query = useQuery({
     queryKey: ["profile-cards", filter],
@@ -70,35 +80,24 @@ export function Profile() {
     queryFn: async () => {
       if (!tgUser) return [];
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites?id=${tgUser.id}`
+        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites?id=${tgUser.id}&ids=1`
       );
       const data = await res.json();
-      return (data.cards as { id: string }[]).map((c) => c.id);
+      return data.cardIds as string[];
     },
-    enabled: !!tgUser,
   });
 
   const toggleFavourite = useMutation({
     mutationFn: async (cardId: string) => {
       const isFav = favouritesQuery.data?.includes(cardId);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites`,
+      const data = await api<{ favouriteCardIds: string[] }>(
+        "/api/user/favourites",
         {
           method: isFav ? "DELETE" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(initDataRaw
-              ? { "x-telegram-init-data": initDataRaw }
-              : {}),
-          },
-          body: JSON.stringify({ cardId }),
+          body: { cardId },
         }
       );
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error);
-      }
-      return data.favouriteCardIds as string[];
+      return data.favouriteCardIds;
     },
     onSuccess: (newIds) => {
       queryClient.setQueryData(["favourite-card-ids"], newIds);
@@ -126,9 +125,9 @@ export function Profile() {
       <Header
         title={query.data?.user.name ?? "Мои карты"}
         element={
-          query.data ? (
+          filterData ? (
             <CardsFilter
-              filterOptions={query.data.filterOptions}
+              filterOptions={filterData.filterOptions}
               setFilters={handleFilterChange}
             />
           ) : undefined
@@ -150,13 +149,16 @@ export function Profile() {
 }
 
 type SearchProfileProps = {
-  user: UserExtended | (Omit<UserExtended, "isPremium"> & { isPremium: boolean | null });
+  user:
+    | UserExtended
+    | (Omit<UserExtended, "isPremium"> & { isPremium: boolean | null });
 };
 
 export function SearchProfile({ user }: SearchProfileProps) {
   useTelegramBackButton();
 
   const [filter, setFilter] = useState<Filter>();
+  const { data: filterData } = useFilterOptions();
 
   const cardsQuery = useQuery({
     queryKey: ["others-profile-cards", user.id, filter],
@@ -183,9 +185,9 @@ export function SearchProfile({ user }: SearchProfileProps) {
       <Header
         title="Профиль игрока"
         element={
-          cardsQuery.data ? (
+          filterData ? (
             <CardsFilter
-              filterOptions={cardsQuery.data.filterOptions}
+              filterOptions={filterData.filterOptions}
               setFilters={handleFilterChange}
             />
           ) : undefined

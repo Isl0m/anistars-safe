@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Grid3X3,
   Heart,
@@ -78,6 +78,12 @@ function isNavActive(pathname: string, href: string) {
 
 export function Header({ title = "AniStars", element }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) return;
+    allHrefs.forEach((href) => router.prefetch(href));
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b bg-card px-3 py-2.5">
@@ -85,7 +91,7 @@ export function Header({ title = "AniStars", element }: Props) {
         <h1 className="text-lg font-bold">{title}</h1>
         <div className="flex items-center gap-2">
           {element}
-          <Sheet>
+          <Sheet onOpenChange={handleOpenChange}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"

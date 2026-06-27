@@ -81,11 +81,17 @@ export async function getUserUniverses(userId: string) {
     .groupBy(tUniverses.id, tUniverses.name, tUniverses.type);
 }
 
-export async function getCardsFullWithFilter(
-  filter?: Filter
-): Promise<FullCard[]> {
-  const { filters, order } = getSQLFilters(filter);
+export const CARDS_PAGE_SIZE = 16;
 
+export type PaginatedCards = {
+  cards: FullCard[];
+  total: number;
+};
+
+// Full card rows joined to their rarity/universe/class/author + techniques.
+// Callers add their own WHERE / ORDER BY. Two bases: one starting from the
+// catalog (all cards) and one from a user's owned cards.
+function cardDetailSelect() {
   return db
     .select({
       ...cardDetailColumns,
@@ -95,18 +101,10 @@ export async function getCardsFullWithFilter(
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
-    .where(and(...filters))
-    .orderBy(order);
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
 }
 
-export async function getAuthors() {
-  return db.select().from(tAuthors);
-}
-
-export async function getUserCardsWithFilter(id: string, filter?: Filter) {
-  const { filters, order } = getSQLFilters(filter);
-
+function userCardDetailSelect() {
   return db
     .select({
       ...cardDetailColumns,
@@ -117,7 +115,37 @@ export async function getUserCardsWithFilter(id: string, filter?: Filter) {
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
     .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
     .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId));
+}
+
+export async function getCardsFullWithFilter(
+  filter?: Filter,
+  page = 1,
+  pageSize = CARDS_PAGE_SIZE
+): Promise<PaginatedCards> {
+  const { filters, order } = getSQLFilters(filter);
+  const where = and(...filters);
+
+  const [cards, totalRows] = await Promise.all([
+    cardDetailSelect()
+      .where(where)
+      .orderBy(order)
+      .limit(pageSize)
+      .offset((Math.max(page, 1) - 1) * pageSize),
+    db.select({ value: count() }).from(tCards).where(where),
+  ]);
+
+  return { cards, total: totalRows[0]?.value ?? 0 };
+}
+
+export async function getAuthors() {
+  return db.select().from(tAuthors);
+}
+
+export async function getUserCardsWithFilter(id: string, filter?: Filter) {
+  const { filters, order } = getSQLFilters(filter);
+
+  return userCardDetailSelect()
     .where(and(eq(cardToTgUser.tgUserId, id), ...filters))
     .orderBy(order);
 }
@@ -128,16 +156,7 @@ export async function getUserMissingCardsWithFilter(
 ) {
   const { filters, order } = getSQLFilters(filter);
 
-  return db
-    .select({
-      ...cardDetailColumns,
-      techniques: techniquesSql,
-    })
-    .from(tCards)
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+  return cardDetailSelect()
     .where(
       and(
         notExists(
@@ -157,7 +176,7 @@ export async function getUserMissingCardsWithFilter(
     .orderBy(order);
 }
 
-function getSQLFilters(filter?: Filter) {
+function buildCardFilters(filter?: Filter): (SQL | undefined)[] {
   const filters: (SQL | undefined)[] = [];
   if (filter?.rarityIds && filter.rarityIds.length > 0)
     filters.push(inArray(tCards.rarityId, filter.rarityIds));
@@ -199,6 +218,12 @@ function getSQLFilters(filter?: Filter) {
             AND t."type" = ANY(${new Param(filter.techniques)})
         )`);
   }
+
+  return filters;
+}
+
+function getSQLFilters(filter?: Filter) {
+  const filters = buildCardFilters(filter);
 
   let order: SQL = desc(sql`${tCards.power} + ${tCards.stamina} / 2`);
   switch (filter?.sort) {
@@ -242,17 +267,7 @@ export async function getUserCardsDifferenceWithFilter(
   const { filters, order } = getSQLFilters(filter);
   const secondUserCard = aliasedTable(cardToTgUser, "secondUserCard");
 
-  return db
-    .select({
-      ...cardDetailColumns,
-      techniques: techniquesSql,
-    })
-    .from(cardToTgUser)
-    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+  return userCardDetailSelect()
     .where(
       and(
         ...filters,
@@ -335,18 +350,10 @@ export async function getCardUpgrades() {
 
 export const MAX_FAVOURITE_CARDS = 8;
 
-export async function getUserFavouriteCards(userId: string): Promise<FullCard[]> {
-  return db
-    .select({
-      ...cardDetailColumns,
-      techniques: techniquesSql,
-    })
-    .from(cardToTgUser)
-    .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
-    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
-    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
-    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
-    .innerJoin(tAuthors, eq(tAuthors.id, tCards.authorId))
+export async function getUserFavouriteCards(
+  userId: string
+): Promise<FullCard[]> {
+  return userCardDetailSelect()
     .where(
       and(
         eq(cardToTgUser.tgUserId, userId),
@@ -383,11 +390,11 @@ export async function addFavouriteCard(userId: string, cardId: string) {
     .then((res) => res[0] ?? null);
 
   if (!row) {
-    return { error: "not_owned" as const };
+    return { ok: false as const, error: "not_owned" as const };
   }
 
   if (row.favouritePosition !== null) {
-    return { error: "already_exists" as const };
+    return { ok: false as const, error: "already_exists" as const };
   }
 
   const favCount = await db
@@ -402,7 +409,7 @@ export async function addFavouriteCard(userId: string, cardId: string) {
     .then((res) => res[0]?.count ?? 0);
 
   if (favCount >= MAX_FAVOURITE_CARDS) {
-    return { error: "max_reached" as const };
+    return { ok: false as const, error: "max_reached" as const };
   }
 
   await db
@@ -412,7 +419,7 @@ export async function addFavouriteCard(userId: string, cardId: string) {
       and(eq(cardToTgUser.tgUserId, userId), eq(cardToTgUser.cardId, cardId))
     );
 
-  return { success: true };
+  return { ok: true as const };
 }
 
 export async function removeFavouriteCard(userId: string, cardId: string) {
@@ -430,32 +437,42 @@ export async function removeFavouriteCard(userId: string, cardId: string) {
 
 export async function reorderFavouriteCards(userId: string, cardIds: string[]) {
   if (cardIds.length > MAX_FAVOURITE_CARDS) {
-    return { error: "max_reached" as const };
+    return { ok: false as const, error: "max_reached" as const };
   }
 
-  await db
-    .update(cardToTgUser)
-    .set({ favouritePosition: null })
-    .where(
-      and(
-        eq(cardToTgUser.tgUserId, userId),
-        isNotNull(cardToTgUser.favouritePosition)
-      )
-    );
-
-  for (let i = 0; i < cardIds.length; i++) {
-    await db
+  // Run as one transaction so a partial failure can't leave the user with their
+  // favourites half-cleared. Positions are assigned in a single bulk CASE
+  // update instead of one round-trip per card.
+  await db.transaction(async (tx) => {
+    await tx
       .update(cardToTgUser)
-      .set({ favouritePosition: i })
+      .set({ favouritePosition: null })
       .where(
         and(
           eq(cardToTgUser.tgUserId, userId),
-          eq(cardToTgUser.cardId, cardIds[i])
+          isNotNull(cardToTgUser.favouritePosition)
         )
       );
-  }
 
-  return { success: true };
+    if (cardIds.length > 0) {
+      const cases = cardIds.map(
+        (cardId, i) => sql`WHEN ${cardToTgUser.cardId} = ${cardId} THEN ${i}`
+      );
+      await tx
+        .update(cardToTgUser)
+        .set({
+          favouritePosition: sql`CASE ${sql.join(cases, sql` `)} END`,
+        })
+        .where(
+          and(
+            eq(cardToTgUser.tgUserId, userId),
+            inArray(cardToTgUser.cardId, cardIds)
+          )
+        );
+    }
+  });
+
+  return { ok: true as const };
 }
 
 export async function getUniverseData(userId: string, universeId: number) {

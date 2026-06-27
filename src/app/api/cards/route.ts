@@ -4,10 +4,29 @@ import { getCardsFullWithFilter } from "@/lib/queries";
 
 import { Filter } from "@/components/get-filter-options";
 
-export async function POST(request: Request) {
-  const body = (await request.json()) as Filter | undefined;
-  const cards = await getCardsFullWithFilter(body ?? undefined);
-  return NextResponse.json({
-    cards,
-  });
+function parseFilter(searchParams: URLSearchParams): Filter | undefined {
+  const raw = searchParams.get("filter");
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as Filter;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const filter = parseFilter(searchParams);
+  const page = Math.max(Number(searchParams.get("page")) || 1, 1);
+
+  const { cards, total } = await getCardsFullWithFilter(filter, page);
+
+  return NextResponse.json(
+    { cards, total },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120",
+      },
+    }
+  );
 }

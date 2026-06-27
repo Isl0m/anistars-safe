@@ -1,54 +1,41 @@
 import { NextResponse } from "next/server";
 
 import {
-  getMarketListing,
+  getMarketListingMeta,
   getMarketOffer,
-  updateUserPhotoUrl,
+  revalidateMarketListings,
 } from "@/lib/queries";
-import { authenticateRequest } from "@/lib/telegram-auth";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
-  const auth = authenticateRequest(request);
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-  }
-  const sellerId = auth.id;
-  updateUserPhotoUrl(sellerId, auth.photoUrl);
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const sellerId = authResult.auth.id;
 
-  const body = await request.json();
-  const { offerId } = body;
+  const { offerId } = await request.json();
 
   if (!offerId) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
-    );
+    return errorResponse("Missing required fields", 400);
   }
 
   const offer = await getMarketOffer(offerId);
 
   if (!offer) {
-    return NextResponse.json({ error: "Offer not found" }, { status: 404 });
+    return errorResponse("Offer not found", 404);
   }
 
   if (offer.status !== "pending") {
-    return NextResponse.json(
-      { error: "Offer is not pending" },
-      { status: 400 }
-    );
+    return errorResponse("Offer is not pending", 400);
   }
 
-  const listing = await getMarketListing(offer.listingId);
+  const listing = await getMarketListingMeta(offer.listingId);
   if (!listing || listing.sellerId !== sellerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return errorResponse("Forbidden", 403);
   }
 
   if (listing.status !== "active") {
-    return NextResponse.json(
-      { error: "Listing is not active" },
-      { status: 400 }
-    );
+    return errorResponse("Listing is not active", 400);
   }
 
   try {
@@ -57,12 +44,10 @@ export async function POST(request: Request) {
       offerId,
       sellerId,
     });
+    revalidateMarketListings();
     return NextResponse.json(result);
   } catch (e) {
-    console.log(e);
-    return NextResponse.json(
-      { error: "Failed to process trade" },
-      { status: 500 }
-    );
+    console.error("market accept failed:", e);
+    return errorResponse("Failed to process trade", 500);
   }
 }

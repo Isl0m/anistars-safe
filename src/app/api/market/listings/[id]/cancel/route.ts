@@ -1,40 +1,30 @@
 import { NextResponse } from "next/server";
 
-import { getMarketListing, updateUserPhotoUrl } from "@/lib/queries";
-import { authenticateRequest } from "@/lib/telegram-auth";
+import { getMarketListingMeta, revalidateMarketListings } from "@/lib/queries";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = authenticateRequest(request);
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-  }
-  const sellerId = auth.id;
-  updateUserPhotoUrl(sellerId, auth.photoUrl);
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const sellerId = authResult.auth.id;
 
-  const { id } = params;
-  const listingId = parseInt(id);
-  const listing = await getMarketListing(listingId);
+  const listingId = parseInt(params.id);
+  const listing = await getMarketListingMeta(listingId);
 
   if (!listing) {
-    return NextResponse.json(
-      { error: "Listing not found" },
-      { status: 404 }
-    );
+    return errorResponse("Listing not found", 404);
   }
 
   if (listing.sellerId !== sellerId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return errorResponse("Forbidden", 403);
   }
 
   if (listing.status !== "active") {
-    return NextResponse.json(
-      { error: "Listing is not active" },
-      { status: 400 }
-    );
+    return errorResponse("Listing is not active", 400);
   }
 
   try {
@@ -43,11 +33,10 @@ export async function POST(
       listingId,
       sellerId,
     });
+    revalidateMarketListings();
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to cancel listing" },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error("market cancel listing failed:", e);
+    return errorResponse("Failed to cancel listing", 500);
   }
 }

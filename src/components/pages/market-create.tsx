@@ -24,6 +24,8 @@ import {
 import { Header } from "../header";
 import ListingFilter from "../listing-filter";
 import { ListingFilterDisplay } from "../listing-filter-display";
+import { useApi } from "../use-api";
+import { useListingFilterOptions } from "../use-filter-options";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { useCardSelect } from "../use-card-select";
@@ -82,6 +84,7 @@ export default function MarketCreatePage() {
   const { tgUser } = useTelegram();
   useTelegramBackButton("/market");
   const [filter, setFilter] = useState<Filter>();
+  const { data: optionsData } = useListingFilterOptions();
 
   const query = useQuery({
     queryKey: ["user-cards", filter],
@@ -100,8 +103,6 @@ export default function MarketCreatePage() {
       return (await response.json()) as Promise<{
         cards: FullCard[];
         user: UserExtended;
-        filterOptions: FilterOption[];
-        listingFilterOptions: ListingFilterOption[];
       }>;
     },
     placeholderData: keepPreviousData,
@@ -111,14 +112,14 @@ export default function MarketCreatePage() {
     setFilter(data);
   };
 
-  if (query.data) {
+  if (query.data && optionsData) {
     return (
       <main className="flex min-h-screen flex-col gap-4 md:container">
         <MarketCreateContent
           user={query.data.user}
           cards={query.data.cards}
-          filterOptions={query.data.filterOptions}
-          listingFilterOptions={query.data.listingFilterOptions}
+          filterOptions={optionsData.filterOptions}
+          listingFilterOptions={optionsData.listingFilterOptions}
           setFilters={handleFilterChange}
         />
       </main>
@@ -148,7 +149,7 @@ function MarketCreateContent({
   listingFilterOptions: ListingFilterOption[];
   setFilters: (filters: Filter) => void;
 }) {
-  const { initDataRaw } = useTelegram();
+  const api = useApi();
   const [page, setPage] = useState(1);
   const cardsPerPage = 16;
   const router = useRouter();
@@ -177,40 +178,28 @@ function MarketCreateContent({
     }
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/listings`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-telegram-init-data": initDataRaw ?? "",
-          },
-          body: JSON.stringify({
-            cardIds: selectedCards.map((c) => c.id),
-            filters: desiredFilters
-              ? {
-                  rarityIds: desiredFilters.rarityIds,
-                  universeIds: desiredFilters.universeIds,
-                  classIds: desiredFilters.classIds,
-                  stats: desiredFilters.stats,
-                  type: desiredFilters.type,
-                  minCardPrice,
-                  minCardCount,
-                  maxCardCount,
-                }
-              : {
-                  minCardPrice,
-                  minCardCount,
-                  maxCardCount,
-                },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error || "Failed to create listing");
-      }
+      await api("/api/market/listings", {
+        method: "POST",
+        body: {
+          cardIds: selectedCards.map((c) => c.id),
+          filters: desiredFilters
+            ? {
+                rarityIds: desiredFilters.rarityIds,
+                universeIds: desiredFilters.universeIds,
+                classIds: desiredFilters.classIds,
+                stats: desiredFilters.stats,
+                type: desiredFilters.type,
+                minCardPrice,
+                minCardCount,
+                maxCardCount,
+              }
+            : {
+                minCardPrice,
+                minCardCount,
+                maxCardCount,
+              },
+        },
+      });
 
       toast({
         title: "Успешно",
@@ -219,13 +208,10 @@ function MarketCreateContent({
 
       router.push("/market");
     } catch (e) {
-      const message =
-        e instanceof Error && e.message !== "Failed to create listing"
-          ? e.message
-          : "Не удалось создать объявление";
       toast({
         title: "Ошибка",
-        description: message,
+        description:
+          e instanceof Error ? e.message : "Не удалось создать объявление",
         variant: "destructive",
       });
     } finally {

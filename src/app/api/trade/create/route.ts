@@ -1,60 +1,72 @@
 import { NextResponse } from "next/server";
+import { InlineKeyboard } from "grammy";
 import { z } from "zod";
 
-import { getMe, getProfileLink, sendTelegramMessage } from "@/lib/bot";
-import { addTradeCards, createTrade, getUser } from "@/lib/queries";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { getApi, getMe, getProfileLink } from "@/lib/bot";
+import {
+  createTradeWithCards,
+  getUser,
+  validateCardsForTrade,
+} from "@/lib/queries";
 
 const createTradeSchema = z.object({
-  senderId: z.string(),
   receiverId: z.string(),
   cardIds: z.string().array(),
 });
 export type CreateTradeType = z.infer<typeof createTradeSchema>;
 
 export async function POST(request: Request) {
-  const res = await request.json();
-  const parsedData = createTradeSchema.safeParse(res);
-  if (!parsedData.success)
-    return NextResponse.json(
-      { error: "Data schema not correct" },
-      {
-        status: 400,
-      }
-    );
-  const { data } = parsedData;
-  const receiver = await getUser(data.receiverId);
-  const sender = await getUser(data.senderId);
-  if (!receiver || !sender)
-    return NextResponse.json(
-      { error: "Receiver or sender not found" },
-      {
-        status: 404,
-      }
-    );
+  // The sender is whoever is authenticated — never trusted from the body.
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const senderId = authResult.auth.id;
+
+  const parsed = createTradeSchema.safeParse(await request.json());
+  if (!parsed.success) {
+    return errorResponse("Data schema not correct", 400);
+  }
+  const { receiverId, cardIds } = parsed.data;
+
+  if (cardIds.length === 0) {
+    return errorResponse("No cards selected", 400);
+  }
+  if (receiverId === senderId) {
+    return errorResponse("Cannot trade with yourself", 400);
+  }
+
+  const [receiver, sender, me] = await Promise.all([
+    getUser(receiverId),
+    getUser(senderId),
+    getMe(),
+  ]);
+  if (!receiver || !sender) {
+    return errorResponse("Receiver or sender not found", 404);
+  }
+
+  // The sender can only offer cards they actually own and haven't locked.
+  const validation = await validateCardsForTrade(cardIds, senderId);
+  if (!validation.ok) {
+    return errorResponse(validation.error, validation.status);
+  }
+
   try {
-    const [trade] = await createTrade(data);
-    await addTradeCards(trade.id, data.cardIds, true);
-    const me = await getMe();
-    await sendTelegramMessage(
+    const trade = await createTradeWithCards(
+      { senderId, receiverId },
+      validation.cardIds
+    );
+    const reply_markup = new InlineKeyboard().webApp(
+      "Посмотреть",
+      `${process.env.HOST_URL}/trade/accept?tradeId=${trade.id}`
+    );
+    await getApi().sendMessage(
       trade.receiverId,
-      `${getProfileLink(me.result.username, sender.id, sender.name)} предлагает вам трейд`,
-      [
-        [
-          {
-            text: "Посмотреть",
-            web_app: {
-              url: `${process.env.HOST_URL}/trade/accept?tradeId=${trade.id}`,
-            },
-          },
-        ],
-      ]
+      `${getProfileLink(me.username, sender.id, sender.name)} предлагает вам трейд`,
+      { parse_mode: "HTML", reply_markup }
     );
     return NextResponse.json(trade);
   } catch (e) {
-    console.log("error", e);
-    return NextResponse.json(
-      { error: "Something went wrong" },
-      { status: 500 }
-    );
+    console.error("trade create failed:", e);
+    return errorResponse("Something went wrong", 500);
   }
 }

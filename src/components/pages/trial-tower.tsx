@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
+import { Gift } from "lucide-react";
 
 import type { TrialTowerRewardWithCard } from "@/lib/queries";
 import { getImageProxyUrl, prettyNumbers } from "@/lib/utils";
@@ -16,7 +16,11 @@ import { Header } from "../header";
 
 const ITEMS_PER_PAGE = 12;
 
-export function TrialTowerPage() {
+export function TrialTowerPage({
+  rewards,
+}: {
+  rewards: TrialTowerRewardWithCard[];
+}) {
   const scrollRef = useRef<HTMLElement>(null);
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     legendary: 1,
@@ -24,30 +28,14 @@ export function TrialTowerPage() {
     base: 1,
   });
 
-  const query = useQuery({
-    queryKey: ["trial-tower-rewards"],
-    queryFn: async () => {
-      const response = await fetch("/api/trial-tower/rewards");
-
-      if (!response.ok) {
-        throw new Error("Failed to load trial tower rewards");
-      }
-
-      return (await response.json()).rewards as TrialTowerRewardWithCard[];
+  const rewardsByPool = (rewards ?? []).reduce(
+    (acc, reward) => {
+      if (!acc[reward.pool]) acc[reward.pool] = [];
+      acc[reward.pool].push(reward);
+      return acc;
     },
-    staleTime: 60_000,
-  });
-
-  const rewardsByPool = useMemo(() => {
-    return (query.data ?? []).reduce(
-      (acc, reward) => {
-        if (!acc[reward.pool]) acc[reward.pool] = [];
-        acc[reward.pool].push(reward);
-        return acc;
-      },
-      {} as Record<string, TrialTowerRewardWithCard[]>
-    );
-  }, [query.data]);
+    {} as Record<string, TrialTowerRewardWithCard[]>
+  );
 
   const poolTitles = {
     base: "Обычный",
@@ -70,15 +58,19 @@ export function TrialTowerPage() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-2 py-4 pb-20 md:container"
       >
-        {query.isPending && <TrialTowerSkeleton />}
-
-        {query.isError && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-            Не удалось загрузить награды. Попробуйте открыть страницу позже.
+        {!rewards || rewards.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="rounded-full bg-muted p-4">
+              <Gift className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium">Наград пока нет</p>
+              <p className="text-xs text-muted-foreground">
+                Загляните позже — награды появятся здесь
+              </p>
+            </div>
           </div>
-        )}
-
-        {query.data && (
+        ) : (
           <Tabs defaultValue="legendary" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               {pools.map(

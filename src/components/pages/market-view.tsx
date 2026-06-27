@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
   Clock,
@@ -18,8 +19,6 @@ import {
 import { offerStatusMap } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
 
-import { Card } from "@/db/schema/card";
-import { User } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
 import {
@@ -32,33 +31,22 @@ import {
 import { Skeleton } from "@/ui/skeleton";
 import { toast } from "@/ui/use-toast";
 
-import { FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
+import { useApi } from "../use-api";
 import { useTelegram } from "../telegram-provider";
+import { useFilterOptions } from "../use-filter-options";
+import {
+  MarketCard,
+  MarketOffer,
+  marketKeys,
+  useMarketListing,
+  useMarketOffers,
+} from "../use-market";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
-type MarketListing = {
-  id: number;
-  sellerId: string;
-  status: string;
-  createdAt: Date;
-  seller: User;
-  cards: Card[];
-  filters: ListingFilters | null;
-};
-
-type MarketOffer = {
-  id: number;
-  buyerId: string;
-  status: string;
-  createdAt: Date;
-  buyer: User;
-  cards: Card[];
-};
-
-function timeAgo(date: Date): string {
+function timeAgo(date: string | Date): string {
   const now = new Date();
   const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return "только что";
@@ -72,56 +60,27 @@ function timeAgo(date: Date): string {
 }
 
 export default function MarketViewPage({ id }: { id: string }) {
-  const { tgUser, initDataRaw } = useTelegram();
+  const { tgUser } = useTelegram();
+  const api = useApi();
   const router = useRouter();
+  const queryClient = useQueryClient();
   useTelegramBackButton("/market");
-  const [listing, setListing] = useState<MarketListing | null>(null);
-  const [offers, setOffers] = useState<MarketOffer[]>([]);
-  const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const { data: listing, isLoading: listingLoading } = useMarketListing(id);
+  const { data: offers = [], isLoading: offersLoading } = useMarketOffers(id);
+  const { data: filterData } = useFilterOptions();
+  const filterOptions = filterData?.filterOptions ?? [];
+
+  const isLoading = listingLoading || offersLoading;
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState<number | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [buyerHasOffer, setBuyerHasOffer] = useState(false);
 
-  const fetchData = async () => {
-    try {
-      const [listingRes, filtersRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_URL}/api/market/listings/${id}`),
-        fetch(`${process.env.NEXT_PUBLIC_URL}/api/cards/filter-options`),
-      ]);
-
-      const listingData = await listingRes.json();
-      const filtersData = await filtersRes.json();
-
-      setListing(listingData.listing);
-      setFilterOptions(filtersData.filterOptions);
-
-      const offersRes = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${id}/offers`
-      );
-      const offersData = await offersRes.json();
-      setOffers(offersData.offers);
-
-      if (tgUser) {
-        const isSeller = listingData.listing.sellerId === tgUser.id.toString();
-        if (!isSeller) {
-          const hasOffer = (offersData.offers as MarketOffer[]).some(
-            (o) => o.buyerId === tgUser.id.toString() && o.status === "pending"
-          );
-          setBuyerHasOffer(hasOffer);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [id, tgUser]);
+  const userIdStr = tgUser?.id?.toString();
+  const buyerHasOffer =
+    !!userIdStr &&
+    listing?.sellerId !== userIdStr &&
+    offers.some((o) => o.buyerId === userIdStr && o.status === "pending");
 
   if (isLoading) {
     return (
@@ -171,27 +130,18 @@ export default function MarketViewPage({ id }: { id: string }) {
   const handleAcceptOffer = async (offerId: number) => {
     setIsAccepting(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/offers/accept`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-telegram-init-data": initDataRaw ?? "",
-          },
-          body: JSON.stringify({ offerId }),
-        }
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to accept offer");
-      }
+      await api("/api/market/offers/accept", {
+        method: "POST",
+        body: { offerId },
+      });
 
       toast({
         title: "Успешно",
         description: "Вы приняли предложение обмена!",
       });
+      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
+      queryClient.invalidateQueries({ queryKey: marketKeys.listing(id) });
+      queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
       router.push("/market");
     } catch (e) {
       toast({
@@ -208,28 +158,18 @@ export default function MarketViewPage({ id }: { id: string }) {
   const handleRejectOffer = async (offerId: number) => {
     setIsRejecting(offerId);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/offers/reject`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-telegram-init-data": initDataRaw ?? "",
-          },
-          body: JSON.stringify({ offerId }),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to reject offer");
+      await api("/api/market/offers/reject", {
+        method: "POST",
+        body: { offerId },
+      });
 
       toast({
         title: "Отклонено",
         description: "Предложение отклонено",
       });
 
-      setOffers((prev) =>
-        prev.map((o) => (o.id === offerId ? { ...o, status: "cancelled" } : o))
-      );
+      queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
+      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
     } catch {
       toast({
         title: "Ошибка",
@@ -244,25 +184,18 @@ export default function MarketViewPage({ id }: { id: string }) {
   const handleCancelListing = async () => {
     setIsCancelling(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${listing.id}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-telegram-init-data": initDataRaw ?? "",
-          },
-          body: JSON.stringify({}),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to cancel listing");
+      await api(`/api/market/listings/${listing.id}/cancel`, {
+        method: "POST",
+        body: {},
+      });
 
       toast({
         title: "Отменено",
         description: "Объявление отменено",
       });
 
+      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
+      queryClient.invalidateQueries({ queryKey: marketKeys.listing(id) });
       router.push("/market");
     } catch {
       toast({
@@ -560,7 +493,7 @@ function AcceptOfferDialog({
   isLoading,
 }: {
   offer: MarketOffer;
-  listingCards: Card[];
+  listingCards: MarketCard[];
   onAccept: () => void;
   isLoading: boolean;
 }) {

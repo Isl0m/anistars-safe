@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import {
   closestCenter,
   DndContext,
@@ -37,20 +39,19 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 
-import { FullCard } from "@/db/schema/card";
+import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 
 import { Banner } from "@/db/schema/banner";
+import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
-import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/ui/skeleton";
 import { toast } from "@/ui/use-toast";
 
 import { Header } from "../header";
+import { useApi } from "../use-api";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserAvatar } from "../user-avatar";
@@ -228,19 +229,11 @@ export function ProfileInfo() {
     queryKey: ["user-profile", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return null;
-      const [userRes, profileRes] = await Promise.all([
-        fetch(
-          `${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser.id}`
-        ),
-        fetch(
-          `${process.env.NEXT_PUBLIC_URL}/api/user/profile?id=${tgUser.id}`
-        ),
-      ]);
-      const { user } = await userRes.json();
-      const { stats, banner } = await profileRes.json();
-      return { user, stats, banner } as ProfileData;
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/profile?id=${tgUser.id}`
+      );
+      return (await response.json()) as ProfileData;
     },
-    enabled: !!tgUser,
   });
 
   if (query.isLoading || !query.data) {
@@ -421,10 +414,10 @@ export function PublicProfileInfo({ userId }: { userId: string }) {
                   color="text-blue-400"
                 />
                 <StatCard
-                  Icon={Swords}
-                  label="Трейды"
-                  value={prettyNumbers(stats.completedTrades)}
-                  color="text-emerald-400"
+                  Icon={Coins}
+                  label="Общая стоимость"
+                  value={prettyNumbers(stats.totalValue)}
+                  color="text-yellow-500"
                 />
               </div>
             </div>
@@ -535,7 +528,7 @@ function SortableCard({
         width={240}
         height={320}
         alt={card.name}
-        className="pointer-events-none rounded-lg select-none"
+        className="pointer-events-none select-none rounded-lg"
         draggable={false}
         unoptimized
       />
@@ -551,7 +544,7 @@ function SortableCard({
 }
 
 function FavouriteCardsEditable({ userId }: { userId: string }) {
-  const { initDataRaw } = useTelegram();
+  const api = useApi();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editCards, setEditCards] = useState<FullCard[]>([]);
@@ -575,21 +568,7 @@ function FavouriteCardsEditable({ userId }: { userId: string }) {
 
   const reorderMutation = useMutation({
     mutationFn: async (cardIds: string[]) => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(initDataRaw ? { "x-telegram-init-data": initDataRaw } : {}),
-          },
-          body: JSON.stringify({ cardIds }),
-        }
-      );
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      await api("/api/user/favourites", { method: "PUT", body: { cardIds } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["favourite-cards"] });

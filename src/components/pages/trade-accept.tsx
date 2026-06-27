@@ -27,10 +27,11 @@ import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
+import { useApi } from "../use-api";
+import { useCardSelect } from "../use-card-select";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
-import { useCardSelect } from "../use-card-select";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
 type Steps = "show" | "select" | "confirm";
@@ -65,11 +66,7 @@ function StepIndicator({
                       : "bg-muted text-muted-foreground"
                 }`}
               >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : (
-                  stepNum
-                )}
+                {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : stepNum}
               </div>
               <span
                 className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
@@ -99,7 +96,7 @@ export default function AcceptTradePage({
   const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({
-    queryKey: ["trade-accept-cards", filter],
+    queryKey: ["trade-accept-cards", tgUser?.id, trade.senderId, filter],
     queryFn: async () => {
       if (!tgUser) return;
       if (String(tgUser.id) !== trade.receiverId) return;
@@ -178,6 +175,7 @@ export function AcceptTradePageContent({
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<Steps>("show");
   const router = useRouter();
+  const api = useApi();
   const requiredCount = trade.senderCards.length;
 
   const handleTrade = async () => {
@@ -198,39 +196,47 @@ export function AcceptTradePageContent({
       cost: calcDifference(),
     };
 
-    await fetch(`${process.env.NEXT_PUBLIC_URL}/api/trade/update`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    toast({
-      title: "Трейд успешно принят",
-      variant: "default",
-    });
-
-    router.push("/trade");
+    try {
+      await api("/api/trade/update", { method: "POST", body: data });
+      toast({
+        title: "Трейд успешно принят",
+        variant: "default",
+      });
+      router.push("/trade");
+    } catch (e) {
+      toast({
+        title: "Ошибка",
+        description:
+          e instanceof Error ? e.message : "Не удалось принять трейд",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   async function cancelTrade() {
     setIsLoading(true);
-    await fetch(`${process.env.NEXT_PUBLIC_URL}/api/trade/cancel`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id: trade.id }),
-    });
-
-    toast({
-      title: "Трейд отклонён",
-      variant: "default",
-    });
-
-    router.push("/trade");
-    setIsLoading(false);
+    try {
+      await api("/api/trade/cancel", {
+        method: "DELETE",
+        body: { id: trade.id },
+      });
+      toast({
+        title: "Трейд отклонён",
+        variant: "default",
+      });
+      router.push("/trade");
+    } catch (e) {
+      toast({
+        title: "Ошибка",
+        description:
+          e instanceof Error ? e.message : "Не удалось отклонить трейд",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function calcDifference() {
@@ -260,7 +266,10 @@ export function AcceptTradePageContent({
         title="Входящий трейд"
         element={
           step === "select" ? (
-            <CardsFilter filterOptions={filterOptions} setFilters={setFilters} />
+            <CardsFilter
+              filterOptions={filterOptions}
+              setFilters={setFilters}
+            />
           ) : undefined
         }
       />
@@ -291,9 +300,7 @@ export function AcceptTradePageContent({
               </UserLink>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ArrowRightLeft className="h-3.5 w-3.5" />
-                <span>
-                  {requiredCount} карт — выберите столько же в ответ
-                </span>
+                <span>{requiredCount} карт — выберите столько же в ответ</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -423,9 +430,7 @@ export function AcceptTradePageContent({
             </Button>
             <Button
               onClick={handleTrade}
-              disabled={
-                selectedCards.length !== requiredCount || isLoading
-              }
+              disabled={selectedCards.length !== requiredCount || isLoading}
               className="w-full"
             >
               {isLoading ? (

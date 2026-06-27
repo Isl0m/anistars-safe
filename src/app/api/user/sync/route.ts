@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { updateUserPhotoUrl } from "@/lib/queries";
-import { authenticateRequest } from "@/lib/telegram-auth";
+import { requireAuth } from "@/lib/api-utils";
 
 export async function POST(request: Request) {
-  const auth = authenticateRequest(request);
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-  }
-
-  await updateUserPhotoUrl(auth.id, auth.photoUrl);
+  // requireAuth validates the init data and refreshes the cached photo, which
+  // is exactly what this endpoint exists to do.
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
 
   return NextResponse.json({ success: true });
 }

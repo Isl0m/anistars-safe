@@ -21,7 +21,7 @@ export default function TradeReceiverPage() {
   const [receiver, setReceiver] = useState("");
 
   const query = useQuery({
-    queryKey: ["user", tgUser],
+    queryKey: ["user", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return null;
       const response = await fetch(
@@ -130,9 +130,7 @@ export default function TradeReceiverPage() {
           className="w-full"
           disabled={!receiver || isLoading || query.isLoading || !query.data}
         >
-          {isLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : null}
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Продолжить
         </Button>
       </div>
