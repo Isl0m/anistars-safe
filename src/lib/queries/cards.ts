@@ -88,9 +88,6 @@ export type PaginatedCards = {
   total: number;
 };
 
-// Full card rows joined to their rarity/universe/class/author + techniques.
-// Callers add their own WHERE / ORDER BY. Two bases: one starting from the
-// catalog (all cards) and one from a user's owned cards.
 function cardDetailSelect() {
   return db
     .select({
@@ -440,9 +437,6 @@ export async function reorderFavouriteCards(userId: string, cardIds: string[]) {
     return { ok: false as const, error: "max_reached" as const };
   }
 
-  // Run as one transaction so a partial failure can't leave the user with their
-  // favourites half-cleared. Positions are assigned in a single bulk CASE
-  // update instead of one round-trip per card.
   await db.transaction(async (tx) => {
     await tx
       .update(cardToTgUser)

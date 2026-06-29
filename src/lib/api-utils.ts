@@ -16,9 +16,6 @@ export function getRequiredParam(request: Request, param: string) {
   return { value };
 }
 
-// Authenticates the caller via Telegram init data and refreshes their cached
-// photo, then returns the auth result — or an `error` response the route can
-// return directly. Centralizes the auth boilerplate every mutation route needs.
 export async function requireAuth(
   request: Request
 ): Promise<{ auth: AuthResult } | { error: NextResponse }> {

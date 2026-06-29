@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
-  CheckCircle2,
   ChevronLeft,
   Info,
   Loader2,
@@ -26,11 +25,12 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
-import { useApi } from "../use-api";
-import { useFilterOptions } from "../use-filter-options";
+import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
-import { useTelegramBackButton } from "../use-telegram-back-button";
+import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
+import { useFilterOptions } from "../use-filter-options";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
 type MarketListing = {
@@ -40,57 +40,9 @@ type MarketListing = {
   cards: Card[];
 };
 
-function StepIndicator({
-  currentStep,
-  steps,
-}: {
-  currentStep: number;
-  steps: string[];
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      {steps.map((label, i) => {
-        const stepNum = i + 1;
-        const isActive = stepNum === currentStep;
-        const isCompleted = stepNum < currentStep;
-        return (
-          <div key={label} className="flex items-center gap-2">
-            {i > 0 && (
-              <div
-                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
-              />
-            )}
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : isCompleted
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : (
-                  stepNum
-                )}
-              </div>
-              <span
-                className={`text-[11px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-              >
-                {label}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const { tgUser } = useTelegram();
+  const api = useApi();
   const [filter, setFilter] = useState<Filter>();
   const router = useRouter();
   useTelegramBackButton(`/market/${listingId}`);
@@ -99,11 +51,9 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const listingQuery = useQuery({
     queryKey: ["market-listing", listingId],
     queryFn: async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/market/listings/${listingId}`
+      const { listing } = await api<{ listing: MarketListing | null }>(
+        `/api/market/listings/${listingId}`
       );
-      if (!response.ok) return null;
-      const listing = (await response.json()).listing as MarketListing;
       return listing;
     },
   });
@@ -129,20 +79,10 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
 
       const finalFilter = filter ?? initialFilter;
 
-      const cardsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${tgUser.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(finalFilter),
-        }
+      const userCards = await api<{ cards: FullCard[]; user: UserExtended }>(
+        `/api/user/cards?id=${tgUser.id}`,
+        { method: "POST", body: finalFilter }
       );
-      const userCards = (await cardsResponse.json()) as {
-        cards: FullCard[];
-        user: UserExtended;
-      };
 
       return {
         cards: userCards.cards,
@@ -388,7 +328,8 @@ function MarketOfferContent({
             {!allSelectedMatch && selectedCards.length > 0 && (
               <div className="mb-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2">
                 <p className="text-[11px] font-medium text-destructive">
-                  Некоторые выбранные карты не соответствуют требованиям продавца
+                  Некоторые выбранные карты не соответствуют требованиям
+                  продавца
                 </p>
               </div>
             )}

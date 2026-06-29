@@ -27,6 +27,7 @@ export async function getTradeWithSenderCards(id: number) {
     .select({
       ...multiTradeColumns,
       senderName: tgUsers.name,
+      senderPhotoUrl: tgUsers.photoUrl,
     })
     .from(multiTrades)
     .where(eq(multiTrades.id, id))
@@ -61,7 +62,9 @@ export async function getTradeFull(id: number) {
     .select({
       ...multiTradeColumns,
       senderName: sender.name,
+      senderPhotoUrl: sender.photoUrl,
       receiverName: receiver.name,
+      receiverPhotoUrl: receiver.photoUrl,
     })
     .from(multiTrades)
     .where(eq(multiTrades.id, id))
@@ -104,7 +107,6 @@ export async function getTradeFull(id: number) {
   return { ...trade, senderCards, receiverCards };
 }
 
-// Lightweight trade row for authorization checks (sender/receiver/status).
 export async function getTrade(id: number) {
   const [trade] = await db
     .select()
@@ -125,8 +127,6 @@ export function removeTrade(id: number) {
   return db.delete(multiTrades).where(eq(multiTrades.id, id)).returning();
 }
 
-// Creates the trade and its sender cards atomically so a failed card insert
-// can't leave an empty trade behind.
 export async function createTradeWithCards(
   data: InsertMultiTrade,
   cardIds: string[]
@@ -146,7 +146,6 @@ export async function createTradeWithCards(
   });
 }
 
-// Marks the trade fulfilled and records the receiver's cards atomically.
 export async function fulfillTradeWithCards(
   id: number,
   cost: number,

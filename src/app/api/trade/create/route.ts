@@ -17,7 +17,6 @@ const createTradeSchema = z.object({
 export type CreateTradeType = z.infer<typeof createTradeSchema>;
 
 export async function POST(request: Request) {
-  // The sender is whoever is authenticated — never trusted from the body.
   const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
   const senderId = authResult.auth.id;
@@ -44,17 +43,23 @@ export async function POST(request: Request) {
     return errorResponse("Receiver or sender not found", 404);
   }
 
-  // The sender can only offer cards they actually own and haven't locked.
   const validation = await validateCardsForTrade(cardIds, senderId);
   if (!validation.ok) {
     return errorResponse(validation.error, validation.status);
   }
 
+  let trade;
   try {
-    const trade = await createTradeWithCards(
+    trade = await createTradeWithCards(
       { senderId, receiverId },
       validation.cardIds
     );
+  } catch (e) {
+    console.error("trade create failed:", e);
+    return errorResponse("Something went wrong", 500);
+  }
+
+  try {
     const reply_markup = new InlineKeyboard().webApp(
       "Посмотреть",
       `${process.env.HOST_URL}/trade/accept?tradeId=${trade.id}`
@@ -64,9 +69,9 @@ export async function POST(request: Request) {
       `${getProfileLink(me.username, sender.id, sender.name)} предлагает вам трейд`,
       { parse_mode: "HTML", reply_markup }
     );
-    return NextResponse.json(trade);
   } catch (e) {
-    console.error("trade create failed:", e);
-    return errorResponse("Something went wrong", 500);
+    console.error("trade create notification failed:", e);
   }
+
+  return NextResponse.json(trade);
 }

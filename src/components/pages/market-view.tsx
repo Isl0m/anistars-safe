@@ -12,12 +12,11 @@ import {
   Info,
   Loader2,
   MessageSquare,
-  ShieldAlert,
   UserIcon,
 } from "lucide-react";
 
-import { offerStatusMap } from "@/lib/constants";
-import { getImageProxyUrl } from "@/lib/utils";
+import { listingStatusMap, offerStatusMap } from "@/lib/constants";
+import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
@@ -31,47 +30,38 @@ import {
 import { Skeleton } from "@/ui/skeleton";
 import { toast } from "@/ui/use-toast";
 
+import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
-import { useApi } from "../use-api";
 import { useTelegram } from "../telegram-provider";
-import { useFilterOptions } from "../use-filter-options";
+import { useApi } from "../use-api";
 import {
   MarketCard,
-  MarketOffer,
   marketKeys,
-  useMarketListing,
+  MarketListingDetail,
+  MarketOffer,
   useMarketOffers,
 } from "../use-market";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
-function timeAgo(date: string | Date): string {
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "только что";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} мин. назад`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ч. назад`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} дн. назад`;
-  return new Date(date).toLocaleDateString("ru-RU");
-}
-
-export default function MarketViewPage({ id }: { id: string }) {
+export default function MarketViewPage({
+  id,
+  listing,
+  filterOptions,
+}: {
+  id: string;
+  listing: MarketListingDetail;
+  filterOptions: FilterOption[];
+}) {
   const { tgUser } = useTelegram();
   const api = useApi();
   const router = useRouter();
   const queryClient = useQueryClient();
   useTelegramBackButton("/market");
 
-  const { data: listing, isLoading: listingLoading } = useMarketListing(id);
   const { data: offers = [], isLoading: offersLoading } = useMarketOffers(id);
-  const { data: filterData } = useFilterOptions();
-  const filterOptions = filterData?.filterOptions ?? [];
 
-  const isLoading = listingLoading || offersLoading;
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState<number | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -79,53 +69,13 @@ export default function MarketViewPage({ id }: { id: string }) {
   const userIdStr = tgUser?.id?.toString();
   const buyerHasOffer =
     !!userIdStr &&
-    listing?.sellerId !== userIdStr &&
+    listing.sellerId !== userIdStr &&
     offers.some((o) => o.buyerId === userIdStr && o.status === "pending");
-
-  if (isLoading) {
-    return (
-      <main className="flex min-h-screen flex-col gap-4">
-        <Header title="Объявление" />
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex flex-col gap-1">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
-            ))}
-          </div>
-          <Skeleton className="h-24 rounded-lg" />
-        </div>
-      </main>
-    );
-  }
-
-  if (!listing) {
-    return (
-      <main className="flex min-h-screen flex-col gap-4">
-        <Header title="Не найдено" />
-        <div className="flex flex-col items-center justify-center gap-4 p-10">
-          <div className="rounded-full bg-muted p-4">
-            <ShieldAlert className="h-10 w-10 text-muted-foreground/50" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Объявление не найдено или было удалено
-          </p>
-          <Button onClick={() => router.push("/market")}>
-            К маркетплейсу
-          </Button>
-        </div>
-      </main>
-    );
-  }
 
   const isSeller = tgUser?.id?.toString() === listing.sellerId;
   const pendingOffers = offers.filter((o) => o.status === "pending");
+  const listingStatus =
+    listingStatusMap[listing.status] ?? listingStatusMap.active;
 
   const handleAcceptOffer = async (offerId: number) => {
     setIsAccepting(true);
@@ -140,7 +90,6 @@ export default function MarketViewPage({ id }: { id: string }) {
         description: "Вы приняли предложение обмена!",
       });
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
-      queryClient.invalidateQueries({ queryKey: marketKeys.listing(id) });
       queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
       router.push("/market");
     } catch (e) {
@@ -195,7 +144,6 @@ export default function MarketViewPage({ id }: { id: string }) {
       });
 
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
-      queryClient.invalidateQueries({ queryKey: marketKeys.listing(id) });
       router.push("/market");
     } catch {
       toast({
@@ -240,15 +188,7 @@ export default function MarketViewPage({ id }: { id: string }) {
               </div>
             </div>
           </UserLink>
-          <Badge
-            variant={listing.status === "active" ? "default" : "secondary"}
-          >
-            {listing.status === "active"
-              ? "Активно"
-              : listing.status === "completed"
-                ? "Завершено"
-                : "Отменено"}
-          </Badge>
+          <Badge variant={listingStatus.variant}>{listingStatus.label}</Badge>
         </div>
 
         <div className="space-y-2">
@@ -259,7 +199,7 @@ export default function MarketViewPage({ id }: { id: string }) {
               {listing.cards.length} карт
             </Badge>
           </div>
-          <ul className="grid grid-cols-4 gap-2">
+          <ul className="grid grid-cols-4 gap-2 md:grid-cols-6 lg:grid-cols-8">
             {listing.cards.map((card) => (
               <li
                 key={card.id}
@@ -315,11 +255,10 @@ export default function MarketViewPage({ id }: { id: string }) {
             <p className="mb-3 text-sm text-muted-foreground">
               Предложите свои карты в обмен на карты продавца
             </p>
-            {buyerHasOffer ? (
-              <Badge
-                variant="secondary"
-                className="mx-auto px-4 py-2 text-sm"
-              >
+            {offersLoading ? (
+              <Skeleton className="h-11 w-full rounded-md" />
+            ) : buyerHasOffer ? (
+              <Badge variant="secondary" className="mx-auto px-4 py-2 text-sm">
                 Вы уже отправили предложение
               </Badge>
             ) : (
@@ -342,22 +281,46 @@ export default function MarketViewPage({ id }: { id: string }) {
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-bold">Предложения</h3>
             </div>
-            <div className="flex items-center gap-2">
-              {pendingOffers.length > 0 && (
-                <Badge
-                  variant="outline"
-                  className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
-                >
-                  {pendingOffers.length} ожидает
+            {!offersLoading && (
+              <div className="flex items-center gap-2">
+                {pendingOffers.length > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
+                  >
+                    {pendingOffers.length} ожидает
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="text-[10px]">
+                  {offers.length} всего
                 </Badge>
-              )}
-              <Badge variant="secondary" className="text-[10px]">
-                {offers.length} всего
-              </Badge>
-            </div>
+              </div>
+            )}
           </div>
 
-          {offers.length === 0 ? (
+          {offersLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="rounded-xl border border-border p-3">
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <Skeleton className="h-7 w-7 rounded-full" />
+                      <div className="flex flex-col gap-1">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[1, 2, 3].map((j) => (
+                      <Skeleton key={j} className="aspect-[3/4] rounded-md" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : offers.length === 0 ? (
             <div className="rounded-xl border border-dashed bg-muted/20 py-8 text-center">
               <MessageSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
@@ -372,8 +335,7 @@ export default function MarketViewPage({ id }: { id: string }) {
                 const statusInfo =
                   offerStatusMap[offer.status] ?? offerStatusMap.pending;
                 const isPending = offer.status === "pending";
-                const isMyOffer =
-                  tgUser?.id?.toString() === offer.buyerId;
+                const isMyOffer = tgUser?.id?.toString() === offer.buyerId;
 
                 return (
                   <div
@@ -516,7 +478,7 @@ function AcceptOfferDialog({
         {step === 1 ? (
           <div className="space-y-5 py-2">
             <div className="space-y-2">
-              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-destructive/80">
+              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
                 <ArrowRightLeft className="h-3.5 w-3.5" />
                 Вы отдаете ({listingCards.length}):
               </h4>

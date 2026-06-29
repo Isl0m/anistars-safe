@@ -18,9 +18,6 @@ type ApiOptions = {
   body?: unknown;
 };
 
-// Single place that builds an authenticated request to our API: prefixes the
-// base URL, attaches the Telegram init data + JSON headers, and surfaces the
-// server's `{ error }` message as a thrown ApiError on a non-2xx response.
 export function useApi() {
   const { initDataRaw } = useTelegram();
 
@@ -44,7 +41,6 @@ export function useApi() {
           const data = await res.json();
           if (data?.error) message = data.error;
         } catch {
-          // non-JSON error body — keep the generic message
         }
         throw new ApiError(message, res.status);
       }

@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRightLeft,
   Clock,
   Loader2,
   MessageSquare,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { listingStatusMap, offerStatusMap } from "@/lib/constants";
-import { getImageProxyUrl } from "@/lib/utils";
+import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
@@ -24,51 +23,57 @@ import { Skeleton } from "@/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { toast } from "@/ui/use-toast";
 
+import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
+import { ListingFilterDisplay } from "../listing-filter-display";
 import CardsPagination from "../pagination";
-import { useApi } from "../use-api";
 import { useTelegram } from "../telegram-provider";
+import { useApi } from "../use-api";
+import { useFilterOptions } from "../use-filter-options";
 import {
-  MarketListingSummary,
   marketKeys,
-  UserMarketOffer,
+  MarketListingSummary,
   useMarketListings,
+  UserMarketOffer,
   useUserMarketListings,
   useUserMarketOffers,
 } from "../use-market";
 import { UserAvatar } from "../user-avatar";
 import { UserLink } from "../user-link";
 
-function timeAgo(date: string | Date): string {
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "только что";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} мин. назад`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ч. назад`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} дн. назад`;
-  return new Date(date).toLocaleDateString("ru-RU");
-}
-
-export default function MarketPage() {
+export default function MarketPage({
+  initialListings,
+  initialFilterOptions,
+}: {
+  initialListings: MarketListingSummary[];
+  initialFilterOptions: FilterOption[];
+}) {
   const { tgUser } = useTelegram();
   const api = useApi();
   const queryClient = useQueryClient();
   const userId = tgUser?.id?.toString();
 
+  const [activeTab, setActiveTab] = useState("all");
+
   const { data: listings = [], isLoading: listingsLoading } =
-    useMarketListings();
-  const { data: userListings = [], isLoading: userListingsLoading } =
-    useUserMarketListings(userId);
+    useMarketListings(initialListings);
   const { data: userOffers = [], isLoading: userOffersLoading } =
     useUserMarketOffers(userId);
+  const { data: inactiveListings = [], isLoading: inactiveLoading } =
+    useUserMarketListings(userId, {
+      status: "inactive",
+      enabled: activeTab === "my",
+    });
 
-  const isLoading =
-    listingsLoading || (!!userId && (userListingsLoading || userOffersLoading));
+  const { data: filterData } = useFilterOptions({
+    filterOptions: initialFilterOptions,
+  });
+  const filterOptions = filterData?.filterOptions ?? initialFilterOptions;
 
-  const [activeTab, setActiveTab] = useState("all");
+  const myActiveListings = userId
+    ? listings.filter((l) => l.sellerId === userId)
+    : [];
+  const myListings = [...myActiveListings, ...inactiveListings];
 
   const handleCancelOffer = async (offerId: number) => {
     if (!userId) return;
@@ -84,7 +89,9 @@ export default function MarketPage() {
         description: "Предложение отменено",
       });
 
-      queryClient.invalidateQueries({ queryKey: marketKeys.userOffers(userId) });
+      queryClient.invalidateQueries({
+        queryKey: marketKeys.userOffers(userId),
+      });
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
     } catch {
       toast({
@@ -95,35 +102,8 @@ export default function MarketPage() {
     }
   };
 
-  const isMyTab = activeTab === "my";
-  const currentListings = isMyTab ? userListings : listings;
-  const [page, setPage] = useState(1);
-  const cardsPerPage = 10;
-
-  useEffect(() => {
-    setPage(1);
-  }, [activeTab]);
-
-  const listingsLeft = currentListings.length - page * cardsPerPage;
-  const listingsSkip = (page - 1) * cardsPerPage;
-  const pageListings = currentListings.slice(
-    listingsSkip,
-    listingsSkip + cardsPerPage
-  );
-
-  const offersLeft = userOffers.length - page * cardsPerPage;
-  const offersSkip = (page - 1) * cardsPerPage;
-  const pageOffers = userOffers.slice(offersSkip, offersSkip + cardsPerPage);
-
-  const pendingOffersCount = userOffers.filter(
-    (o) => o.status === "pending"
-  ).length;
-  const activeListingsCount = userListings.filter(
-    (l) => l.status === "active"
-  ).length;
-
   return (
-    <main className="flex min-h-screen flex-col gap-4 pb-20 md:container">
+    <main className="flex h-full flex-col">
       <Header
         title="Маркетплейс"
         element={
@@ -136,72 +116,56 @@ export default function MarketPage() {
         }
       />
 
-      <div className="px-2">
-        <Tabs defaultValue="all" onValueChange={setActiveTab}>
+      <Tabs
+        defaultValue="all"
+        onValueChange={setActiveTab}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="px-2 pt-3">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="all" className="gap-1.5">
               <Store className="h-3.5 w-3.5" />
               Все
-              {!isLoading && listings.length > 0 && (
-                <span className="ml-0.5 text-[10px] opacity-60">
-                  {listings.length}
-                </span>
-              )}
             </TabsTrigger>
             <TabsTrigger value="my" className="gap-1.5">
               <Package className="h-3.5 w-3.5" />
               Мои
-              {!isLoading && activeListingsCount > 0 && (
-                <span className="ml-0.5 rounded-full bg-primary/20 px-1.5 text-[10px]">
-                  {activeListingsCount}
-                </span>
-              )}
             </TabsTrigger>
             <TabsTrigger value="offers" className="gap-1.5">
               <Send className="h-3.5 w-3.5" />
               Офферы
-              {!isLoading && pendingOffersCount > 0 && (
-                <span className="ml-0.5 rounded-full bg-amber-500/20 px-1.5 text-[10px] text-amber-500">
-                  {pendingOffersCount}
-                </span>
-              )}
             </TabsTrigger>
           </TabsList>
+        </div>
 
-          <TabsContent value="all" className="mt-4">
+        <div className="flex-1 overflow-y-auto px-2 py-4 pb-24 md:container">
+          <TabsContent value="all" className="mt-0">
             <ListingsList
-              listings={pageListings}
-              isLoading={isLoading}
-              page={page}
-              cardsLeft={listingsLeft}
-              handleChangePage={setPage}
+              listings={listings}
+              isLoading={listingsLoading}
               showStatus={false}
-              currentUserId={tgUser?.id?.toString()}
+              currentUserId={userId}
+              filterOptions={filterOptions}
             />
           </TabsContent>
-          <TabsContent value="my" className="mt-4">
+          <TabsContent value="my" className="mt-0">
             <ListingsList
-              listings={pageListings}
-              isLoading={isLoading}
-              page={page}
-              cardsLeft={listingsLeft}
-              handleChangePage={setPage}
+              listings={myListings}
+              isLoading={inactiveLoading && myListings.length === 0}
               showStatus={true}
-              currentUserId={tgUser?.id?.toString()}
+              currentUserId={userId}
+              filterOptions={filterOptions}
             />
           </TabsContent>
-          <TabsContent value="offers" className="mt-4">
+          <TabsContent value="offers" className="mt-0">
             <OffersList
-              offers={pageOffers}
-              isLoading={isLoading}
-              page={page}
-              cardsLeft={offersLeft}
-              handleChangePage={setPage}
+              offers={userOffers}
+              isLoading={userOffersLoading}
               onCancel={handleCancelOffer}
             />
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </main>
   );
 }
@@ -210,10 +174,12 @@ function ListingCard({
   listing,
   showStatus,
   isOwn,
+  filterOptions,
 }: {
   listing: MarketListingSummary;
   showStatus: boolean;
   isOwn: boolean;
+  filterOptions: FilterOption[];
 }) {
   const statusInfo =
     listingStatusMap[listing.status] ?? listingStatusMap.active;
@@ -233,13 +199,17 @@ function ListingCard({
       href={`/market/${listing.id}`}
       className="block rounded-xl border border-border bg-card shadow-sm transition-colors hover:border-primary/30 hover:bg-card/80"
     >
-      <div className="p-3">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <UserAvatar name={listing.seller.name} photoUrl={listing.seller.photoUrl} size={32} />
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold leading-tight">
+      <div className="p-2.5">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex min-w-0 items-center gap-2">
+            <UserAvatar
+              name={listing.seller.name}
+              photoUrl={listing.seller.photoUrl}
+              size={28}
+            />
+            <div className="flex min-w-0 flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-sm font-semibold leading-tight">
                   {listing.seller.name}
                 </span>
                 {isOwn && (
@@ -274,11 +244,11 @@ function ListingCard({
           </div>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {listing.cards.slice(0, 6).map((card) => (
+        <div className="no-scrollbar flex gap-1 overflow-x-auto pb-1">
+          {listing.cards.map((card) => (
             <div
               key={card.id}
-              className="relative h-20 w-[60px] flex-shrink-0 overflow-hidden rounded-lg border shadow-sm"
+              className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-sm border shadow-sm"
             >
               <Image
                 src={getImageProxyUrl(card.image)}
@@ -288,61 +258,45 @@ function ListingCard({
               />
             </div>
           ))}
-          {listing.cards.length > 6 && (
-            <div className="relative flex h-20 w-[60px] flex-shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-xs font-bold text-muted-foreground shadow-sm">
-              +{listing.cards.length - 6}
-            </div>
-          )}
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="h-5 gap-1 px-1.5 py-0 text-[10px]">
-              <ArrowRightLeft className="h-2.5 w-2.5" />
-              {listing.cards.length} карт
-            </Badge>
-            {hasFilters ? (
-              <Badge
-                variant="outline"
-                className="h-5 px-1.5 py-0 text-[10px] text-blue-500"
-              >
-                Есть требования
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="h-5 px-1.5 py-0 text-[10px] text-muted-foreground"
-              >
-                Любые карты
-              </Badge>
-            )}
-          </div>
-          <span className="text-xs font-medium text-primary">
-            Подробнее &rarr;
-          </span>
+        <div className="mt-2 border-t pt-2">
+          <ListingFilterDisplay
+            inline
+            filters={hasFilters ? listing.filters : null}
+            filterOptions={filterOptions}
+          />
         </div>
       </div>
     </Link>
   );
 }
 
+const LISTINGS_PER_PAGE = 10;
+
 function ListingsList({
   listings,
   isLoading,
-  page,
-  cardsLeft,
-  handleChangePage,
   showStatus,
   currentUserId,
+  filterOptions,
 }: {
   listings: MarketListingSummary[];
   isLoading: boolean;
-  page: number;
-  cardsLeft: number;
-  handleChangePage: (page: number) => void;
   showStatus: boolean;
   currentUserId?: string;
+  filterOptions: FilterOption[];
 }) {
+  const [page, setPage] = useState(1);
+  const maxPage = Math.max(1, Math.ceil(listings.length / LISTINGS_PER_PAGE));
+  useEffect(() => {
+    if (page > maxPage) setPage(1);
+  }, [page, maxPage]);
+
+  const cardsLeft = listings.length - page * LISTINGS_PER_PAGE;
+  const skip = (page - 1) * LISTINGS_PER_PAGE;
+  const pageListings = listings.slice(skip, skip + LISTINGS_PER_PAGE);
+
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">
@@ -397,12 +351,13 @@ function ListingsList({
   return (
     <>
       <div className="space-y-3">
-        {listings.map((listing) => (
+        {pageListings.map((listing) => (
           <ListingCard
             key={listing.id}
             listing={listing}
             showStatus={showStatus}
             isOwn={listing.sellerId === currentUserId}
+            filterOptions={filterOptions}
           />
         ))}
       </div>
@@ -411,7 +366,7 @@ function ListingsList({
         <CardsPagination
           page={page}
           cardsLeft={cardsLeft}
-          handleChangePage={handleChangePage}
+          handleChangePage={setPage}
         />
       </div>
     </>
@@ -421,19 +376,22 @@ function ListingsList({
 function OffersList({
   offers,
   isLoading,
-  page,
-  cardsLeft,
-  handleChangePage,
   onCancel,
 }: {
   offers: UserMarketOffer[];
   isLoading: boolean;
-  page: number;
-  cardsLeft: number;
-  handleChangePage: (page: number) => void;
   onCancel: (offerId: number) => Promise<void>;
 }) {
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const maxPage = Math.max(1, Math.ceil(offers.length / LISTINGS_PER_PAGE));
+  useEffect(() => {
+    if (page > maxPage) setPage(1);
+  }, [page, maxPage]);
+
+  const cardsLeft = offers.length - page * LISTINGS_PER_PAGE;
+  const skip = (page - 1) * LISTINGS_PER_PAGE;
+  const pageOffers = offers.slice(skip, skip + LISTINGS_PER_PAGE);
 
   if (isLoading) {
     return (
@@ -495,7 +453,7 @@ function OffersList({
   return (
     <>
       <div className="space-y-3">
-        {offers.map((offer) => {
+        {pageOffers.map((offer) => {
           const statusInfo =
             offerStatusMap[offer.status] ?? offerStatusMap.pending;
           const isPending = offer.status === "pending";
@@ -541,7 +499,7 @@ function OffersList({
                     <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
                       Карты продавца
                     </span>
-                    <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
                       {offer.listing.cards.slice(0, 6).map((card) => (
                         <div
                           key={card.id}
@@ -568,7 +526,7 @@ function OffersList({
                   <span className="mb-1 block text-[11px] font-medium text-muted-foreground">
                     Ваши карты
                   </span>
-                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
                     {offer.cards.slice(0, 6).map((card) => (
                       <div
                         key={card.id}
@@ -629,7 +587,7 @@ function OffersList({
         <CardsPagination
           page={page}
           cardsLeft={cardsLeft}
-          handleChangePage={handleChangePage}
+          handleChangePage={setPage}
         />
       </div>
     </>

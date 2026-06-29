@@ -8,7 +8,11 @@ export function useTelegramBackButton(fallbackUrl?: string) {
   const router = useRouter();
 
   useEffect(() => {
-    postEvent("web_app_setup_back_button", { is_visible: true });
+    try {
+      postEvent("web_app_setup_back_button", { is_visible: true });
+    } catch {
+      return;
+    }
 
     const off = on("back_button_pressed", () => {
       if (fallbackUrl) {
@@ -20,7 +24,9 @@ export function useTelegramBackButton(fallbackUrl?: string) {
 
     return () => {
       off();
-      postEvent("web_app_setup_back_button", { is_visible: false });
+      try {
+        postEvent("web_app_setup_back_button", { is_visible: false });
+      } catch {}
     };
   }, [router, fallbackUrl]);
 }

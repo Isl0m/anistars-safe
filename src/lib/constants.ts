@@ -1,3 +1,5 @@
+export const MAX_LISTING_CARDS = 12;
+
 export const listingStatusMap: Record<
   string,
   { label: string; variant: "default" | "secondary" | "destructive" }
@@ -20,7 +22,7 @@ export const offerStatusMap: Record<
     className: "border-green-500/30 bg-green-500/10 text-green-600",
   },
   cancelled: {
-    label: "Отклонено",
+    label: "Отменено",
     className: "border-red-500/30 bg-red-500/10 text-red-600",
   },
 };

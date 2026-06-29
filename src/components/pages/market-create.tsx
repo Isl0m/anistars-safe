@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ChevronLeft, Loader2, Package } from "lucide-react";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { ChevronLeft, Loader2, Package } from "lucide-react";
+
+import { MAX_LISTING_CARDS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -24,65 +30,19 @@ import {
 import { Header } from "../header";
 import ListingFilter from "../listing-filter";
 import { ListingFilterDisplay } from "../listing-filter-display";
-import { useApi } from "../use-api";
-import { useListingFilterOptions } from "../use-filter-options";
+import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
-import { useTelegramBackButton } from "../use-telegram-back-button";
+import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
+import { useListingFilterOptions } from "../use-filter-options";
+import { marketKeys } from "../use-market";
+import { useTelegramBackButton } from "../use-telegram-back-button";
 import { CardsSelectList, SelectedCardsList } from "./trade";
-
-function StepIndicator({
-  currentStep,
-  steps,
-}: {
-  currentStep: number;
-  steps: string[];
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      {steps.map((label, i) => {
-        const stepNum = i + 1;
-        const isActive = stepNum === currentStep;
-        const isCompleted = stepNum < currentStep;
-        return (
-          <div key={label} className="flex items-center gap-2">
-            {i > 0 && (
-              <div
-                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
-              />
-            )}
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : isCompleted
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : (
-                  stepNum
-                )}
-              </div>
-              <span
-                className={`text-[11px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-              >
-                {label}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function MarketCreatePage() {
   const { tgUser } = useTelegram();
   useTelegramBackButton("/market");
+  const api = useApi();
   const [filter, setFilter] = useState<Filter>();
   const { data: optionsData } = useListingFilterOptions();
 
@@ -90,20 +50,10 @@ export default function MarketCreatePage() {
     queryKey: ["user-cards", filter],
     queryFn: async () => {
       if (!tgUser) return;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${tgUser.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(filter ?? {}),
-        }
+      return api<{ cards: FullCard[]; user: UserExtended }>(
+        `/api/user/cards?id=${tgUser.id}`,
+        { method: "POST", body: filter ?? {} }
       );
-      return (await response.json()) as Promise<{
-        cards: FullCard[];
-        user: UserExtended;
-      }>;
     },
     placeholderData: keepPreviousData,
   });
@@ -150,6 +100,7 @@ function MarketCreateContent({
   setFilters: (filters: Filter) => void;
 }) {
   const api = useApi();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const cardsPerPage = 16;
   const router = useRouter();
@@ -164,6 +115,19 @@ function MarketCreateContent({
   const skip = (page - 1) * cardsPerPage;
   const pageCards = cards.slice(skip, skip + cardsPerPage);
   const cardsLeft = cards.length - page * cardsPerPage;
+
+  const handleCardSelect = (card: FullCard) => () => {
+    const isSelected = selectedCards.some((c) => c.id === card.id);
+    if (!isSelected && selectedCards.length >= MAX_LISTING_CARDS) {
+      toast({
+        title: "Лимит карт",
+        description: `В одном объявлении можно выставить не более ${MAX_LISTING_CARDS} карт.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    onCardSelect(card)();
+  };
 
   const handleCreateListing = async () => {
     setIsLoading(true);
@@ -206,6 +170,7 @@ function MarketCreateContent({
         description: "Ваши карты выставлены на маркетплейс",
       });
 
+      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
       router.push("/market");
     } catch (e) {
       toast({
@@ -239,11 +204,16 @@ function MarketCreateContent({
         }
       />
 
-      <div className="px-3 pb-1">
+      <div className="flex items-center justify-between px-3 pb-1">
         <StepIndicator
           currentStep={step === "select" ? 1 : 2}
           steps={["Выбор карт", "Настройка"]}
         />
+        {step === "select" && (
+          <Badge variant="secondary" className="text-[10px]">
+            {selectedCards.length}/{MAX_LISTING_CARDS}
+          </Badge>
+        )}
       </div>
 
       <div className="px-2 pb-24">
@@ -251,7 +221,7 @@ function MarketCreateContent({
           <CardsSelectList
             pageCards={pageCards}
             selectedCards={selectedCards}
-            onClick={onCardSelect}
+            onClick={handleCardSelect}
             pagination={{
               page,
               cardsLeft,
@@ -263,9 +233,7 @@ function MarketCreateContent({
             <div className="space-y-4 rounded-xl border bg-card p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold">
-                    Требования к обмену
-                  </h3>
+                  <h3 className="text-sm font-semibold">Требования к обмену</h3>
                   <p className="text-[11px] text-muted-foreground">
                     Укажите, какие карты вы хотите получить
                   </p>
@@ -347,7 +315,7 @@ function MarketCreateContent({
               </div>
               <SelectedCardsList
                 selectedCards={selectedCards}
-                onClick={onCardSelect}
+                onClick={handleCardSelect}
               />
             </div>
           </div>

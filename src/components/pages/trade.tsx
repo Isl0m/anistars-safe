@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, CheckIcon, Loader2, Package } from "lucide-react";
+import { CheckIcon, Loader2, Package } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
@@ -20,55 +20,11 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
+import { StepIndicator } from "../step-indicator";
+import { useTelegram } from "../telegram-provider";
 import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
-import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
-
-function StepIndicator({
-  currentStep,
-  steps,
-}: {
-  currentStep: number;
-  steps: string[];
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      {steps.map((label, i) => {
-        const stepNum = i + 1;
-        const isActive = stepNum === currentStep;
-        const isCompleted = stepNum < currentStep;
-        return (
-          <div key={label} className="flex items-center gap-2">
-            {i > 0 && (
-              <div
-                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
-              />
-            )}
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : isCompleted
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : stepNum}
-              </div>
-              <span
-                className={`text-[11px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-              >
-                {label}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function TradePage({ receiver }: { receiver: string }) {
   const { tgUser } = useTelegram();
@@ -332,7 +288,7 @@ export function CardsSelectList({
               return (
                 <li
                   key={card.id}
-                  className={`relative cursor-pointer overflow-hidden rounded-lg transition-all duration-100 ease-in-out ${
+                  className={`relative cursor-pointer overflow-hidden rounded-md transition-all duration-100 ease-in-out ${
                     isSelected
                       ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
                       : "hover:ring-1 hover:ring-primary/50"
@@ -343,7 +299,7 @@ export function CardsSelectList({
                     src={getImageProxyUrl(card.image)}
                     width={240}
                     height={320}
-                    className="rounded-lg"
+                    className="rounded-md"
                     loading="lazy"
                     alt={card.slug}
                   />
@@ -388,14 +344,14 @@ export function SelectedCardsList({
       {selectedCards.map((card) => (
         <li
           key={card.id}
-          className="relative cursor-pointer overflow-hidden rounded-lg ring-2 ring-primary ring-offset-1 ring-offset-background transition-all duration-100 ease-in-out"
+          className="relative cursor-pointer overflow-hidden rounded-md ring-2 ring-primary ring-offset-1 ring-offset-background transition-all duration-100 ease-in-out"
           onClick={onClick(card)}
         >
           <Image
             src={getImageProxyUrl(card.image)}
             width={240}
             height={320}
-            className="rounded-lg"
+            className="rounded-md"
             alt={card.slug}
           />
           <div className="absolute right-0.5 top-0.5 rounded-full bg-primary p-[3px]">

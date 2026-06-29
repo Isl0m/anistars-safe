@@ -6,6 +6,7 @@ import {
   eq,
   getTableColumns,
   inArray,
+  ne,
   sql,
 } from "drizzle-orm";
 
@@ -20,12 +21,11 @@ import {
   MarketOfferStatus,
 } from "@/db/schema/market";
 import { tgUsers } from "@/db/schema/user";
+
 import { cardPreviewColumns, userPublicColumns } from "./shared";
 
 const MARKET_LISTINGS_TAG = "market-listings";
 
-// Base listing select joined to its public seller fields. Callers add the
-// WHERE / ORDER BY they need before awaiting.
 function baseListingsQuery() {
   return db
     .select({
@@ -36,8 +36,6 @@ function baseListingsQuery() {
     .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id));
 }
 
-// Attaches each listing's card previews and offer counts in two batched
-// queries (avoids an N+1 over the listings).
 async function attachCardsAndOffers<T extends { id: number }>(listings: T[]) {
   if (listings.length === 0) return [];
 
@@ -67,7 +65,10 @@ async function attachCardsAndOffers<T extends { id: number }>(listings: T[]) {
 
   const cardsByListing = Map.groupBy(allCards, (c) => c.listingId);
   const offersMap = new Map(
-    offerCounts.map((o) => [o.listingId, { total: o.total, pending: o.pending }])
+    offerCounts.map((o) => [
+      o.listingId,
+      { total: o.total, pending: o.pending },
+    ])
   );
 
   return listings.map((listing) => ({
@@ -86,8 +87,6 @@ export async function getMarketListings() {
   return attachCardsAndOffers(listings);
 }
 
-// The public marketplace feed is read far more often than it changes, so we
-// cache it and let mutation routes bust it via revalidateMarketListings().
 export const getCachedMarketListings = unstable_cache(
   getMarketListings,
   ["market-listings"],
@@ -117,8 +116,6 @@ export async function getMarketListing(id: number) {
   };
 }
 
-// Listing row only (status / sellerId / filters) for authorization checks in
-// mutation routes that don't need the joined seller or cards.
 export async function getMarketListingMeta(id: number) {
   const [listing] = await db
     .select()
@@ -127,9 +124,19 @@ export async function getMarketListingMeta(id: number) {
   return listing ?? null;
 }
 
-export async function getUserMarketListings(userId: string) {
+export async function getUserMarketListings(
+  userId: string,
+  opts?: { status?: "active" | "inactive" }
+) {
+  const conditions = [eq(marketListings.sellerId, userId)];
+  if (opts?.status === "active") {
+    conditions.push(eq(marketListings.status, "active"));
+  } else if (opts?.status === "inactive") {
+    conditions.push(ne(marketListings.status, "active"));
+  }
+
   const listings = await baseListingsQuery()
-    .where(eq(marketListings.sellerId, userId))
+    .where(and(...conditions))
     .orderBy(desc(marketListings.createdAt));
 
   return attachCardsAndOffers(listings);
@@ -172,8 +179,6 @@ export async function getMarketOffersForListing(listingId: number) {
   }));
 }
 
-// Targeted existence check — avoids loading every offer + its cards just to
-// see whether this buyer already has a pending offer on the listing.
 export async function hasPendingOfferFromBuyer(
   listingId: number,
   buyerId: string
@@ -310,7 +315,11 @@ export async function validateCardsForTrade(
 
   const owned = await verifyCardOwnership(uniqueCardIds, userId);
   if (owned.length !== uniqueCardIds.length) {
-    return { ok: false, error: "You don't own all selected cards", status: 403 };
+    return {
+      ok: false,
+      error: "You don't own all selected cards",
+      status: 403,
+    };
   }
 
   const lockedCards = owned.filter((c) => c.isLocked);

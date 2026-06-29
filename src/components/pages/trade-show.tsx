@@ -10,7 +10,6 @@ import { SelectMultiTrade } from "@/db/schema/trade";
 import { Badge } from "@/ui/badge";
 
 import { Header } from "../header";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 export default function TradeShowPage({
@@ -18,20 +17,20 @@ export default function TradeShowPage({
 }: {
   trade: SelectMultiTrade & {
     senderName: string;
+    senderPhotoUrl: string | null;
     receiverName: string;
+    receiverPhotoUrl: string | null;
     senderCards: Card[];
     receiverCards: Card[];
   };
 }) {
-  useTelegramBackButton("/trade/history");
-
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
       <Header title="Детали трейда" />
       <div className="space-y-4 px-3">
         <div className="rounded-xl border bg-card p-3.5">
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-destructive/80">
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Отправлено ({trade.senderCards.length})
             </h4>
@@ -48,6 +47,7 @@ export default function TradeShowPage({
           <UserLink
             userId={trade.senderId}
             name={trade.senderName}
+            photoUrl={trade.senderPhotoUrl}
             size={24}
             className="mb-2"
           >
@@ -72,6 +72,7 @@ export default function TradeShowPage({
           <UserLink
             userId={trade.receiverId}
             name={trade.receiverName}
+            photoUrl={trade.receiverPhotoUrl}
             size={24}
             avatarClassName="bg-secondary text-secondary-foreground"
             className="mb-2"
@@ -93,13 +94,13 @@ function SuggestedCardsList({ cards }: { cards: Card[] }) {
       {cards.map((card) => (
         <li
           key={card.id}
-          className="overflow-hidden rounded-lg border shadow-sm"
+          className="overflow-hidden rounded-md border shadow-sm"
         >
           <Image
             src={getImageProxyUrl(card.image)}
             width={240}
             height={320}
-            className="rounded-lg"
+            className="rounded-md"
             alt={card.slug}
           />
         </li>

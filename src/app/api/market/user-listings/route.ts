@@ -7,6 +7,10 @@ export async function GET(request: Request) {
   const param = getRequiredParam(request, "id");
   if ("error" in param) return param.error;
 
-  const listings = await getUserMarketListings(param.value);
+  const status = new URL(request.url).searchParams.get("status");
+  const listings = await getUserMarketListings(
+    param.value,
+    status === "inactive" ? { status: "inactive" } : undefined
+  );
   return NextResponse.json({ listings });
 }

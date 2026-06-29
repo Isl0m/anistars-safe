@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowRightLeft, Clock, History, X } from "lucide-react";
 
 import { TradeHistory as TradeHistoryType } from "@/lib/queries";
-import { getImageProxyUrl } from "@/lib/utils";
+import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
 import { Badge } from "@/ui/badge";
@@ -25,23 +25,6 @@ import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
-
-function timeAgo(date: Date): string {
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "только что";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} мин. назад`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ч. назад`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} дн. назад`;
-  return new Date(date).toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: "2-digit",
-  });
-}
 
 export function TradeHistory() {
   const { tgUser } = useTelegram();

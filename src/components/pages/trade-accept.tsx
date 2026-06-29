@@ -4,14 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  ArrowRightLeft,
-  CheckCircle2,
-  Coins,
-  Loader2,
-  Package,
-  UserIcon,
-} from "lucide-react";
+import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
@@ -27,59 +20,15 @@ import CardsFilter from "../cards-filter";
 import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
+import { StepIndicator } from "../step-indicator";
+import { useTelegram } from "../telegram-provider";
 import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
-import { useTelegram } from "../telegram-provider";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 import { CardsSelectList, SelectedCardsList } from "./trade";
 
 type Steps = "show" | "select" | "confirm";
-
-function StepIndicator({
-  currentStep,
-  steps,
-}: {
-  currentStep: number;
-  steps: string[];
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      {steps.map((label, i) => {
-        const stepNum = i + 1;
-        const isActive = stepNum === currentStep;
-        const isCompleted = stepNum < currentStep;
-        return (
-          <div key={label} className="flex items-center gap-2">
-            {i > 0 && (
-              <div
-                className={`h-px w-4 ${isCompleted ? "bg-primary" : "bg-border"}`}
-              />
-            )}
-            <div className="flex items-center gap-1">
-              <div
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : isCompleted
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : stepNum}
-              </div>
-              <span
-                className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-              >
-                {label}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 const stepIndex: Record<Steps, number> = { show: 1, select: 2, confirm: 3 };
 
@@ -88,6 +37,7 @@ export default function AcceptTradePage({
 }: {
   trade: SelectMultiTrade & {
     senderName: string;
+    senderPhotoUrl: string | null;
     senderCards: (Card & { rarity: string })[];
   };
 }) {
@@ -151,6 +101,7 @@ export function AcceptTradePageContent({
 }: {
   trade: SelectMultiTrade & {
     senderName: string;
+    senderPhotoUrl: string | null;
     senderCards: (Card & { rarity: string })[];
   };
   cards: FullCard[];
@@ -288,6 +239,7 @@ export function AcceptTradePageContent({
               <UserLink
                 userId={trade.senderId}
                 name={trade.senderName}
+                photoUrl={trade.senderPhotoUrl}
                 size={40}
                 className="mb-3 gap-3"
               >
@@ -344,7 +296,7 @@ export function AcceptTradePageContent({
           <div className="space-y-4">
             <div className="rounded-xl border bg-card p-3.5">
               <div className="mb-2 flex items-center justify-between">
-                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-destructive/80">
+                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
                   <ArrowRightLeft className="h-3.5 w-3.5" />
                   Вы отдаёте ({selectedCards.length})
                 </h4>
@@ -459,13 +411,13 @@ export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
       {cards.map((card) => (
         <li
           key={card.id}
-          className="overflow-hidden rounded-lg border shadow-sm"
+          className="overflow-hidden rounded-md border shadow-sm"
         >
           <Image
             src={getImageProxyUrl(card.image)}
             width={240}
             height={320}
-            className="rounded-lg"
+            className="rounded-md"
             alt={card.slug}
           />
         </li>

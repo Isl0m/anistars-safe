@@ -24,7 +24,6 @@ export async function DELETE(request: Request) {
   if (!trade) {
     return errorResponse("Trade not found", 404);
   }
-  // Only a participant of the trade may cancel it.
   if (trade.senderId !== userId && trade.receiverId !== userId) {
     return errorResponse("Forbidden", 403);
   }

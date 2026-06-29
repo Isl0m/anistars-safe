@@ -33,7 +33,6 @@ export async function POST(request: Request) {
   if (!trade) {
     return errorResponse("Trade not found", 404);
   }
-  // Only the receiver can accept, and only while the trade is still pending.
   if (trade.receiverId !== userId) {
     return errorResponse("Forbidden", 403);
   }
@@ -46,12 +45,15 @@ export async function POST(request: Request) {
     return errorResponse(validation.error, validation.status);
   }
 
+  let updated;
   try {
-    const updated = await fulfillTradeWithCards(
-      tradeId,
-      cost,
-      validation.cardIds
-    );
+    updated = await fulfillTradeWithCards(tradeId, cost, validation.cardIds);
+  } catch (e) {
+    console.error("trade update failed:", e);
+    return errorResponse("Something went wrong", 500);
+  }
+
+  try {
     const [receiver, me] = await Promise.all([
       getUser(updated.receiverId),
       getMe(),
@@ -68,9 +70,9 @@ export async function POST(request: Request) {
       `${getProfileLink(me.username, receiver.id, receiver.name)} предлагает вам трейд`,
       { parse_mode: "HTML", reply_markup }
     );
-    return NextResponse.json(updated);
   } catch (e) {
-    console.error("trade update failed:", e);
-    return errorResponse("Something went wrong", 500);
+    console.error("trade update notification failed:", e);
   }
+
+  return NextResponse.json(updated);
 }

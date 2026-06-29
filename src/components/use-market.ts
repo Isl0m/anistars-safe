@@ -6,8 +6,6 @@ import { ListingFilters } from "./get-filter-options";
 
 const BASE = process.env.NEXT_PUBLIC_URL;
 
-// Market reads change more slowly than the user navigates between the feed and
-// a listing, so we keep them fresh for the same window the server caches them.
 const STALE_TIME = 30 * 1000;
 
 export type MarketUser = {
@@ -70,11 +68,10 @@ export const marketKeys = {
   userListings: (userId: string) =>
     ["market", "user-listings", userId] as const,
   userOffers: (userId: string) => ["market", "user-offers", userId] as const,
-  listing: (id: string) => ["market", "listing", id] as const,
   offers: (id: string) => ["market", "offers", id] as const,
 };
 
-export function useMarketListings() {
+export function useMarketListings(initialData?: MarketListingSummary[]) {
   return useQuery({
     queryKey: marketKeys.listings,
     queryFn: async () => {
@@ -83,17 +80,21 @@ export function useMarketListings() {
       return data.listings;
     },
     staleTime: STALE_TIME,
+    initialData,
   });
 }
 
-export function useUserMarketListings(userId?: string) {
+export function useUserMarketListings(
+  userId?: string,
+  opts?: { status?: "inactive"; enabled?: boolean }
+) {
   return useQuery({
-    queryKey: marketKeys.userListings(userId ?? ""),
-    enabled: !!userId,
+    queryKey: [...marketKeys.userListings(userId ?? ""), opts?.status ?? "all"],
+    enabled: (opts?.enabled ?? true) && !!userId,
     queryFn: async () => {
-      const res = await fetch(
-        `${BASE}/api/market/user-listings?id=${userId}`
-      );
+      const params = new URLSearchParams({ id: userId! });
+      if (opts?.status) params.set("status", opts.status);
+      const res = await fetch(`${BASE}/api/market/user-listings?${params}`);
       const data = (await res.json()) as { listings: MarketListingSummary[] };
       return data.listings;
     },
@@ -109,20 +110,6 @@ export function useUserMarketOffers(userId?: string) {
       const res = await fetch(`${BASE}/api/market/user-offers?id=${userId}`);
       const data = (await res.json()) as { offers: UserMarketOffer[] };
       return data.offers;
-    },
-    staleTime: STALE_TIME,
-  });
-}
-
-export function useMarketListing(id: string) {
-  return useQuery({
-    queryKey: marketKeys.listing(id),
-    queryFn: async () => {
-      const res = await fetch(`${BASE}/api/market/listings/${id}`);
-      const data = (await res.json()) as {
-        listing: MarketListingDetail | null;
-      };
-      return data.listing;
     },
     staleTime: STALE_TIME,
   });

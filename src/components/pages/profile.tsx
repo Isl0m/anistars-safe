@@ -133,7 +133,7 @@ export function Profile() {
           ) : undefined
         }
       />
-      <section className="flex-1 overflow-y-auto">
+      <section className="flex-1 overflow-y-auto pt-4">
         {query.data ? (
           <CardsList
             cards={query.data.cards}
@@ -195,7 +195,6 @@ export function SearchProfile({ user }: SearchProfileProps) {
       />
       <section className="flex-1 overflow-y-auto px-3 py-4">
         <div className="flex flex-col gap-3 md:container">
-          {/* User card */}
           <UserLink
             userId={user.id}
             name={user.name}
@@ -227,7 +226,6 @@ export function SearchProfile({ user }: SearchProfileProps) {
             <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
           </UserLink>
 
-          {/* Cards */}
           {cardsQuery.data ? (
             <CardsList cards={cardsQuery.data.cards} />
           ) : (
