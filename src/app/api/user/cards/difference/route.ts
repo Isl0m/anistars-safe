@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { errorResponse, requireUser } from "@/lib/api-utils";
 import {
-  getUser,
   getUserCardsDifferenceWithFilter,
   getUserReservedCardIds,
 } from "@/lib/queries";
@@ -13,15 +13,10 @@ export async function POST(request: Request) {
   const id = searchParams.get("id");
   const secondId = searchParams.get("secondId");
   if (!id || !secondId)
-    return NextResponse.json(
-      { error: "id and secondId param required" },
-      {
-        status: 400,
-      }
-    );
-  const user = await getUser(id);
-  if (!user)
-    return NextResponse.json({ error: "user not found" }, { status: 404 });
+    return errorResponse("id and secondId param required", 400);
+  const result = await requireUser(id);
+  if ("error" in result) return result.error;
+  const { user } = result;
   const body = (await request.json()) as Filter | undefined;
   const [cards, filterOptions, reserved] = await Promise.all([
     getUserCardsDifferenceWithFilter(id, secondId, body ?? undefined),

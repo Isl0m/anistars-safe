@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getMarketOffer, revalidateMarketListings } from "@/lib/queries";
-import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { revalidateMarketListings } from "@/lib/queries";
+import { errorResponse, loadPendingOffer, requireAuth } from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
@@ -11,22 +11,11 @@ export async function POST(request: Request) {
 
   const { offerId } = await request.json();
 
-  if (!offerId) {
-    return errorResponse("Missing required fields", 400);
-  }
+  const offerResult = await loadPendingOffer(offerId);
+  if ("error" in offerResult) return offerResult.error;
 
-  const offer = await getMarketOffer(offerId);
-
-  if (!offer) {
-    return errorResponse("Offer not found", 404);
-  }
-
-  if (offer.buyerId !== buyerId) {
+  if (offerResult.offer.buyerId !== buyerId) {
     return errorResponse("Forbidden", 403);
-  }
-
-  if (offer.status !== "pending") {
-    return errorResponse("Offer is not pending", 400);
   }
 
   try {

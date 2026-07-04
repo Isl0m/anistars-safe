@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { getRequiredParam } from "@/lib/api-utils";
+import { getRequiredParam, requireUser } from "@/lib/api-utils";
 import { authenticateRequest } from "@/lib/telegram-auth";
-import { getUser, getUserBanner, getUserProfileStats } from "@/lib/queries";
+import { getUserBanner, getUserProfileStats } from "@/lib/queries";
 
 export async function GET(request: Request) {
   const param = getRequiredParam(request, "id");
   if ("error" in param) return param.error;
 
-  const user = await getUser(param.value);
-  if (!user)
-    return NextResponse.json({ error: "user not found" }, { status: 404 });
+  const result = await requireUser(param.value);
+  if ("error" in result) return result.error;
+  const { user } = result;
 
   const auth = authenticateRequest(request);
   const isOwner = auth?.id === param.value;

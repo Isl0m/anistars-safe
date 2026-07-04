@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { revalidateMarketListings } from "@/lib/queries";
 import {
-  getMarketListingMeta,
-  getMarketOffer,
-  revalidateMarketListings,
-} from "@/lib/queries";
-import { errorResponse, requireAuth } from "@/lib/api-utils";
+  errorResponse,
+  loadPendingOffer,
+  requireAuth,
+  requireListingOwner,
+} from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
@@ -15,26 +16,14 @@ export async function POST(request: Request) {
 
   const { offerId } = await request.json();
 
-  if (!offerId) {
-    return errorResponse("Missing required fields", 400);
-  }
+  const offerResult = await loadPendingOffer(offerId);
+  if ("error" in offerResult) return offerResult.error;
+  const { offer } = offerResult;
 
-  const offer = await getMarketOffer(offerId);
+  const listingResult = await requireListingOwner(offer.listingId, sellerId);
+  if ("error" in listingResult) return listingResult.error;
 
-  if (!offer) {
-    return errorResponse("Offer not found", 404);
-  }
-
-  if (offer.status !== "pending") {
-    return errorResponse("Offer is not pending", 400);
-  }
-
-  const listing = await getMarketListingMeta(offer.listingId);
-  if (!listing || listing.sellerId !== sellerId) {
-    return errorResponse("Forbidden", 403);
-  }
-
-  if (listing.status !== "active") {
+  if (listingResult.listing.status !== "active") {
     return errorResponse("Listing is not active", 400);
   }
 
