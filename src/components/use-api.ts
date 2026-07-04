@@ -16,6 +16,7 @@ export class ApiError extends Error {
 type ApiOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
+  signal?: AbortSignal;
 };
 
 export function useApi() {
@@ -23,7 +24,7 @@ export function useApi() {
 
   return useCallback(
     async <T = unknown>(path: string, options: ApiOptions = {}): Promise<T> => {
-      const { method = "GET", body } = options;
+      const { method = "GET", body, signal } = options;
 
       const headers: Record<string, string> = {};
       if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -33,6 +34,7 @@ export function useApi() {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal,
       });
 
       if (!res.ok) {
