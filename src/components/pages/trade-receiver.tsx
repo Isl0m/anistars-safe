@@ -4,7 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Clock, Loader2, Repeat2, UserIcon } from "lucide-react";
+import {
+  ChevronRight,
+  Clock,
+  Loader2,
+  Repeat2,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -13,14 +20,17 @@ import { Input } from "@/ui/input";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
+import { UserAvatar } from "../user-avatar";
+
+type CheckResult = { user: User; isCanTrade: boolean };
 
 export default function TradeReceiverPage() {
   const { tgUser } = useTelegram();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [receiver, setReceiver] = useState("");
+  const [searchedId, setSearchedId] = useState<string | null>(null);
 
-  const query = useQuery({
+  const selfQuery = useQuery({
     queryKey: ["user", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return null;
@@ -32,53 +42,49 @@ export default function TradeReceiverPage() {
     placeholderData: keepPreviousData,
   });
 
-  const handleReceiver = async () => {
-    setIsLoading(true);
-    if (!receiver) {
+  const lookupQuery = useQuery({
+    queryKey: ["trade-receiver-lookup", searchedId],
+    enabled: !!searchedId,
+    retry: false,
+    queryFn: async () => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/check?id=${searchedId}`
+      );
+      if (!res.ok) throw new Error("not found");
+      return (await res.json()) as CheckResult;
+    },
+  });
+
+  const selfId = selfQuery.data?.id ?? tgUser?.id?.toString();
+
+  const handleSearch = () => {
+    const id = receiver.trim();
+    if (!id) {
       toast({
         title: "Ошибка",
         description: "Введите ид получателя",
         variant: "destructive",
       });
-      setReceiver("");
-      setIsLoading(false);
       return;
     }
-    if (receiver === query.data?.id) {
+    if (id === selfId) {
       toast({
         title: "Ошибка",
         description: "Нельзя трейдится с самим собой",
         variant: "destructive",
       });
-      setReceiver("");
-      setIsLoading(false);
       return;
     }
-    try {
-      const data = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/check?id=${receiver}`
-      ).then((res) => res.json());
-      if (data.isCanTrade) {
-        router.push(`/trade?receiver=${receiver}`);
-      } else {
-        if (!receiver) {
-          toast({
-            title: "Ошибка",
-            description: "Пользователь не может трейдится",
-            variant: "destructive",
-          });
-        }
-      }
-      setIsLoading(false);
-    } catch {
-      toast({
-        title: "Ошибка",
-        description: "Пользователь не найден",
-        variant: "destructive",
-      });
-      setIsLoading(false);
+    setSearchedId(id);
+  };
+
+  const handleContinue = () => {
+    if (searchedId && lookupQuery.data?.isCanTrade) {
+      router.push(`/trade?receiver=${searchedId}`);
     }
   };
+
+  const profile = lookupQuery.data;
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -95,44 +101,105 @@ export default function TradeReceiverPage() {
         }
       />
 
-      <div className="flex flex-1 flex-col items-center px-4 pt-16">
+      <div className="flex flex-1 flex-col items-center px-4 pt-12">
         <div className="mb-6 rounded-full bg-primary/10 p-4">
           <Repeat2 className="h-10 w-10 text-primary" />
         </div>
         <h2 className="mb-2 text-lg font-bold">Отправить трейд</h2>
         <p className="mb-8 max-w-[280px] text-center text-sm text-muted-foreground">
-          Введите ID получателя, чтобы предложить обмен картами
+          Введите ID получателя и проверьте, что это нужный игрок
         </p>
 
-        <div className="w-full max-w-sm">
-          <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-muted">
-              <UserIcon className="h-4 w-4 text-muted-foreground" />
-            </div>
+        <div className="w-full max-w-sm space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="recipient"
               type="text"
               placeholder="ID получателя"
               value={receiver}
-              onChange={(e) => setReceiver(e.target.value)}
-              className="border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+              onChange={(e) => {
+                setReceiver(e.target.value);
+                setSearchedId(null);
+              }}
+              className="pl-9"
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleReceiver();
+                if (e.key === "Enter") handleSearch();
               }}
             />
           </div>
-        </div>
-      </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleSearch}
+            disabled={!receiver.trim() || lookupQuery.isFetching}
+          >
+            {lookupQuery.isFetching ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-2 h-4 w-4" />
+            )}
+            Найти
+          </Button>
 
-      <div className="border-t bg-card p-4">
-        <Button
-          onClick={handleReceiver}
-          className="w-full"
-          disabled={!receiver || isLoading || query.isLoading || !query.data}
-        >
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Продолжить
-        </Button>
+          {searchedId && !lookupQuery.isFetching && (
+            <>
+              {lookupQuery.isError ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-center text-sm text-destructive">
+                  Пользователь не найден
+                </div>
+              ) : profile?.isCanTrade ? (
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="flex w-full items-center gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/30 hover:bg-card/80 active:scale-[0.99]"
+                >
+                  <UserAvatar
+                    name={profile.user.name}
+                    photoUrl={profile.user.photoUrl}
+                    size={48}
+                    className="ring-2 ring-card"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold">
+                      {profile.user.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      ID: {profile.user.id}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-medium text-primary">
+                      Нажмите, чтобы продолжить обмен
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                </button>
+              ) : profile ? (
+                <div className="rounded-xl border bg-card p-3.5">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      name={profile.user.name}
+                      photoUrl={profile.user.photoUrl}
+                      size={48}
+                      className="ring-2 ring-card"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-sm font-bold">
+                        {profile.user.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        ID: {profile.user.id}
+                      </p>
+                    </div>
+                    <ShieldAlert className="h-5 w-5 flex-shrink-0 text-destructive" />
+                  </div>
+                  <p className="mt-2.5 rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+                    Этот пользователь не может участвовать в обмене
+                  </p>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -47,7 +47,11 @@ export function ListingFilterDisplay({
       .split(", ")
       .filter(Boolean)
       .map((name) => (
-        <Badge key={`${key}-${name}`} variant="outline" className={cn(chipBase, color)}>
+        <Badge
+          key={`${key}-${name}`}
+          variant="outline"
+          className={cn(chipBase, color)}
+        >
           {name}
         </Badge>
       ));
@@ -78,7 +82,10 @@ export function ListingFilterDisplay({
       <Badge
         key={`stat-${stat}`}
         variant="outline"
-        className={cn(chipBase, "border-orange-500/30 bg-orange-500/5 text-orange-700")}
+        className={cn(
+          chipBase,
+          "border-orange-500/30 bg-orange-500/5 text-orange-700"
+        )}
       >
         {statMapper[stat]}
       </Badge>
@@ -87,7 +94,10 @@ export function ListingFilterDisplay({
       <Badge
         key={`type-${type}`}
         variant="outline"
-        className={cn(chipBase, "border-gray-500/30 bg-gray-500/5 text-gray-700")}
+        className={cn(
+          chipBase,
+          "border-gray-500/30 bg-gray-500/5 text-gray-700"
+        )}
       >
         {typeMapper[type]}
       </Badge>
@@ -99,7 +109,10 @@ export function ListingFilterDisplay({
       <Badge
         key="minPrice"
         variant="secondary"
-        className={cn(chipBase, "border-amber-500/20 bg-amber-500/10 text-amber-700")}
+        className={cn(
+          chipBase,
+          "border-amber-500/20 bg-amber-500/10 text-amber-700"
+        )}
       >
         Мин. Цена: {filters.minCardPrice}
       </Badge>
@@ -108,7 +121,10 @@ export function ListingFilterDisplay({
       <Badge
         key="minCount"
         variant="secondary"
-        className={cn(chipBase, "border-indigo-500/20 bg-indigo-500/10 text-indigo-700")}
+        className={cn(
+          chipBase,
+          "border-indigo-500/20 bg-indigo-500/10 text-indigo-700"
+        )}
       >
         Мин. Карт: {filters.minCardCount}
       </Badge>
@@ -117,7 +133,10 @@ export function ListingFilterDisplay({
       <Badge
         key="maxCount"
         variant="secondary"
-        className={cn(chipBase, "border-rose-500/20 bg-rose-500/10 text-rose-700")}
+        className={cn(
+          chipBase,
+          "border-rose-500/20 bg-rose-500/10 text-rose-700"
+        )}
       >
         Макс. Карт: {filters.maxCardCount}
       </Badge>
@@ -148,9 +167,9 @@ export function ListingFilterDisplay({
   }
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex flex-wrap gap-3">{attributeChips}</div>
-      <div className="flex flex-wrap gap-3">{constraintChips}</div>
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className="flex flex-wrap gap-2">{attributeChips}</div>
+      <div className="flex flex-wrap gap-2">{constraintChips}</div>
     </div>
   );
 }

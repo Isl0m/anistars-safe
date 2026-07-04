@@ -47,9 +47,10 @@ export function UniverseCollection({ universeId }: { universeId: number }) {
   const query = useQuery({
     queryKey: ["universe-collection", universeId],
     queryFn: async () => {
-      if (!tgUser) return;
+      // if (!tgUser) return;
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${tgUser.id}`
+        // `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${tgUser.id}`
+        `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${8057167755}`
       );
       return (await response.json()) as Promise<UniverseCollection>;
     },
@@ -64,9 +65,9 @@ export function UniverseCollection({ universeId }: { universeId: number }) {
         <div className="flex flex-col gap-3 md:container">
           {!query.data ? (
             <>
-              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-[101px] rounded-xl" />
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-32 rounded-xl" />
+                <Skeleton key={i} className="h-[57px] rounded-xl" />
               ))}
             </>
           ) : (
@@ -81,7 +82,7 @@ export function UniverseCollection({ universeId }: { universeId: number }) {
                     {query.data.stats.totalInUniverse}
                   </Badge>
                 </div>
-                <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>Прогресс</span>
                   <span className="font-medium text-foreground">
                     {Math.round(
@@ -102,7 +103,7 @@ export function UniverseCollection({ universeId }: { universeId: number }) {
                 </div>
               </div>
 
-              <Accordion type="single" collapsible>
+              <Accordion type="single" collapsible className="space-y-3">
                 {Object.entries(query.data.cardsByRarity).map(
                   ([rarity, cards]) => (
                     <RaritySection key={rarity} rarity={rarity} cards={cards} />
@@ -130,7 +131,7 @@ function RaritySection({
 
   return (
     <AccordionItem value={rarity} className="border-b-0">
-      <AccordionTrigger className="rounded-xl border bg-card px-3.5 py-3 hover:no-underline [&[data-state=open]]:rounded-b-none">
+      <AccordionTrigger className="rounded-xl border bg-card px-4 py-3 hover:no-underline [&[data-state=open]]:rounded-b-none">
         <div className="flex flex-1 items-center gap-3 pr-2">
           <div
             className={cn(

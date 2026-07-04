@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -26,18 +26,11 @@ import {
   ChevronRight,
   Coins,
   Crown,
-  Flame,
-  Heart,
+  ImageIcon,
   Library,
   Pencil,
-  Repeat2,
-  Sparkles,
   Star,
-  Store,
-  Swords,
-  Users,
   X,
-  Zap,
 } from "lucide-react";
 
 import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
@@ -51,8 +44,8 @@ import { Skeleton } from "@/ui/skeleton";
 import { toast } from "@/ui/use-toast";
 
 import { Header } from "../header";
-import { useApi } from "../use-api";
 import { useTelegram } from "../telegram-provider";
+import { useApi } from "../use-api";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserAvatar } from "../user-avatar";
 
@@ -100,58 +93,6 @@ function ProfileSkeleton() {
   );
 }
 
-const resourceItems = [
-  { key: "coins", label: "Монеты", Icon: Coins, color: "text-yellow-500" },
-  {
-    key: "sparkles",
-    label: "Искры",
-    Icon: Sparkles,
-    color: "text-purple-400",
-  },
-  { key: "tries", label: "Попытки", Icon: Zap, color: "text-blue-400" },
-  { key: "astrals", label: "Астралы", Icon: Star, color: "text-cyan-400" },
-  { key: "event", label: "Ивент", Icon: Flame, color: "text-orange-400" },
-  {
-    key: "referrals",
-    label: "Рефералы",
-    Icon: Users,
-    color: "text-emerald-400",
-  },
-] as const;
-
-const quickLinks = [
-  {
-    href: "/profile/cards",
-    label: "Мои карты",
-    Icon: Swords,
-    color: "from-indigo-500 to-violet-600",
-  },
-  {
-    href: "/profile/collection",
-    label: "Коллекция",
-    Icon: Library,
-    color: "from-blue-500 to-cyan-400",
-  },
-  {
-    href: "/profile/missing",
-    label: "Отсутствующие",
-    Icon: Heart,
-    color: "from-pink-500 to-rose-500",
-  },
-  {
-    href: "/trade",
-    label: "Трейд",
-    Icon: Repeat2,
-    color: "from-emerald-500 to-teal-600",
-  },
-  {
-    href: "/market",
-    label: "Маркетплейс",
-    Icon: Store,
-    color: "from-purple-600 to-pink-500",
-  },
-];
-
 function formatDate(date: Date | string | null | undefined) {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("ru-RU", {
@@ -191,6 +132,169 @@ function BannerCover({ banner }: { banner: Banner | null }) {
   );
 }
 
+type OwnedBanner = {
+  bannerId: number;
+  name: string;
+  file: string;
+  type: "photo" | "video";
+};
+
+function ChangeBannerSection({
+  profileKey,
+  currentBannerId,
+  banners,
+  isLoading,
+  onClose,
+}: {
+  profileKey: (string | number | undefined)[];
+  currentBannerId: number;
+  banners: OwnedBanner[];
+  isLoading: boolean;
+  onClose: () => void;
+}) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const [isSaving, setIsSaving] = useState(false);
+  // Snapshot captured when the editor opens, used to revert previews on cancel.
+  const snapshotRef = useRef<ProfileData | undefined>(
+    queryClient.getQueryData<ProfileData>(profileKey)
+  );
+
+  const revert = () => {
+    if (snapshotRef.current) {
+      queryClient.setQueryData(profileKey, snapshotRef.current);
+    }
+  };
+
+  const cancelEdit = () => {
+    revert();
+    onClose();
+  };
+
+  // Preview only: update the cached cover so the change is visible right away,
+  // but do not persist until the user confirms.
+  const previewBanner = (banner: OwnedBanner) => {
+    queryClient.setQueryData<ProfileData>(profileKey, (old) =>
+      old
+        ? {
+            ...old,
+            user: { ...old.user, bannerId: banner.bannerId },
+            banner: {
+              id: banner.bannerId,
+              name: banner.name,
+              file: banner.file,
+              type: banner.type,
+              isPrivate: false,
+            },
+          }
+        : old
+    );
+  };
+
+  const confirm = async () => {
+    const originalBannerId = snapshotRef.current?.user.bannerId;
+    if (currentBannerId === originalBannerId) {
+      onClose();
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await api("/api/user/banners", {
+        method: "PATCH",
+        body: { bannerId: currentBannerId },
+      });
+      onClose();
+    } catch {
+      revert();
+      toast({
+        title: "Ошибка",
+        description: "Не удалось изменить фон",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <ImageIcon className="h-3 w-3" />
+          Фон профиля
+        </h3>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
+            onClick={cancelEdit}
+            disabled={isSaving}
+          >
+            <X className="h-3 w-3" />
+            Отмена
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs"
+            onClick={confirm}
+            disabled={isSaving}
+          >
+            <Check className="h-3 w-3" />
+            Готово
+          </Button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="aspect-[16/10] rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {banners.map((banner) => (
+            <button
+              key={banner.bannerId}
+              onClick={() => previewBanner(banner)}
+              disabled={isSaving}
+              className={cn(
+                "relative overflow-hidden rounded-xl border bg-card transition-colors",
+                banner.bannerId === currentBannerId
+                  ? "border-primary ring-2 ring-primary/40"
+                  : "hover:border-primary/30"
+              )}
+            >
+              <div className="relative aspect-[16/10] w-full overflow-hidden">
+                {banner.type === "photo" ? (
+                  <Image
+                    src={getImageProxyUrl(banner.file)}
+                    width={320}
+                    height={200}
+                    alt={banner.name}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <video
+                    src={banner.file + "#t=0.1"}
+                    preload="metadata"
+                    playsInline
+                    muted
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserHeader({ user }: { user: ProfileData["user"] }) {
   return (
     <>
@@ -208,22 +312,19 @@ function UserHeader({ user }: { user: ProfileData["user"] }) {
           </Badge>
         )}
       </div>
-      {user.tgUserName && (
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          @{user.tgUserName}
-        </p>
-      )}
-      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Calendar className="h-3 w-3" />
-        <span>С {formatDate(user.createdAt)}</span>
+      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Calendar className="h-3 w-3" />С {formatDate(user.createdAt)}
+        </span>
+        <span>ID: {user.id}</span>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">ID: {user.id}</p>
     </>
   );
 }
 
 export function ProfileInfo() {
   const { tgUser } = useTelegram();
+  const [isEditingBanner, setIsEditingBanner] = useState(false);
 
   const query = useQuery({
     queryKey: ["user-profile", tgUser?.id],
@@ -236,11 +337,25 @@ export function ProfileInfo() {
     },
   });
 
+  const bannersQuery = useQuery({
+    queryKey: ["owned-banners", tgUser?.id],
+    queryFn: async () => {
+      if (!tgUser) return [];
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_URL}/api/user/banners?userId=${tgUser.id}`
+      );
+      return (await res.json()).banners as OwnedBanner[];
+    },
+    enabled: !!tgUser,
+  });
+
   if (query.isLoading || !query.data) {
     return <ProfileSkeleton />;
   }
 
   const { user, stats, banner } = query.data;
+  const ownedBanners = bannersQuery.data ?? [];
+  const canEditBanner = ownedBanners.length > 0;
 
   return (
     <main className="flex h-full flex-col">
@@ -249,6 +364,15 @@ export function ProfileInfo() {
         <div className="flex flex-col gap-3 md:container">
           <div className="relative overflow-hidden rounded-xl border bg-card">
             <BannerCover banner={banner} />
+            {canEditBanner && !isEditingBanner && (
+              <button
+                aria-label="Изменить фон"
+                onClick={() => setIsEditingBanner(true)}
+                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
             <div className="relative -mt-12 flex flex-col items-center px-4 pb-4">
               <UserAvatar
                 name={user.name}
@@ -260,22 +384,15 @@ export function ProfileInfo() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {resourceItems.map(({ key, label, Icon, color }) => (
-              <div
-                key={key}
-                className="flex flex-col items-center gap-1.5 rounded-xl border bg-card p-3"
-              >
-                <Icon className={cn("h-5 w-5", color)} />
-                <span className="text-base font-bold">
-                  {prettyNumbers(user[key])}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
+          {isEditingBanner && (
+            <ChangeBannerSection
+              profileKey={["user-profile", tgUser?.id]}
+              currentBannerId={user.bannerId}
+              banners={ownedBanners}
+              isLoading={bannersQuery.isLoading}
+              onClose={() => setIsEditingBanner(false)}
+            />
+          )}
 
           <div>
             <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -294,65 +411,10 @@ export function ProfileInfo() {
                 value={prettyNumbers(stats.totalValue)}
                 color="text-yellow-500"
               />
-              <StatCard
-                Icon={Swords}
-                label="Трейды"
-                value={prettyNumbers(stats.completedTrades)}
-                color="text-emerald-400"
-              />
-              <StatCard
-                Icon={Store}
-                label="Продажи"
-                value={prettyNumbers(stats.completedSales)}
-                color="text-purple-400"
-              />
             </div>
           </div>
 
           <FavouriteCardsSection userId={user.id} editable />
-
-          {user.giftStreak > 1 && (
-            <div className="flex items-center gap-3 rounded-xl border bg-card p-3.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10">
-                <Flame className="h-4.5 w-4.5 text-orange-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold">Серия подарков</p>
-                <p className="text-xs text-muted-foreground">
-                  {user.giftStreak} дней подряд
-                </p>
-              </div>
-              <span className="text-lg font-bold text-orange-500">
-                x{user.giftStreak}
-              </span>
-            </div>
-          )}
-
-          <div>
-            <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Быстрый доступ
-            </h3>
-            <div className="flex flex-col gap-2">
-              {quickLinks.map(({ href, label, Icon, color }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-colors hover:border-primary/30"
-                >
-                  <div
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-sm",
-                      color
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <span className="flex-1 text-sm font-semibold">{label}</span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
     </main>

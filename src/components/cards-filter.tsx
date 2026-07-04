@@ -5,9 +5,16 @@ import { useForm } from "@tanstack/react-form";
 import {
   ArrowDownUp,
   ChevronDown,
+  Clock,
+  Coins,
   Filter as FilterIcon,
+  Layers3,
   RotateCcw,
+  Swords,
+  type LucideIcon,
 } from "lucide-react";
+
+import { getRarityChipStyle, stripRarityEmoji } from "@/lib/constants";
 
 import { CardStats } from "@/db/schema/card";
 
@@ -44,6 +51,18 @@ const chipKeys = new Set([
   "droppable",
   "techniques",
 ]);
+
+// Icon per sort dimension + direction, so each option is scannable at a glance.
+const sortMeta: Record<string, { Icon: LucideIcon; dir: "asc" | "desc" }> = {
+  "power-desc": { Icon: Swords, dir: "desc" },
+  "power-asc": { Icon: Swords, dir: "asc" },
+  "createdAt-desc": { Icon: Clock, dir: "desc" },
+  "createdAt-asc": { Icon: Clock, dir: "asc" },
+  "price-asc": { Icon: Coins, dir: "asc" },
+  "price-desc": { Icon: Coins, dir: "desc" },
+  "quantity-asc": { Icon: Layers3, dir: "asc" },
+  "quantity-desc": { Icon: Layers3, dir: "desc" },
+};
 
 export default function CardsFilter({
   filterOptions,
@@ -113,10 +132,11 @@ export default function CardsFilter({
       <SheetTrigger asChild>
         <Button
           variant="outline"
+          size={"sm"}
           aria-label="Show filters"
           className="relative gap-2"
         >
-          <FilterIcon className="h-4 w-4" />
+          <FilterIcon className="h-3 w-3" />
           {buttonText || "Фильтры"}
           {activeCount > 0 && (
             <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
@@ -128,7 +148,7 @@ export default function CardsFilter({
       <SheetContent
         aria-description="cards filter"
         side="right"
-        className="mt-auto flex h-screen max-h-[calc(100vh-(var(--safe-area-top)))] w-full flex-col p-0"
+        className="mt-auto flex h-screen max-h-[calc(100vh-(var(--safe-area-top)))] w-full flex-col p-0 md:max-w-md"
       >
         <SheetHeader className="border-b px-5 py-4">
           <SheetTitle className="text-lg font-semibold tracking-tight">
@@ -144,7 +164,7 @@ export default function CardsFilter({
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto px-5 pb-5">
             <div className="space-y-6">
               {sortOption && (
                 <section>
@@ -152,27 +172,37 @@ export default function CardsFilter({
                     {sortOption.name}
                   </SectionLabel>
                   <div className="flex flex-wrap gap-2">
-                    {sortOption.items.map((item) => (
-                      <form.Field
-                        key={item.id}
-                        name="sort"
-                        children={(field) => (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              field.setValue(item.id as SortOptions)
-                            }
-                            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                              field.state.value === item.id
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground active:scale-[0.97]"
-                            }`}
-                          >
-                            {item.name}
-                          </button>
-                        )}
-                      />
-                    ))}
+                    {sortOption.items.map((item) => {
+                      const meta = sortMeta[item.id as string];
+                      const Icon = meta?.Icon;
+
+                      return (
+                        <form.Field
+                          key={item.id}
+                          name="sort"
+                          children={(field) => {
+                            const selected = field.state.value === item.id;
+
+                            return (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  field.setValue(item.id as SortOptions)
+                                }
+                                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors active:scale-[0.97] ${
+                                  selected
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                                }`}
+                              >
+                                {Icon && <Icon className="h-3.5 w-3.5" />}
+                                {item.name}
+                              </button>
+                            );
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                 </section>
               )}
@@ -181,6 +211,7 @@ export default function CardsFilter({
                 const lockedValues = lockedFilters?.[key as keyof Filter];
                 const isCategoryLocked =
                   Array.isArray(lockedValues) && lockedValues.length > 0;
+                const isRarity = key === "rarityIds";
 
                 return (
                   <section key={key}>
@@ -198,13 +229,21 @@ export default function CardsFilter({
                           (lockedValues as any[]).includes(item.id);
                         const isOtherDisabled =
                           isCategoryLocked && !isItemLocked;
+                        const rarityStyle = isRarity
+                          ? getRarityChipStyle(item.name)
+                          : null;
+                        const label = isRarity
+                          ? stripRarityEmoji(item.name)
+                          : item.name;
 
                         return (
                           <form.Field
                             key={item.id}
                             name={key as any}
                             children={(field: any) => {
-                              const isSelected = Array.isArray(field.state.value)
+                              const isSelected = Array.isArray(
+                                field.state.value
+                              )
                                 ? field.state.value.includes(item.id)
                                 : field.state.value === item.id;
 
@@ -218,20 +257,24 @@ export default function CardsFilter({
                                       Array.isArray(field.state.value)
                                         ? field.pushValue(item.id)
                                         : field.setValue(item.id);
-                                    } else if (Array.isArray(field.state.value)) {
+                                    } else if (
+                                      Array.isArray(field.state.value)
+                                    ) {
                                       const idx = field.state.value.findIndex(
                                         (v: any) => v === item.id
                                       );
                                       field.removeValue(idx);
                                     }
                                   }}
-                                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors active:scale-[0.97] ${
                                     isSelected
-                                      ? "border-primary bg-primary/10 text-primary"
-                                      : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground active:scale-[0.97]"
+                                      ? (rarityStyle?.selected ??
+                                        "border-primary bg-primary/10 text-primary")
+                                      : (rarityStyle?.base ??
+                                        "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground")
                                   } ${isOtherDisabled ? "pointer-events-none opacity-30" : ""} ${isItemLocked ? "pointer-events-none opacity-50" : ""}`}
                                 >
-                                  {item.name}
+                                  {label}
                                 </button>
                               );
                             }}
@@ -253,111 +296,114 @@ export default function CardsFilter({
                     <span className="text-[13px] font-semibold text-foreground">
                       {universeOption.name}
                     </span>
-                    {(Array.isArray(lockedFilters?.universeIds) &&
-                      lockedFilters!.universeIds!.length > 0) && (
-                      <span className="text-[10px] text-muted-foreground">locked</span>
-                    )}
+                    {Array.isArray(lockedFilters?.universeIds) &&
+                      lockedFilters!.universeIds!.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          locked
+                        </span>
+                      )}
                     <SelectedCount fieldName="universeIds" form={form} />
                     <ChevronDown
                       className={`ml-auto h-4 w-4 text-muted-foreground transition-transform duration-200 ${universeExpanded ? "rotate-180" : ""}`}
                     />
                   </button>
-                  {universeExpanded && (() => {
-                    const lockedValues = lockedFilters?.universeIds;
-                    const isCategoryLocked =
-                      Array.isArray(lockedValues) && lockedValues.length > 0;
-                    const groupLabels = getGroupLabels(universeOption.items);
+                  {universeExpanded &&
+                    (() => {
+                      const lockedValues = lockedFilters?.universeIds;
+                      const isCategoryLocked =
+                        Array.isArray(lockedValues) && lockedValues.length > 0;
+                      const groupLabels = getGroupLabels(universeOption.items);
 
-                    return (
-                      <div className="space-y-3">
-                        {groupLabels.length > 1 && (
-                          <div className="flex gap-2 overflow-x-auto pb-0.5">
-                            {groupLabels.map((label) => (
-                              <button
-                                key={label}
-                                type="button"
-                                onClick={() => setActiveGroup(label)}
-                                className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                                  activeGroup === label
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground active:scale-[0.97]"
-                                }`}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <div className="space-y-0.5">
-                          {universeOption.items
-                            .filter(
-                              (item) =>
-                                !item.group ||
-                                groupLabels.length <= 1 ||
-                                item.group === activeGroup
-                            )
-                            .map((item) => {
-                              const isItemLocked =
-                                isCategoryLocked &&
-                                (lockedValues as number[]).includes(
-                                  item.id as number
-                                );
-                              const isOtherDisabled =
-                                isCategoryLocked && !isItemLocked;
+                      return (
+                        <div className="space-y-3">
+                          {groupLabels.length > 1 && (
+                            <div className="flex gap-2 overflow-x-auto pb-0.5">
+                              {groupLabels.map((label) => (
+                                <button
+                                  key={label}
+                                  type="button"
+                                  onClick={() => setActiveGroup(label)}
+                                  className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    activeGroup === label
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground active:scale-[0.97]"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <div className="space-y-0.5">
+                            {universeOption.items
+                              .filter(
+                                (item) =>
+                                  !item.group ||
+                                  groupLabels.length <= 1 ||
+                                  item.group === activeGroup
+                              )
+                              .map((item) => {
+                                const isItemLocked =
+                                  isCategoryLocked &&
+                                  (lockedValues as number[]).includes(
+                                    item.id as number
+                                  );
+                                const isOtherDisabled =
+                                  isCategoryLocked && !isItemLocked;
 
-                              return (
-                                <form.Field
-                                  key={item.id}
-                                  name={"universeIds" as any}
-                                  children={(field: any) => {
-                                    const isSelected =
-                                      field.state.value.includes(item.id);
-                                    return (
-                                      <Label
-                                        htmlFor={`uni-${item.id}`}
-                                        className={`flex cursor-pointer items-center rounded-lg px-3 py-2.5 transition-colors ${
-                                          isSelected
-                                            ? "bg-primary/10 text-primary"
-                                            : "text-foreground hover:bg-muted"
-                                        } ${isOtherDisabled ? "pointer-events-none opacity-30" : ""}`}
-                                      >
-                                        <Checkbox
-                                          id={`uni-${item.id}`}
-                                          disabled={
-                                            isItemLocked || isOtherDisabled
-                                          }
-                                          checked={isSelected}
-                                          onCheckedChange={(checked) => {
-                                            if (
-                                              isItemLocked ||
-                                              isOtherDisabled
-                                            )
-                                              return;
-                                            if (checked) {
-                                              field.pushValue(item.id);
-                                            } else {
-                                              const idx =
-                                                field.state.value.findIndex(
-                                                  (v: any) => v === item.id
-                                                );
-                                              field.removeValue(idx);
+                                return (
+                                  <form.Field
+                                    key={item.id}
+                                    name={"universeIds" as any}
+                                    children={(field: any) => {
+                                      const isSelected =
+                                        field.state.value.includes(item.id);
+                                      return (
+                                        <Label
+                                          htmlFor={`uni-${item.id}`}
+                                          className={`flex cursor-pointer items-center rounded-lg px-3 py-2.5 transition-colors ${
+                                            isSelected
+                                              ? "bg-primary/10 text-primary"
+                                              : "text-foreground hover:bg-muted"
+                                          } ${isOtherDisabled ? "pointer-events-none opacity-30" : ""}`}
+                                        >
+                                          <Checkbox
+                                            id={`uni-${item.id}`}
+                                            disabled={
+                                              isItemLocked || isOtherDisabled
                                             }
-                                          }}
-                                          className="mr-3 h-4 w-4"
-                                        />
-                                        <span className="text-sm">
-                                          {item.name}
-                                        </span>
-                                      </Label>
-                                    );
-                                  }}
-                                />
-                              );
-                            })}
+                                            checked={isSelected}
+                                            onCheckedChange={(checked) => {
+                                              if (
+                                                isItemLocked ||
+                                                isOtherDisabled
+                                              )
+                                                return;
+                                              if (checked) {
+                                                field.pushValue(item.id);
+                                              } else {
+                                                const idx =
+                                                  field.state.value.findIndex(
+                                                    (v: any) => v === item.id
+                                                  );
+                                                field.removeValue(idx);
+                                              }
+                                            }}
+                                            className="mr-3 h-4 w-4"
+                                          />
+                                          <span className="text-sm">
+                                            {item.name}
+                                          </span>
+                                        </Label>
+                                      );
+                                    }}
+                                  />
+                                );
+                              })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
                 </section>
               )}
 
@@ -461,9 +507,7 @@ function SectionLabel({
 }) {
   return (
     <div className="mb-3 flex items-center gap-2">
-      {icon && (
-        <span className="text-muted-foreground">{icon}</span>
-      )}
+      {icon && <span className="text-muted-foreground">{icon}</span>}
       <span className="text-[13px] font-semibold text-foreground">
         {children}
       </span>

@@ -36,9 +36,21 @@ export async function POST(request: Request) {
     return errorResponse(validation.error, validation.status);
   }
 
+  // The buyer's offer can include at most MAX_LISTING_CARDS cards, so cap the
+  // seller's requested maximum to that limit (default to it when unset).
+  const normalizedFilters = filters
+    ? {
+        ...filters,
+        maxCardCount: Math.min(
+          filters.maxCardCount ?? MAX_LISTING_CARDS,
+          MAX_LISTING_CARDS
+        ),
+      }
+    : filters;
+
   const [listing] = await createMarketListing({
     sellerId,
-    filters,
+    filters: normalizedFilters,
     status: "active",
   });
 

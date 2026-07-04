@@ -500,10 +500,10 @@ function OffersList({
                       Карты продавца
                     </span>
                     <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
-                      {offer.listing.cards.slice(0, 6).map((card) => (
+                      {offer.listing.cards.map((card) => (
                         <div
                           key={card.id}
-                          className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-md border shadow-sm"
+                          className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-sm border shadow-sm"
                         >
                           <Image
                             src={getImageProxyUrl(card.image)}
@@ -513,11 +513,6 @@ function OffersList({
                           />
                         </div>
                       ))}
-                      {offer.listing.cards.length > 6 && (
-                        <div className="relative flex h-16 w-12 flex-shrink-0 items-center justify-center rounded-md border bg-muted/50 text-[10px] font-bold text-muted-foreground shadow-sm">
-                          +{offer.listing.cards.length - 6}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -527,7 +522,7 @@ function OffersList({
                     Ваши карты
                   </span>
                   <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
-                    {offer.cards.slice(0, 6).map((card) => (
+                    {offer.cards.map((card) => (
                       <div
                         key={card.id}
                         className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-md border border-primary/30 shadow-sm"
@@ -540,11 +535,6 @@ function OffersList({
                         />
                       </div>
                     ))}
-                    {offer.cards.length > 6 && (
-                      <div className="relative flex h-16 w-12 flex-shrink-0 items-center justify-center rounded-md border bg-muted/50 text-[10px] font-bold text-muted-foreground shadow-sm">
-                        +{offer.cards.length - 6}
-                      </div>
-                    )}
                   </div>
                 </div>
 

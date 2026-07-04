@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { Api } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
 
@@ -13,11 +12,20 @@ export function getApi(): Api {
   return _api;
 }
 
-export const getMe = unstable_cache(
-  async (): Promise<UserFromGetMe> => getApi().getMe(),
-  ["telegram-get-me"],
-  { revalidate: 86400 }
-);
+// Memoize the bot identity in-process. We avoid `unstable_cache` because it
+// patches global `fetch`, and grammy's AbortController shim signal isn't
+// recognized as an `AbortSignal` by that patched fetch ("Expected signal to be
+// an instanceof AbortSignal"). The identity is immutable, so one fetch is enough.
+let _mePromise: Promise<UserFromGetMe> | undefined;
+
+export function getMe(): Promise<UserFromGetMe> {
+  return (_mePromise ??= getApi()
+    .getMe()
+    .catch((err) => {
+      _mePromise = undefined; // drop failures so the next call retries
+      throw err;
+    }));
+}
 
 export function getProfileLink(
   botUsername: string,

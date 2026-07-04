@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, Library } from "lucide-react";
-import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
@@ -52,9 +52,10 @@ export function Collection() {
   const query = useQuery({
     queryKey: ["user-collection"],
     queryFn: async () => {
-      if (!tgUser) return;
+      // if (!tgUser) return;
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${tgUser.id}`
+        // `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${tgUser.id}`
+        `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${8057167755}`
       );
       return (await response.json()).collection as Promise<UserCollection>;
     },
@@ -71,15 +72,15 @@ export function Collection() {
         <div className="flex flex-col gap-3 md:container">
           {query.isLoading ? (
             <>
-              <Skeleton className="h-16 rounded-xl" />
+              <Skeleton className="h-[70px] rounded-xl" />
               {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-20 rounded-xl" />
+                <Skeleton key={i} className="h-[60px] rounded-xl" />
               ))}
             </>
           ) : (
             <>
               {query.data && query.data.length > 0 && (
-                <div className="mb-1 flex items-center justify-between rounded-xl border bg-card p-3.5">
+                <div className="mb-1 flex items-center justify-between rounded-xl border bg-card p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
                       <Library className="h-4 w-4 text-primary" />
@@ -108,39 +109,29 @@ export function Collection() {
                     href={`/profile/collection/${universe.id}`}
                     className="group block rounded-xl border bg-card transition-colors hover:border-primary/30"
                   >
-                    <div className="flex items-center gap-3 p-3.5">
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-sm font-bold text-white shadow-sm",
-                          color
-                        )}
-                      >
-                        {[...universe.name][0]}
-                      </div>
-                      <div className="flex-1">
-                        <div className="mb-1.5 flex items-center justify-between">
-                          <span className="text-sm font-semibold">
-                            {universe.name}
+                    <div className="px-4 py-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold">
+                          {universe.name}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {universe.userCards}/{universe.totalCards}
                           </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {universe.userCards}/{universe.totalCards}
-                            </span>
-                            <span className="text-xs font-semibold text-foreground">
-                              {universe.percentage}%
-                            </span>
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                          </div>
+                          <span className="text-xs font-semibold text-foreground">
+                            {universe.percentage}%
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn(
-                              "h-full rounded-full bg-gradient-to-r transition-all duration-500",
-                              color
-                            )}
-                            style={{ width: `${universe.percentage}%` }}
-                          />
-                        </div>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full bg-gradient-to-r transition-all duration-500",
+                            color
+                          )}
+                          style={{ width: `${universe.percentage}%` }}
+                        />
                       </div>
                     </div>
                   </Link>

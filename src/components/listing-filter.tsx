@@ -8,6 +8,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+import { getRarityChipStyle, stripRarityEmoji } from "@/lib/constants";
+
 import { CardStats } from "@/db/schema/card";
 
 import { ListingFilterOption, ListingFilters } from "./get-filter-options";
@@ -88,56 +90,71 @@ export default function ListingFilter({
         >
           <div className="flex-1 overflow-y-auto px-5 py-5">
             <div className="space-y-6">
-              {chipOptions.map(({ key, name, items }) => (
-                <section key={key}>
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="text-[13px] font-semibold text-foreground">
-                      {name}
-                    </span>
-                    <SelectedCount fieldName={key} form={form} />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {items.map(({ id, name }) => (
-                      <form.Field
-                        key={id}
-                        name={key}
-                        children={(field) => {
-                          const isSelected = Array.isArray(field.state.value)
-                            ? // @ts-ignore
-                              field.state.value.includes(id)
-                            : field.state.value === id;
+              {chipOptions.map(({ key, name, items }) => {
+                const isRarity = key === "rarityIds";
 
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!isSelected) {
-                                  Array.isArray(field.state.value)
-                                    ? field.pushValue(id)
-                                    : // @ts-ignore
-                                      field.setValue(id);
-                                } else if (Array.isArray(field.state.value)) {
-                                  const idx = field.state.value.findIndex(
-                                    (v) => v === id
-                                  );
-                                  field.removeValue(idx);
-                                }
-                              }}
-                              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                                isSelected
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground active:scale-[0.97]"
-                              }`}
-                            >
-                              {name}
-                            </button>
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
-                </section>
-              ))}
+                return (
+                  <section key={key}>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-foreground">
+                        {name}
+                      </span>
+                      <SelectedCount fieldName={key} form={form} />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map(({ id, name }) => {
+                        const rarityStyle = isRarity
+                          ? getRarityChipStyle(name)
+                          : null;
+                        const label = isRarity ? stripRarityEmoji(name) : name;
+
+                        return (
+                          <form.Field
+                            key={id}
+                            name={key}
+                            children={(field) => {
+                              const isSelected = Array.isArray(field.state.value)
+                                ? // @ts-ignore
+                                  field.state.value.includes(id)
+                                : field.state.value === id;
+
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!isSelected) {
+                                      Array.isArray(field.state.value)
+                                        ? field.pushValue(id)
+                                        : // @ts-ignore
+                                          field.setValue(id);
+                                    } else if (
+                                      Array.isArray(field.state.value)
+                                    ) {
+                                      const idx = field.state.value.findIndex(
+                                        (v) => v === id
+                                      );
+                                      field.removeValue(idx);
+                                    }
+                                  }}
+                                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors active:scale-[0.97] ${
+                                    isSelected
+                                      ? rarityStyle?.selected ??
+                                        "border-primary bg-primary/10 text-primary"
+                                      : rarityStyle?.base ??
+                                        "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
 
               {universeOption && universeOption.items.length > 0 && (
                 <section>

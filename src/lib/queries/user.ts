@@ -122,7 +122,33 @@ export async function getBanners() {
 
 export async function getUserBanners(userId: string) {
   return db
+    .select({
+      bannerId: userBanners.bannerId,
+      name: banners.name,
+      file: banners.file,
+      type: banners.type,
+    })
+    .from(userBanners)
+    .innerJoin(banners, eq(banners.id, userBanners.bannerId))
+    .where(eq(userBanners.userId, userId))
+    .orderBy(userBanners.bannerId);
+}
+
+export async function updateUserBanner(userId: string, bannerId: number) {
+  const owned = await db
     .select({ bannerId: userBanners.bannerId })
     .from(userBanners)
-    .where(eq(userBanners.userId, userId));
+    .where(
+      and(eq(userBanners.userId, userId), eq(userBanners.bannerId, bannerId))
+    )
+    .then((res) => res[0] ?? null);
+
+  if (!owned) return { ok: false as const, error: "not_owned" };
+
+  await db
+    .update(tgUsers)
+    .set({ bannerId })
+    .where(eq(tgUsers.id, userId));
+
+  return { ok: true as const };
 }

@@ -6,7 +6,7 @@ import { ListingFilters } from "./get-filter-options";
 
 const BASE = process.env.NEXT_PUBLIC_URL;
 
-const STALE_TIME = 30 * 1000;
+const STALE_TIME = 10 * 1000;
 
 export type MarketUser = {
   id: string;

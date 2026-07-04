@@ -314,7 +314,9 @@ export async function validateCardsForTrade(
   }
 
   const owned = await verifyCardOwnership(uniqueCardIds, userId);
-  if (owned.length !== uniqueCardIds.length) {
+
+  const ownedCardIds = new Set(owned.map((c) => c.cardId));
+  if (ownedCardIds.size !== uniqueCardIds.length) {
     return {
       ok: false,
       error: "You don't own all selected cards",
@@ -322,8 +324,13 @@ export async function validateCardsForTrade(
     };
   }
 
-  const lockedCards = owned.filter((c) => c.isLocked);
-  if (lockedCards.length > 0) {
+  const cardIdsWithUnlockedCopy = new Set(
+    owned.filter((c) => !c.isLocked).map((c) => c.cardId)
+  );
+  const lockedCardIds = uniqueCardIds.filter(
+    (id) => !cardIdsWithUnlockedCopy.has(id)
+  );
+  if (lockedCardIds.length > 0) {
     return { ok: false, error: "Some cards are locked", status: 403 };
   }
 
@@ -348,6 +355,43 @@ export function updateMarketListingStatus(
     .update(marketListings)
     .set({ status })
     .where(eq(marketListings.id, listingId));
+}
+
+export type ReservedCardIds = { listed: string[]; offered: string[] };
+
+export async function getUserReservedCardIds(
+  userId: string
+): Promise<ReservedCardIds> {
+  const [listed, offered] = await Promise.all([
+    db
+      .selectDistinct({ cardId: marketListingCards.cardId })
+      .from(marketListingCards)
+      .innerJoin(
+        marketListings,
+        eq(marketListings.id, marketListingCards.listingId)
+      )
+      .where(
+        and(
+          eq(marketListings.sellerId, userId),
+          eq(marketListings.status, "active")
+        )
+      ),
+    db
+      .selectDistinct({ cardId: marketOfferCards.cardId })
+      .from(marketOfferCards)
+      .innerJoin(marketOffers, eq(marketOffers.id, marketOfferCards.offerId))
+      .where(
+        and(
+          eq(marketOffers.buyerId, userId),
+          eq(marketOffers.status, "pending")
+        )
+      ),
+  ]);
+
+  return {
+    listed: listed.map((r) => r.cardId),
+    offered: offered.map((r) => r.cardId),
+  };
 }
 
 export async function cancelPendingOffersForListing(listingId: number) {

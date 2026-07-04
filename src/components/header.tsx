@@ -31,8 +31,16 @@ const navGroups = [
     label: "Карты",
     items: [
       { name: "Все карты", href: "/", Icon: Grid3X3 },
-      { name: "Коллекция", href: "/profile/collection", Icon: Library },
+      { name: "Мои карты", href: "/profile/cards", Icon: Grid3X3 },
       { name: "Отсутствующие", href: "/profile/missing", Icon: Heart },
+    ],
+  },
+  {
+    label: "Профиль",
+    items: [
+      { name: "Мой профиль", href: "/profile", Icon: User },
+      { name: "Поиск игроков", href: "/profile/search", Icon: Users },
+      { name: "Коллекция", href: "/profile/collection", Icon: Library },
     ],
   },
   {
@@ -40,14 +48,6 @@ const navGroups = [
     items: [
       { name: "Трейд", href: "/trade", Icon: Repeat2 },
       { name: "Маркетплейс", href: "/market", Icon: Store },
-    ],
-  },
-  {
-    label: "Профиль",
-    items: [
-      { name: "Мой профиль", href: "/profile", Icon: User },
-      { name: "Мои карты", href: "/profile/cards", Icon: Grid3X3 },
-      { name: "Поиск игроков", href: "/profile/search", Icon: Users },
     ],
   },
   {
@@ -96,7 +96,7 @@ export function Header({ title = "AniStars", element }: Props) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 md:hidden"
+                className="h-9 w-9 md:hidden"
                 aria-label="Меню"
               >
                 <Menu className="h-5 w-5" />

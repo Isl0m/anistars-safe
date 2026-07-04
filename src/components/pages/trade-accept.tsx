@@ -15,9 +15,9 @@ import { Card, FullCard } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
 import { UserExtended } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
+import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
-import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { StepIndicator } from "../step-indicator";
@@ -26,7 +26,13 @@ import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
-import { CardsSelectList, SelectedCardsList } from "./trade";
+import {
+  CardsSelectList,
+  ReservedCards,
+  ReservedTradeWarning,
+  SelectedCardsList,
+  useReservedLookup,
+} from "./trade";
 
 type Steps = "show" | "select" | "confirm";
 
@@ -64,6 +70,7 @@ export default function AcceptTradePage({
         cards: FullCard[];
         user: UserExtended;
         filterOptions: FilterOption[];
+        reserved: ReservedCards;
       }>;
     },
     placeholderData: keepPreviousData,
@@ -75,20 +82,54 @@ export default function AcceptTradePage({
 
   if (query.data) {
     return (
-      <main className="flex min-h-screen flex-col gap-4 md:container">
+      <main className="flex h-full flex-col gap-4 md:container">
         <AcceptTradePageContent
           trade={trade}
           cards={query.data.cards}
           filterOptions={query.data.filterOptions}
+          reserved={query.data.reserved}
           setFilters={handleFilterChange}
         />
       </main>
     );
   }
+  const suggestedSkeletonCount = Math.min(
+    Math.max(trade.senderCards.length, 1),
+    8
+  );
+
   return (
-    <main className="flex min-h-screen flex-col gap-4">
-      <Header title="Трейд" />
-      <CardsListSkeleton />
+    <main className="flex h-full flex-col gap-4 md:container">
+      <Header title="Входящий трейд" />
+      <div className="px-3 pb-1">
+        <Skeleton className="h-6 w-56 rounded-full" />
+      </div>
+      <div className="flex-1 space-y-4 overflow-y-auto px-2 pb-20 pt-2">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-28 rounded" />
+              <Skeleton className="h-3 w-24 rounded" />
+            </div>
+          </div>
+          <Skeleton className="h-3 w-48 rounded" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-40 rounded" />
+          <ul className="grid grid-cols-4 gap-2">
+            {new Array(suggestedSkeletonCount).fill(0).map((_, idx) => (
+              <li key={idx}>
+                <Skeleton className="aspect-[3/4] rounded-md" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
+        <Skeleton className="h-10 w-full rounded-md" />
+        <Skeleton className="h-10 w-full rounded-md" />
+      </div>
     </main>
   );
 }
@@ -97,6 +138,7 @@ export function AcceptTradePageContent({
   cards,
   filterOptions,
   trade,
+  reserved,
   setFilters,
 }: {
   trade: SelectMultiTrade & {
@@ -106,8 +148,10 @@ export function AcceptTradePageContent({
   };
   cards: FullCard[];
   filterOptions: FilterOption[];
+  reserved?: ReservedCards;
   setFilters: (filters: Filter) => void;
 }) {
+  const reservedLookup = useReservedLookup(reserved);
   const cardsPerPage = 16;
   const [page, setPage] = useState(1);
 
@@ -232,7 +276,11 @@ export function AcceptTradePageContent({
         />
       </div>
 
-      <div className="px-2 pb-20">
+      <div className="flex-1 overflow-y-auto px-2 pb-20 pt-2">
+        <div
+          key={step}
+          className="duration-300 animate-in fade-in-0 slide-in-from-bottom-2"
+        >
         {step === "show" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
@@ -257,7 +305,7 @@ export function AcceptTradePageContent({
             </div>
             <div className="space-y-2">
               <h3 className="text-sm font-semibold">Предложенные карты</h3>
-              <SuggestedCardsList cards={trade.senderCards} />
+              <SuggestedCardsList cards={trade.senderCards} cols={4} />
             </div>
           </div>
         )}
@@ -283,6 +331,7 @@ export function AcceptTradePageContent({
               pageCards={pageCards}
               selectedCards={selectedCards}
               onClick={onCardSelect}
+              reserved={reservedLookup}
               pagination={{
                 cardsLeft,
                 changePage: setPage,
@@ -294,6 +343,10 @@ export function AcceptTradePageContent({
 
         {step === "confirm" && (
           <div className="space-y-4">
+            <ReservedTradeWarning
+              cards={selectedCards}
+              reserved={reservedLookup}
+            />
             <div className="rounded-xl border bg-card p-3.5">
               <div className="mb-2 flex items-center justify-between">
                 <h4 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
@@ -313,6 +366,8 @@ export function AcceptTradePageContent({
               <SelectedCardsList
                 selectedCards={selectedCards}
                 onClick={onCardSelect}
+                reserved={reservedLookup}
+                cols={5}
               />
             </div>
 
@@ -331,6 +386,7 @@ export function AcceptTradePageContent({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
@@ -403,11 +459,17 @@ export function AcceptTradePageContent({
 
 type SuggestedCardsListProps = {
   cards: Card[];
+  cols?: 4 | 5;
 };
 
-export function SuggestedCardsList({ cards }: SuggestedCardsListProps) {
+export function SuggestedCardsList({
+  cards,
+  cols = 5,
+}: SuggestedCardsListProps) {
   return (
-    <ul className="grid grid-cols-5 gap-2">
+    <ul
+      className={`grid gap-2 ${cols === 4 ? "grid-cols-4" : "grid-cols-5"}`}
+    >
       {cards.map((card) => (
         <li
           key={card.id}

@@ -8,7 +8,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
   Clock,
-  Eye,
   Info,
   Loader2,
   MessageSquare,
@@ -203,7 +202,7 @@ export default function MarketViewPage({
             {listing.cards.map((card) => (
               <li
                 key={card.id}
-                className="relative aspect-[3/4] overflow-hidden rounded-lg border shadow-sm"
+                className="relative aspect-[3/4] overflow-hidden rounded-sm border shadow-sm"
               >
                 <Image
                   src={getImageProxyUrl(card.image)}
@@ -330,7 +329,7 @@ export default function MarketViewPage({
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {offers.map((offer) => {
                 const statusInfo =
                   offerStatusMap[offer.status] ?? offerStatusMap.pending;
@@ -344,17 +343,18 @@ export default function MarketViewPage({
                       !isPending ? "opacity-60" : ""
                     } ${isMyOffer ? "border-primary/30" : "border-border"}`}
                   >
-                    <div className="p-3">
-                      <div className="mb-2.5 flex items-center justify-between">
+                    <div className="p-2.5">
+                      <div className="mb-2 flex items-center justify-between gap-2">
                         <UserLink
                           userId={offer.buyerId}
                           name={offer.buyer.name}
                           photoUrl={offer.buyer.photoUrl}
                           size={28}
+                          className="min-w-0"
                         >
-                          <div className="flex flex-col">
+                          <div className="flex min-w-0 flex-col">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-semibold">
+                              <span className="truncate text-sm font-semibold">
                                 {offer.buyer.name}
                               </span>
                               {isMyOffer && (
@@ -372,24 +372,25 @@ export default function MarketViewPage({
                             </div>
                           </div>
                         </UserLink>
-                        <Badge
-                          variant="outline"
-                          className={statusInfo.className}
-                        >
-                          {statusInfo.label}
-                        </Badge>
+                        <div className="flex flex-shrink-0 items-center gap-1.5">
+                          <Badge variant="secondary" className="text-[10px]">
+                            <ArrowRightLeft className="mr-1 h-2.5 w-2.5" />
+                            {offer.cards.length}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={statusInfo.className}
+                          >
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
                       </div>
 
-                      <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <ArrowRightLeft className="h-3 w-3" />
-                        {offer.cards.length} карт предложено
-                      </div>
-
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {offer.cards.slice(0, 10).map((card) => (
+                      <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
+                        {offer.cards.map((card) => (
                           <div
                             key={card.id}
-                            className="relative aspect-[3/4] overflow-hidden rounded-md border shadow-sm"
+                            className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-sm border shadow-sm"
                           >
                             <Image
                               src={getImageProxyUrl(card.image)}
@@ -399,15 +400,10 @@ export default function MarketViewPage({
                             />
                           </div>
                         ))}
-                        {offer.cards.length > 10 && (
-                          <div className="relative flex aspect-[3/4] items-center justify-center rounded-md border bg-muted/50 text-xs font-bold text-muted-foreground">
-                            +{offer.cards.length - 10}
-                          </div>
-                        )}
                       </div>
 
                       {isSeller && isPending && (
-                        <div className="mt-3 flex gap-2">
+                        <div className="mt-2.5 flex gap-2">
                           <Button
                             variant="destructive"
                             size="sm"
@@ -427,13 +423,6 @@ export default function MarketViewPage({
                             onAccept={() => handleAcceptOffer(offer.id)}
                             isLoading={isAccepting}
                           />
-                        </div>
-                      )}
-
-                      {!isSeller && !isMyOffer && (
-                        <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">
-                          <Eye className="h-3 w-3" />
-                          Только просмотр
                         </div>
                       )}
                     </div>

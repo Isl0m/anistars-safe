@@ -18,9 +18,9 @@ import { UserExtended } from "@/db/schema/user";
 import { Badge } from "@/ui/badge";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
+import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
-import { CardsListSkeleton } from "../cards-list-skeleton";
 import {
   Filter,
   FilterOption,
@@ -77,9 +77,28 @@ export default function MarketCreatePage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col gap-4">
-      <Header title="Выставить" />
-      <CardsListSkeleton />
+    <main className="flex min-h-screen flex-col gap-4 md:container">
+      <Header
+        title="Новое объявление"
+        element={<Skeleton className="h-9 w-9 rounded-md" />}
+      />
+      <div className="flex items-center justify-between px-3 pb-1">
+        <Skeleton className="h-7 w-44 rounded-full" />
+        <Skeleton className="h-5 w-12 rounded-full" />
+      </div>
+      <div className="px-2 pb-24">
+        <ul className="grid grid-cols-4 gap-2">
+          {new Array(16).fill(0).map((_, idx) => (
+            <li key={idx}>
+              <Skeleton className="aspect-[3/4] rounded-md" />
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
+        <Skeleton className="h-10 w-full rounded-md" />
+        <Skeleton className="h-10 w-full rounded-md" />
+      </div>
     </main>
   );
 }
@@ -110,7 +129,9 @@ function MarketCreateContent({
   const [desiredFilters, setDesiredFilters] = useState<ListingFilters>();
   const [minCardPrice, setMinCardPrice] = useState<number>();
   const [minCardCount, setMinCardCount] = useState<number>();
-  const [maxCardCount, setMaxCardCount] = useState<number>();
+  const [maxCardCount, setMaxCardCount] = useState<number | undefined>(
+    MAX_LISTING_CARDS
+  );
 
   const skip = (page - 1) * cardsPerPage;
   const pageCards = cards.slice(skip, skip + cardsPerPage);
@@ -287,13 +308,20 @@ function MarketCreateContent({
                   <Input
                     id="maxCount"
                     type="number"
-                    placeholder="--"
-                    value={maxCardCount}
-                    onChange={(e) =>
+                    min={1}
+                    max={MAX_LISTING_CARDS}
+                    placeholder={String(MAX_LISTING_CARDS)}
+                    value={maxCardCount ?? ""}
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        setMaxCardCount(undefined);
+                        return;
+                      }
+                      const value = Number(e.target.value);
                       setMaxCardCount(
-                        e.target.value ? Number(e.target.value) : undefined
-                      )
-                    }
+                        Math.min(Math.max(1, value), MAX_LISTING_CARDS)
+                      );
+                    }}
                     className="h-9 text-xs"
                   />
                 </div>

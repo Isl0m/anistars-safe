@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getUser, getUserCardsDifferenceWithFilter } from "@/lib/queries";
+import {
+  getUser,
+  getUserCardsDifferenceWithFilter,
+  getUserReservedCardIds,
+} from "@/lib/queries";
 
 import { Filter, getUserFilterOptions } from "@/components/get-filter-options";
 
@@ -19,15 +23,15 @@ export async function POST(request: Request) {
   if (!user)
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   const body = (await request.json()) as Filter | undefined;
-  const cards = await getUserCardsDifferenceWithFilter(
-    id,
-    secondId,
-    body ?? undefined
-  );
-  const filterOptions = await getUserFilterOptions(id);
+  const [cards, filterOptions, reserved] = await Promise.all([
+    getUserCardsDifferenceWithFilter(id, secondId, body ?? undefined),
+    getUserFilterOptions(id),
+    getUserReservedCardIds(id),
+  ]);
   return NextResponse.json({
     user,
     cards,
     filterOptions,
+    reserved,
   });
 }

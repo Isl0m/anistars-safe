@@ -17,12 +17,12 @@ export function StepIndicator({
           <div key={label} className="flex items-center gap-2">
             {i > 0 && (
               <div
-                className={`h-px w-6 ${isCompleted ? "bg-primary" : "bg-border"}`}
+                className={`h-px w-6 transition-colors duration-300 ${isCompleted ? "bg-primary" : "bg-border"}`}
               />
             )}
             <div className="flex items-center gap-1.5">
               <div
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors duration-300 ${
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : isCompleted
