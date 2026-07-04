@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
 
+import { CARDS_PER_PAGE } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
 import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
+import { useClientPagination } from "../use-client-pagination";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 import {
@@ -152,19 +154,12 @@ export function AcceptTradePageContent({
   setFilters: (filters: Filter) => void;
 }) {
   const reservedLookup = useReservedLookup(reserved);
-  const cardsPerPage = 16;
-  const [page, setPage] = useState(1);
-
-  const maxPage = Math.ceil(cards.length / cardsPerPage);
-  useEffect(() => {
-    if (page !== 1 && maxPage < page) {
-      setPage(1);
-    }
-  }, [page, maxPage]);
-
-  const cardsLeft = cards.length - page * cardsPerPage;
-  const skip = (page - 1) * cardsPerPage;
-  const pageCards = cards.slice(skip, skip + cardsPerPage);
+  const {
+    page,
+    setPage,
+    pageItems: pageCards,
+    cardsLeft,
+  } = useClientPagination(cards, CARDS_PER_PAGE);
 
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const [isLoading, setIsLoading] = useState(false);

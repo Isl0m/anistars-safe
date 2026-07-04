@@ -1,5 +1,9 @@
 export const MAX_LISTING_CARDS = 12;
 
+export const CARDS_PER_PAGE = 16;
+
+export const LISTINGS_PER_PAGE = 10;
+
 export const listingStatusMap: Record<
   string,
   { label: string; variant: "default" | "secondary" | "destructive" }

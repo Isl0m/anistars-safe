@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,11 @@ import {
   Store,
 } from "lucide-react";
 
-import { listingStatusMap, offerStatusMap } from "@/lib/constants";
+import {
+  LISTINGS_PER_PAGE,
+  listingStatusMap,
+  offerStatusMap,
+} from "@/lib/constants";
 import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Badge } from "@/ui/badge";
@@ -29,6 +33,7 @@ import { ListingFilterDisplay } from "../listing-filter-display";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { useApi } from "../use-api";
+import { useClientPagination } from "../use-client-pagination";
 import { useFilterOptions } from "../use-filter-options";
 import {
   marketKeys,
@@ -272,8 +277,6 @@ function ListingCard({
   );
 }
 
-const LISTINGS_PER_PAGE = 10;
-
 function ListingsList({
   listings,
   isLoading,
@@ -287,15 +290,12 @@ function ListingsList({
   currentUserId?: string;
   filterOptions: FilterOption[];
 }) {
-  const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(listings.length / LISTINGS_PER_PAGE));
-  useEffect(() => {
-    if (page > maxPage) setPage(1);
-  }, [page, maxPage]);
-
-  const cardsLeft = listings.length - page * LISTINGS_PER_PAGE;
-  const skip = (page - 1) * LISTINGS_PER_PAGE;
-  const pageListings = listings.slice(skip, skip + LISTINGS_PER_PAGE);
+  const {
+    page,
+    setPage,
+    pageItems: pageListings,
+    cardsLeft,
+  } = useClientPagination(listings, LISTINGS_PER_PAGE);
 
   if (isLoading) {
     return (
@@ -383,15 +383,12 @@ function OffersList({
   onCancel: (offerId: number) => Promise<void>;
 }) {
   const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
-  const maxPage = Math.max(1, Math.ceil(offers.length / LISTINGS_PER_PAGE));
-  useEffect(() => {
-    if (page > maxPage) setPage(1);
-  }, [page, maxPage]);
-
-  const cardsLeft = offers.length - page * LISTINGS_PER_PAGE;
-  const skip = (page - 1) * LISTINGS_PER_PAGE;
-  const pageOffers = offers.slice(skip, skip + LISTINGS_PER_PAGE);
+  const {
+    page,
+    setPage,
+    pageItems: pageOffers,
+    cardsLeft,
+  } = useClientPagination(offers, LISTINGS_PER_PAGE);
 
   if (isLoading) {
     return (

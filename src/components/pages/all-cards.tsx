@@ -7,6 +7,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
+import { CARDS_PER_PAGE } from "@/lib/constants";
+
 import { FullCard } from "@/db/schema/card";
 
 import CardsFilter from "../cards-filter";
@@ -15,7 +17,7 @@ import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 
-const PAGE_SIZE = 16;
+const PAGE_SIZE = CARDS_PER_PAGE;
 const DEFAULT_FILTER = { sort: "createdAt-desc" } as Filter;
 
 export type CardsPageData = { cards: FullCard[]; total: number };

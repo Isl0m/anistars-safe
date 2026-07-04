@@ -12,6 +12,7 @@ import {
   Package,
 } from "lucide-react";
 
+import { CARDS_PER_PAGE } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
 import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
+import { useClientPagination } from "../use-client-pagination";
 import { useFilterOptions } from "../use-filter-options";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { CardsSelectList, SelectedCardsList } from "./trade";
@@ -169,16 +171,17 @@ function MarketOfferContent({
   lockedFilters: Partial<Filter>;
 }) {
   const api = useApi();
-  const [page, setPage] = useState(1);
-  const cardsPerPage = 16;
   const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
 
-  const skip = (page - 1) * cardsPerPage;
-  const pageCards = cards.slice(skip, skip + cardsPerPage);
-  const cardsLeft = cards.length - page * cardsPerPage;
+  const {
+    page,
+    setPage,
+    pageItems: pageCards,
+    cardsLeft,
+  } = useClientPagination(cards, CARDS_PER_PAGE);
 
   const handleCreateOffer = async () => {
     setIsLoading(true);

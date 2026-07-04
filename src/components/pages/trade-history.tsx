@@ -23,6 +23,7 @@ import { Skeleton } from "@/ui/skeleton";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
+import { useClientPagination } from "../use-client-pagination";
 import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
@@ -32,13 +33,13 @@ export function TradeHistory() {
   const [tradeHistory, setTradeHistory] = useState<TradeHistoryType[] | null>(
     null
   );
-  const [page, setPage] = useState(1);
-  const cardsPerPage = 5;
-
   const totalTrades = tradeHistory?.length ?? 0;
-  const cardsLeft = totalTrades - page * cardsPerPage;
-  const skip = (page - 1) * cardsPerPage;
-  const pageTradeHistory = tradeHistory?.slice(skip, skip + cardsPerPage) ?? [];
+  const {
+    page,
+    setPage,
+    pageItems: pageTradeHistory,
+    cardsLeft,
+  } = useClientPagination(tradeHistory ?? [], 5);
 
   useEffect(() => {
     if (tgUser) {

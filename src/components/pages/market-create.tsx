@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { ChevronLeft, Loader2, Package } from "lucide-react";
 
-import { MAX_LISTING_CARDS } from "@/lib/constants";
+import { CARDS_PER_PAGE, MAX_LISTING_CARDS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -34,6 +34,7 @@ import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
 import { useApi } from "../use-api";
 import { useCardSelect } from "../use-card-select";
+import { useClientPagination } from "../use-client-pagination";
 import { useListingFilterOptions } from "../use-filter-options";
 import { marketKeys } from "../use-market";
 import { useTelegramBackButton } from "../use-telegram-back-button";
@@ -120,8 +121,6 @@ function MarketCreateContent({
 }) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const cardsPerPage = 16;
   const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
@@ -133,9 +132,12 @@ function MarketCreateContent({
     MAX_LISTING_CARDS
   );
 
-  const skip = (page - 1) * cardsPerPage;
-  const pageCards = cards.slice(skip, skip + cardsPerPage);
-  const cardsLeft = cards.length - page * cardsPerPage;
+  const {
+    page,
+    setPage,
+    pageItems: pageCards,
+    cardsLeft,
+  } = useClientPagination(cards, CARDS_PER_PAGE);
 
   const handleCardSelect = (card: FullCard) => () => {
     const isSelected = selectedCards.some((c) => c.id === card.id);

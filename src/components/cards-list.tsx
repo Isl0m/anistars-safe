@@ -4,6 +4,7 @@ import { memo, useEffect, useState } from "react";
 import Image from "next/image";
 import { Star } from "lucide-react";
 
+import { CARDS_PER_PAGE } from "@/lib/constants";
 import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 
 import { Card, FullCard, Technique } from "@/db/schema/card";
@@ -38,7 +39,7 @@ export function CardsList({
   page: controlledPage,
   onPageChange,
 }: CardsListProps) {
-  const cardsPerPage = 16;
+  const cardsPerPage = CARDS_PER_PAGE;
   const isServerPaginated =
     total !== undefined &&
     controlledPage !== undefined &&
