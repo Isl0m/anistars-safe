@@ -50,7 +50,7 @@ export function Missing({ filterOptions }: MissingProps) {
   return (
     <main className="flex min-h-screen flex-col gap-4">
       <Header
-        title={"Отсуствующие карты"}
+        title={"Отсутствующие карты"}
         element={
           <CardsFilter
             filterOptions={filterOptions}
