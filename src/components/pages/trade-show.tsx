@@ -27,11 +27,11 @@ export default function TradeShowPage({
   return (
     <main className="flex min-h-screen flex-col gap-4 md:container">
       <Header title="Детали трейда" />
-      <div className="space-y-4 px-3">
-        <div className="rounded-xl border bg-card p-3.5">
+      <div className="space-y-3 px-2">
+        <div className="rounded-xl border bg-card p-3">
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-              <ArrowRightLeft className="h-3.5 w-3.5" />
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <ArrowRightLeft className="h-4 w-4" />
               Отправлено ({trade.senderCards.length})
             </h4>
             {trade.cost > 0 && (
@@ -64,9 +64,9 @@ export default function TradeShowPage({
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-3.5">
-          <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-green-600">
-            <UserIcon className="h-3.5 w-3.5" />
+        <div className="rounded-xl border bg-card p-3">
+          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-green-600">
+            <UserIcon className="h-4 w-4" />
             Получено ({trade.receiverCards.length})
           </h4>
           <UserLink

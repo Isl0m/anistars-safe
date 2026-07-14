@@ -14,9 +14,18 @@ import {
   UserIcon,
 } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { listingStatusMap, offerStatusMap } from "@/lib/constants";
 import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
+import {
+  MarketCard,
+  marketKeys,
+  MarketListingDetail,
+  MarketOffer,
+  useMarketOffers,
+} from "@/hook/use-market";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
 import {
@@ -33,15 +42,6 @@ import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { useTelegram } from "../telegram-provider";
-import { useApi } from "../use-api";
-import {
-  MarketCard,
-  marketKeys,
-  MarketListingDetail,
-  MarketOffer,
-  useMarketOffers,
-} from "../use-market";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 export default function MarketViewPage({
@@ -54,7 +54,6 @@ export default function MarketViewPage({
   filterOptions: FilterOption[];
 }) {
   const { tgUser } = useTelegram();
-  const api = useApi();
   const router = useRouter();
   const queryClient = useQueryClient();
   useTelegramBackButton("/market");
@@ -79,9 +78,8 @@ export default function MarketViewPage({
   const handleAcceptOffer = async (offerId: number) => {
     setIsAccepting(true);
     try {
-      await api("/api/market/offers/accept", {
-        method: "POST",
-        body: { offerId },
+      await api.post("/api/market/offers/accept", {
+        offerId,
       });
 
       toast({
@@ -106,9 +104,8 @@ export default function MarketViewPage({
   const handleRejectOffer = async (offerId: number) => {
     setIsRejecting(offerId);
     try {
-      await api("/api/market/offers/reject", {
-        method: "POST",
-        body: { offerId },
+      await api.post("/api/market/offers/reject", {
+        offerId,
       });
 
       toast({
@@ -132,10 +129,7 @@ export default function MarketViewPage({
   const handleCancelListing = async () => {
     setIsCancelling(true);
     try {
-      await api(`/api/market/listings/${listing.id}/cancel`, {
-        method: "POST",
-        body: {},
-      });
+      await api.post(`/api/market/listings/${listing.id}/cancel`);
 
       toast({
         title: "Отменено",

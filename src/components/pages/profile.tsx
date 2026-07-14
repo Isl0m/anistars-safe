@@ -2,12 +2,7 @@
 
 import { ChangeEvent, KeyboardEvent, useCallback, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Calendar,
   ChevronRight,
@@ -17,8 +12,15 @@ import {
   Users,
 } from "lucide-react";
 
+import { api } from "@/lib/api";
+
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
+import { useCardsFilterState } from "@/hook/use-cards-filter-state";
+import { useFavouriteCards } from "@/hook/use-favourite-cards";
+import { useFilterOptions } from "@/hook/use-filter-options";
+import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
@@ -29,15 +31,13 @@ import { CardsList } from "../cards-list";
 import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter } from "../get-filter-options";
 import { Header } from "../header";
-import { useApi } from "../use-api";
-import { useFilterOptions } from "../use-filter-options";
 import { useTelegram } from "../telegram-provider";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
-type ProfileCardsData = {
+export type ProfileCardsData = {
   cards: FullCard[];
   user: UserExtended;
+  total: number;
 };
 
 function formatDate(date: Date | string | null | undefined) {
@@ -49,81 +49,53 @@ function formatDate(date: Date | string | null | undefined) {
   });
 }
 
+export async function fetchProfileCards(
+  filter: Filter,
+  page: number,
+  userId?: number | string
+) {
+  const { data } = await api.get<ProfileCardsData | undefined>(
+    `/api/user/cards`,
+    {
+      params: {
+        page: String(page),
+        filter: JSON.stringify(filter),
+        id: userId ?? undefined,
+      },
+    }
+  );
+  return data;
+}
+
 export function Profile() {
   const { tgUser } = useTelegram();
-  const api = useApi();
-  const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>();
+  const { page, filter, handleChangePage, handleFilterChange } =
+    useCardsFilterState();
   const { data: filterData } = useFilterOptions();
 
-  const query = useQuery({
-    queryKey: ["profile-cards", filter],
+  const query = usePaginatedCardsQuery<ProfileCardsData>({
+    queryKey: ["profile-cards", tgUser?.id],
+    filter,
+    page,
+    fetchFn: fetchProfileCards,
+  });
+
+  const userQuery = useQuery({
+    queryKey: ["user-data", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${tgUser.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(filter ?? {}),
-        }
-      );
-      return (await response.json()) as Promise<ProfileCardsData>;
+      const { data } = await api.get<{ user: UserExtended }>(`/api/user`);
+      return data.user;
     },
     placeholderData: keepPreviousData,
   });
 
-  const favouritesQuery = useQuery({
-    queryKey: ["favourite-card-ids"],
-    queryFn: async () => {
-      if (!tgUser) return [];
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites?id=${tgUser.id}&ids=1`
-      );
-      const data = await res.json();
-      return data.cardIds as string[];
-    },
-  });
-
-  const toggleFavourite = useMutation({
-    mutationFn: async (cardId: string) => {
-      const isFav = favouritesQuery.data?.includes(cardId);
-      const data = await api<{ favouriteCardIds: string[] }>(
-        "/api/user/favourites",
-        {
-          method: isFav ? "DELETE" : "POST",
-          body: { cardId },
-        }
-      );
-      return data.favouriteCardIds;
-    },
-    onSuccess: (newIds) => {
-      queryClient.setQueryData(["favourite-card-ids"], newIds);
-      queryClient.invalidateQueries({ queryKey: ["favourite-cards"] });
-    },
-    onError: (error: Error) => {
-      const messages: Record<string, string> = {
-        max_reached: "Достигнут лимит избранных карт (8)",
-        not_owned: "Вы не владеете этой картой",
-      };
-      toast({
-        title: "Ошибка",
-        description: messages[error.message] ?? "Не удалось обновить избранное",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
+  const { favouritesQuery, toggleFavourite } = useFavouriteCards(tgUser?.id);
 
   return (
-    <main className="flex h-full flex-col">
+    <main className="flex flex-col gap-4">
       <Header
-        title={query.data?.user.name ?? "Мои карты"}
+        title={userQuery.data?.name ?? "Мои карты"}
         element={
           filterData ? (
             <CardsFilter
@@ -133,17 +105,18 @@ export function Profile() {
           ) : undefined
         }
       />
-      <section className="flex-1 overflow-y-auto pt-4">
-        {query.data ? (
-          <CardsList
-            cards={query.data.cards}
-            favouriteCardIds={favouritesQuery.data}
-            onToggleFavourite={(cardId) => toggleFavourite.mutate(cardId)}
-          />
-        ) : (
-          <CardsListSkeleton />
-        )}
-      </section>
+      {query.data ? (
+        <CardsList
+          cards={query.data.cards}
+          total={query.data.total}
+          page={page}
+          onPageChange={handleChangePage}
+          favouriteCardIds={favouritesQuery.data}
+          onToggleFavourite={(cardId) => toggleFavourite.mutate(cardId)}
+        />
+      ) : (
+        <CardsListSkeleton />
+      )}
     </main>
   );
 }
@@ -157,31 +130,23 @@ type SearchProfileProps = {
 export function SearchProfile({ user }: SearchProfileProps) {
   useTelegramBackButton();
 
-  const [filter, setFilter] = useState<Filter>();
+  const { page, filter, handleChangePage, handleFilterChange } =
+    useCardsFilterState();
   const { data: filterData } = useFilterOptions();
 
-  const cardsQuery = useQuery({
-    queryKey: ["others-profile-cards", user.id, filter],
-    queryFn: async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/cards?id=${user.id}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(filter ?? {}),
-        }
-      );
-      return (await response.json()) as Promise<ProfileCardsData>;
-    },
-    placeholderData: keepPreviousData,
+  const fetchFn = useCallback(
+    (filter: Filter, page: number) => fetchProfileCards(filter, page, user.id),
+    [user]
+  );
+  const query = usePaginatedCardsQuery<ProfileCardsData>({
+    queryKey: ["others-profile-cards", user.id],
+    filter,
+    page,
+    fetchFn: fetchProfileCards,
   });
 
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
-
   return (
-    <main className="flex h-full flex-col">
+    <main className="flex flex-col gap-4">
       <Header
         title="Профиль игрока"
         element={
@@ -193,46 +158,48 @@ export function SearchProfile({ user }: SearchProfileProps) {
           ) : undefined
         }
       />
-      <section className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="flex flex-col gap-3 md:container">
-          <UserLink
-            userId={user.id}
-            name={user.name}
-            photoUrl={user.photoUrl}
-            size={48}
-            avatarClassName="ring-2 ring-card"
-            className="gap-3 rounded-xl border bg-card p-3.5 transition-colors hover:border-primary/30"
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold">{user.name}</h2>
-                {user.isPremium && (
-                  <Badge className="gap-1 bg-amber-500/15 px-1.5 py-0 text-[10px] text-amber-500 hover:bg-amber-500/25">
-                    <Crown className="h-2.5 w-2.5" />
-                    Premium
-                  </Badge>
-                )}
-              </div>
-              <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
-                <span>ID: {user.id}</span>
-                {user.createdAt && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(user.createdAt)}
-                  </span>
-                )}
-              </div>
+      <section className="px-2 md:container">
+        <UserLink
+          userId={user.id}
+          name={user.name}
+          photoUrl={user.photoUrl}
+          size={40}
+          avatarClassName="ring-2 ring-card"
+          className="gap-4 rounded-xl border bg-card px-3 py-2.5 transition-colors hover:border-primary/30"
+        >
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold">{user.name}</h2>
+              {user.isPremium && (
+                <Badge className="gap-1 bg-amber-500/15 px-1.5 py-0 text-[10px] text-amber-500 hover:bg-amber-500/25">
+                  <Crown className="h-2.5 w-2.5" />
+                  Premium
+                </Badge>
+              )}
             </div>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          </UserLink>
-
-          {cardsQuery.data ? (
-            <CardsList cards={cardsQuery.data.cards} />
-          ) : (
-            <CardsListSkeleton />
-          )}
-        </div>
+            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>ID: {user.id}</span>
+              {user.createdAt && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {formatDate(user.createdAt)}
+                </span>
+              )}
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+        </UserLink>
       </section>
+      {query.data ? (
+        <CardsList
+          cards={query.data.cards}
+          total={query.data.total}
+          page={page}
+          onPageChange={handleChangePage}
+        />
+      ) : (
+        <CardsListSkeleton />
+      )}
     </main>
   );
 }
@@ -264,10 +231,13 @@ export function SearchFirstProfile() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/check?id=${searchId}`
+      const { data } = await api.get<{ user: UserExtended }>(
+        `/api/user/check`,
+        {
+          params: { id: searchId },
+        }
       );
-      if (!res.ok) throw new Error("not found");
+      if (!data.user) throw new Error("not found");
       router.push(createQueryString("userId", searchId));
     } catch (e) {
       toast({

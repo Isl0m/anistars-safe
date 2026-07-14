@@ -6,33 +6,32 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
 
-import { CARDS_PER_PAGE } from "@/lib/constants";
+import { api } from "@/lib/api";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { UpdateTradeType } from "@/app/api/trade/update/route";
-import { Card, FullCard } from "@/db/schema/card";
+import { Card } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
 import { UserExtended } from "@/db/schema/user";
+import { useCardSelect } from "@/hook/use-card-select";
+import { useCardsFilterState } from "@/hook/use-cards-filter-state";
+import { useFilterOptions } from "@/hook/use-filter-options";
 import { Badge } from "@/ui/badge";
 import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
-import { Filter, FilterOption } from "../get-filter-options";
+import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
-import { useApi } from "../use-api";
-import { useCardSelect } from "../use-card-select";
-import { useClientPagination } from "../use-client-pagination";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 import {
-  CardsSelectList,
   ReservedCards,
   ReservedTradeWarning,
   SelectedCardsList,
+  TradeCardsList,
   useReservedLookup,
 } from "./trade";
 
@@ -50,49 +49,28 @@ export default function AcceptTradePage({
   };
 }) {
   const { tgUser } = useTelegram();
-  useTelegramBackButton("/trade");
-  const [filter, setFilter] = useState<Filter>();
 
   const query = useQuery({
-    queryKey: ["trade-accept-cards", tgUser?.id, trade.senderId, filter],
+    queryKey: ["trade-user", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return;
-      if (String(tgUser.id) !== trade.receiverId) return;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/cards/difference?id=${tgUser.id}&secondId=${trade.senderId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(filter ?? {}),
-        }
-      );
-      return (await response.json()) as Promise<{
-        cards: FullCard[];
+      const { data } = await api.get<{
         user: UserExtended;
-        filterOptions: FilterOption[];
         reserved: ReservedCards;
-      }>;
+      }>(`/api/user/trade`);
+      return data;
     },
     placeholderData: keepPreviousData,
   });
+  const { data: filterData } = useFilterOptions();
 
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
-
-  if (query.data) {
+  if (query.data && filterData) {
     return (
-      <main className="flex h-full flex-col gap-4 md:container">
-        <AcceptTradePageContent
-          trade={trade}
-          cards={query.data.cards}
-          filterOptions={query.data.filterOptions}
-          reserved={query.data.reserved}
-          setFilters={handleFilterChange}
-        />
-      </main>
+      <AcceptTradePageContent
+        trade={trade}
+        filterOptions={filterData.filterOptions}
+        reserved={query.data.reserved}
+      />
     );
   }
   const suggestedSkeletonCount = Math.min(
@@ -101,24 +79,24 @@ export default function AcceptTradePage({
   );
 
   return (
-    <main className="flex h-full flex-col gap-4 md:container">
+    <>
       <Header title="Входящий трейд" />
-      <div className="px-3 pb-1">
-        <Skeleton className="h-6 w-56 rounded-full" />
-      </div>
-      <div className="flex-1 space-y-4 overflow-y-auto px-2 pb-20 pt-2">
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <div className="mb-3 flex items-center gap-3">
+      <div className="space-y-2 p-2">
+        <Skeleton className="h-4 w-56 rounded-full" />
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+          <div className="mb-2 flex items-center gap-2">
             <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Skeleton className="h-4 w-28 rounded" />
               <Skeleton className="h-3 w-24 rounded" />
             </div>
           </div>
-          <Skeleton className="h-3 w-48 rounded" />
+          <Skeleton className="h-4 w-64 rounded" />
         </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
-          <Skeleton className="h-4 w-40 rounded" />
+          <Skeleton className="h-5 w-40 rounded" />
           <ul className="grid grid-cols-4 gap-2">
             {new Array(suggestedSkeletonCount).fill(0).map((_, idx) => (
               <li key={idx}>
@@ -128,44 +106,33 @@ export default function AcceptTradePage({
           </ul>
         </div>
       </div>
-      <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
+      <div className="flex w-full gap-4 border-t bg-card px-4 py-2">
         <Skeleton className="h-10 w-full rounded-md" />
         <Skeleton className="h-10 w-full rounded-md" />
       </div>
-    </main>
+    </>
   );
 }
 
 export function AcceptTradePageContent({
-  cards,
   filterOptions,
   trade,
   reserved,
-  setFilters,
 }: {
   trade: SelectMultiTrade & {
     senderName: string;
     senderPhotoUrl: string | null;
     senderCards: (Card & { rarity: string })[];
   };
-  cards: FullCard[];
   filterOptions: FilterOption[];
   reserved?: ReservedCards;
-  setFilters: (filters: Filter) => void;
 }) {
   const reservedLookup = useReservedLookup(reserved);
-  const {
-    page,
-    setPage,
-    pageItems: pageCards,
-    cardsLeft,
-  } = useClientPagination(cards, CARDS_PER_PAGE);
-
+  const filterState = useCardsFilterState();
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<Steps>("show");
   const router = useRouter();
-  const api = useApi();
   const requiredCount = trade.senderCards.length;
 
   const handleTrade = async () => {
@@ -187,7 +154,7 @@ export function AcceptTradePageContent({
     };
 
     try {
-      await api("/api/trade/update", { method: "POST", body: data });
+      await api.post("/api/trade/update", data);
       toast({
         title: "Трейд успешно принят",
         variant: "default",
@@ -208,9 +175,8 @@ export function AcceptTradePageContent({
   async function cancelTrade() {
     setIsLoading(true);
     try {
-      await api("/api/trade/cancel", {
-        method: "DELETE",
-        body: { id: trade.id },
+      await api.delete("/api/trade/cancel", {
+        data: { id: trade.id },
       });
       toast({
         title: "Трейд отклонён",
@@ -258,133 +224,126 @@ export function AcceptTradePageContent({
           step === "select" ? (
             <CardsFilter
               filterOptions={filterOptions}
-              setFilters={setFilters}
+              setFilters={filterState.handleFilterChange}
             />
           ) : undefined
         }
       />
 
-      <div className="px-3 pb-1">
+      <section className="space-y-2 p-2">
         <StepIndicator
           currentStep={stepIndex[step]}
           steps={["Просмотр", "Выбор", "Обмен"]}
+          className="px-1"
         />
-      </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-20 pt-2">
+        {step === "show" && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+            <UserLink
+              userId={trade.senderId}
+              name={trade.senderName}
+              photoUrl={trade.senderPhotoUrl}
+              size={40}
+              className="mb-2"
+            >
+              <div>
+                <p className="text-sm font-semibold">{trade.senderName}</p>
+                <p className="text-xs text-muted-foreground">
+                  предлагает обмен
+                </p>
+              </div>
+            </UserLink>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              <span>{requiredCount} карт — выберите столько же в ответ</span>
+            </div>
+          </div>
+        )}
+        {step === "select" && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Выберите {requiredCount} карт в ответ
+            </p>
+            <Badge
+              variant={
+                selectedCards.length === requiredCount ? "default" : "secondary"
+              }
+              className="text-[10px]"
+            >
+              {selectedCards.length}/{requiredCount}
+            </Badge>
+          </div>
+        )}
+      </section>
+      <div className="flex-1 overflow-y-auto p-2">
         <div
           key={step}
           className="duration-300 animate-in fade-in-0 slide-in-from-bottom-2"
         >
-        {step === "show" && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <UserLink
-                userId={trade.senderId}
-                name={trade.senderName}
-                photoUrl={trade.senderPhotoUrl}
-                size={40}
-                className="mb-3 gap-3"
-              >
-                <div>
-                  <p className="text-sm font-semibold">{trade.senderName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    предлагает обмен
-                  </p>
-                </div>
-              </UserLink>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ArrowRightLeft className="h-3.5 w-3.5" />
-                <span>{requiredCount} карт — выберите столько же в ответ</span>
-              </div>
-            </div>
+          {step === "show" && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold">Предложенные карты</h3>
               <SuggestedCardsList cards={trade.senderCards} cols={4} />
             </div>
-          </div>
-        )}
-
-        {step === "select" && (
-          <>
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Выберите {requiredCount} карт в ответ
-              </p>
-              <Badge
-                variant={
-                  selectedCards.length === requiredCount
-                    ? "default"
-                    : "secondary"
-                }
-                className="text-[10px]"
-              >
-                {selectedCards.length}/{requiredCount}
-              </Badge>
-            </div>
-            <CardsSelectList
-              pageCards={pageCards}
+          )}
+          {step === "select" && (
+            <TradeCardsList
+              secondId={trade.senderId}
               selectedCards={selectedCards}
-              onClick={onCardSelect}
-              reserved={reservedLookup}
-              pagination={{
-                cardsLeft,
-                changePage: setPage,
-                page,
-              }}
+              onCardSelect={onCardSelect}
+              {...filterState}
             />
-          </>
-        )}
+          )}
 
-        {step === "confirm" && (
-          <div className="space-y-4">
-            <ReservedTradeWarning
-              cards={selectedCards}
-              reserved={reservedLookup}
-            />
-            <div className="rounded-xl border bg-card p-3.5">
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-                  <ArrowRightLeft className="h-3.5 w-3.5" />
-                  Вы отдаёте ({selectedCards.length})
-                </h4>
-                {calcDifference() > 0 && (
-                  <Badge
-                    variant="outline"
-                    className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
-                  >
-                    <Coins className="mr-1 h-3 w-3" />
-                    {calcDifference()}
-                  </Badge>
-                )}
-              </div>
-              <SelectedCardsList
-                selectedCards={selectedCards}
-                onClick={onCardSelect}
+          {step === "confirm" && (
+            <div className="space-y-3">
+              <ReservedTradeWarning
+                cards={selectedCards}
                 reserved={reservedLookup}
-                cols={5}
               />
-            </div>
+              <div className="rounded-xl border bg-card p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Вы отдаёте ({selectedCards.length})
+                  </h4>
+                  {calcDifference() > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
+                    >
+                      <Coins className="mr-1 h-3 w-3" />
+                      {calcDifference()}
+                    </Badge>
+                  )}
+                </div>
+                <SelectedCardsList
+                  selectedCards={selectedCards}
+                  onClick={onCardSelect}
+                  reserved={reservedLookup}
+                  cols={5}
+                />
+              </div>
 
-            <div className="flex justify-center">
-              <div className="rounded-full bg-muted p-2">
-                <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
+              <div className="flex justify-center">
+                <div className="rounded-full bg-muted p-2">
+                  <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-card p-3">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-green-600">
+                  <UserIcon className="h-4 w-4" />
+                  Вы получите от {trade.senderName} ({requiredCount})
+                </h4>
+                <SuggestedCardsList cards={trade.senderCards} />
               </div>
             </div>
-
-            <div className="rounded-xl border bg-card p-3.5">
-              <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-green-600">
-                <UserIcon className="h-3.5 w-3.5" />
-                Вы получите от {trade.senderName} ({requiredCount})
-              </h4>
-              <SuggestedCardsList cards={trade.senderCards} />
-            </div>
-          </div>
-        )}
+          )}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 flex w-full gap-3 border-t bg-card p-4">
+      <div className="flex w-full gap-4 border-t bg-card px-4 py-2">
         {step === "show" && (
           <>
             <Button
@@ -462,9 +421,7 @@ export function SuggestedCardsList({
   cols = 5,
 }: SuggestedCardsListProps) {
   return (
-    <ul
-      className={`grid gap-2 ${cols === 4 ? "grid-cols-4" : "grid-cols-5"}`}
-    >
+    <ul className={`grid gap-2 ${cols === 4 ? "grid-cols-4" : "grid-cols-5"}`}>
       {cards.map((card) => (
         <li
           key={card.id}

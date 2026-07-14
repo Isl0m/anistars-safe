@@ -4,9 +4,11 @@ import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { cn, getImageProxyUrl } from "@/lib/utils";
 
 import { Card as CardType } from "@/db/schema/card";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import {
   Accordion,
   AccordionContent,
@@ -18,7 +20,6 @@ import { Skeleton } from "@/ui/skeleton";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 
 type CardWithOwner = CardType & { isOwned: boolean };
 
@@ -47,12 +48,11 @@ export function UniverseCollection({ universeId }: { universeId: number }) {
   const query = useQuery({
     queryKey: ["universe-collection", universeId],
     queryFn: async () => {
-      // if (!tgUser) return;
-      const response = await fetch(
-        // `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${tgUser.id}`
-        `${process.env.NEXT_PUBLIC_URL}/api/user/collection/${universeId}?userId=${8057167755}`
+      if (!tgUser) return;
+      const { data } = await api.get<UniverseCollection>(
+        `/api/user/collection/${universeId}`
       );
-      return (await response.json()) as Promise<UniverseCollection>;
+      return data;
     },
     placeholderData: keepPreviousData,
   });

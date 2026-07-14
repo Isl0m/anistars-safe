@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -12,28 +12,28 @@ import {
   Package,
 } from "lucide-react";
 
-import { CARDS_PER_PAGE } from "@/lib/constants";
+import { api } from "@/lib/api";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, FullCard } from "@/db/schema/card";
-import { UserExtended } from "@/db/schema/user";
+import { useCardSelect } from "@/hook/use-card-select";
+import { useCardsFilterState } from "@/hook/use-cards-filter-state";
+import { useFilterOptions } from "@/hook/use-filter-options";
+import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 
 import CardsFilter from "../cards-filter";
+import { CardsSelectListServer } from "../cards-list";
 import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption, ListingFilters } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
-import { useApi } from "../use-api";
-import { useCardSelect } from "../use-card-select";
-import { useClientPagination } from "../use-client-pagination";
-import { useFilterOptions } from "../use-filter-options";
-import { useTelegramBackButton } from "../use-telegram-back-button";
-import { CardsSelectList, SelectedCardsList } from "./trade";
+import { fetchTradeCards, SelectedCardsList, TradeCardsData } from "./trade";
 
 type MarketListing = {
   id: number;
@@ -44,8 +44,6 @@ type MarketListing = {
 
 export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const { tgUser } = useTelegram();
-  const api = useApi();
-  const [filter, setFilter] = useState<Filter>();
   const router = useRouter();
   useTelegramBackButton(`/market/${listingId}`);
   const { data: filterData } = useFilterOptions();
@@ -53,48 +51,14 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
   const listingQuery = useQuery({
     queryKey: ["market-listing", listingId],
     queryFn: async () => {
-      const { listing } = await api<{ listing: MarketListing | null }>(
+      const { data } = await api.get<{ listing: MarketListing | null }>(
         `/api/market/listings/${listingId}`
       );
-      return listing;
+      return data.listing;
     },
   });
 
-  const cardsQuery = useQuery({
-    queryKey: ["user-cards-market-offer", tgUser?.id, listingId, filter],
-    enabled: !!tgUser && !!listingQuery.data,
-    queryFn: async () => {
-      if (!tgUser || !listingQuery.data) return;
-      const listing = listingQuery.data;
-
-      const initialFilter: Filter = {
-        authorIds: [],
-        classIds: listing.filters?.classIds ?? [],
-        universeIds: listing.filters?.universeIds ?? [],
-        rarityIds: listing.filters?.rarityIds ?? [],
-        stats: listing.filters?.stats ?? [],
-        droppable: listing.filters?.type ?? [],
-        techniques: [],
-        sort: "power-desc",
-        minPrice: listing.filters?.minCardPrice,
-      };
-
-      const finalFilter = filter ?? initialFilter;
-
-      const userCards = await api<{ cards: FullCard[]; user: UserExtended }>(
-        `/api/user/cards?id=${tgUser.id}`,
-        { method: "POST", body: finalFilter }
-      );
-
-      return {
-        cards: userCards.cards,
-        user: userCards.user,
-        initialFilter: initialFilter,
-      };
-    },
-  });
-
-  if (listingQuery.isLoading || cardsQuery.isLoading || !filterData) {
+  if (listingQuery.isLoading || !filterData) {
     return (
       <main className="flex min-h-screen flex-col gap-4">
         <Header title="Загрузка..." />
@@ -103,36 +67,43 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
     );
   }
 
-  if (listingQuery.data && cardsQuery.data && filterData) {
+  if (listingQuery.data && filterData && tgUser) {
+    const listing = listingQuery.data;
+    const initialFilter: Filter = {
+      authorIds: [],
+      classIds: listing.filters?.classIds ?? [],
+      universeIds: listing.filters?.universeIds ?? [],
+      rarityIds: listing.filters?.rarityIds ?? [],
+      stats: listing.filters?.stats ?? [],
+      droppable: listing.filters?.type ?? [],
+      techniques: [],
+      sort: "power-desc",
+      minPrice: listing.filters?.minCardPrice,
+    };
     const lockedFilters: Partial<Filter> = {
-      rarityIds: listingQuery.data.filters?.rarityIds?.length
-        ? listingQuery.data.filters.rarityIds
+      rarityIds: listing.filters?.rarityIds?.length
+        ? listing.filters.rarityIds
         : undefined,
-      classIds: listingQuery.data.filters?.classIds?.length
-        ? listingQuery.data.filters.classIds
+      classIds: listing.filters?.classIds?.length
+        ? listing.filters.classIds
         : undefined,
-      universeIds: listingQuery.data.filters?.universeIds?.length
-        ? listingQuery.data.filters.universeIds
+      universeIds: listing.filters?.universeIds?.length
+        ? listing.filters.universeIds
         : undefined,
-      stats: listingQuery.data.filters?.stats?.length
-        ? listingQuery.data.filters.stats
+      stats: listing.filters?.stats?.length ? listing.filters.stats : undefined,
+      droppable: listing.filters?.type?.length
+        ? listing.filters.type
         : undefined,
-      droppable: listingQuery.data.filters?.type?.length
-        ? listingQuery.data.filters.type
-        : undefined,
-      minPrice: listingQuery.data.filters?.minCardPrice,
+      minPrice: listing.filters?.minCardPrice,
     };
 
     return (
       <main className="flex h-full flex-col">
         <MarketOfferContent
+          userId={tgUser.id}
           listing={listingQuery.data}
-          user={cardsQuery.data.user}
-          cards={cardsQuery.data.cards}
           filterOptions={filterData.filterOptions}
-          setFilters={setFilter}
-          initialFilter={cardsQuery.data.initialFilter}
-          filter={filter}
+          initialFilter={initialFilter}
           lockedFilters={lockedFilters}
         />
       </main>
@@ -152,37 +123,24 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
 type Steps = "select" | "confirm";
 
 function MarketOfferContent({
+  userId,
   listing,
-  user,
-  cards,
   filterOptions,
-  setFilters,
   initialFilter,
-  filter,
   lockedFilters,
 }: {
+  userId: number;
   listing: MarketListing;
-  user: UserExtended;
-  cards: FullCard[];
   filterOptions: FilterOption[];
-  setFilters: (filters: Filter) => void;
   initialFilter: Filter;
-  filter?: Filter;
   lockedFilters: Partial<Filter>;
 }) {
-  const api = useApi();
   const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
-
-  const {
-    page,
-    setPage,
-    pageItems: pageCards,
-    cardsLeft,
-  } = useClientPagination(cards, CARDS_PER_PAGE);
-
+  const { page, filter, handleChangePage, handleFilterChange } =
+    useCardsFilterState(initialFilter);
   const handleCreateOffer = async () => {
     setIsLoading(true);
 
@@ -213,12 +171,9 @@ function MarketOfferContent({
     }
 
     try {
-      await api("/api/market/offers", {
-        method: "POST",
-        body: {
-          listingId: listing.id,
-          cardIds: selectedCards.map((c) => c.id),
-        },
+      await api.post("/api/market/offers", {
+        listingId: listing.id,
+        cardIds: selectedCards.map((c) => c.id),
       });
 
       toast({
@@ -291,8 +246,7 @@ function MarketOfferContent({
           step === "select" ? (
             <CardsFilter
               filterOptions={filterOptions}
-              setFilters={setFilters}
-              initialValues={filter ?? initialFilter}
+              setFilters={handleFilterChange}
               lockedFilters={lockedFilters}
             />
           ) : (
@@ -336,15 +290,15 @@ function MarketOfferContent({
                 </p>
               </div>
             )}
-            <CardsSelectList
-              pageCards={pageCards}
+
+            <MarketCardsList
+              page={page}
+              filter={filter}
+              userId={userId}
+              secondId={listing.sellerId}
               selectedCards={selectedCards}
-              onClick={onCardSelect}
-              pagination={{
-                page,
-                cardsLeft,
-                changePage: setPage,
-              }}
+              onCardSelect={onCardSelect}
+              handleChangePage={handleChangePage}
             />
           </>
         ) : (
@@ -435,5 +389,45 @@ function MarketOfferContent({
         </div>
       </div>
     </>
+  );
+}
+
+export function MarketCardsList({
+  userId,
+  secondId,
+  filter,
+  page,
+  selectedCards,
+  onCardSelect,
+  handleChangePage,
+}: {
+  page: number;
+  selectedCards: FullCard[];
+  filter: Filter;
+  userId: number;
+  secondId: string;
+  handleChangePage: (page: number) => void;
+  onCardSelect: (card: FullCard) => () => void;
+}) {
+  const fetchFn = useCallback(
+    (filter: Filter, page: number) => fetchTradeCards(filter, page, secondId),
+    [secondId]
+  );
+  const query = usePaginatedCardsQuery<TradeCardsData>({
+    queryKey: ["trade-cards", userId],
+    filter,
+    page,
+    fetchFn,
+  });
+  if (!query.data) return <h1>hi</h1>;
+  return (
+    <CardsSelectListServer
+      cards={query.data.cards}
+      selectedCards={selectedCards}
+      onClick={onCardSelect}
+      page={page}
+      total={query.data.total}
+      onPageChange={handleChangePage}
+    />
   );
 }

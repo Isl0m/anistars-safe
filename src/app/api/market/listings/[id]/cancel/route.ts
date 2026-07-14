@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getMarketListingMeta, revalidateMarketListings } from "@/lib/queries";
 import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { getMarketListingMeta } from "@/lib/queries";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(
@@ -33,7 +33,6 @@ export async function POST(
       listingId,
       sellerId,
     });
-    revalidateMarketListings();
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("market cancel listing failed:", e);

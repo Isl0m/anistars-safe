@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, Clock, History, X } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { TradeHistory as TradeHistoryType } from "@/lib/queries";
 import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
+import { useClientPagination } from "@/hook/use-client-pagination";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import {
@@ -23,59 +26,48 @@ import { Skeleton } from "@/ui/skeleton";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
-import { useClientPagination } from "../use-client-pagination";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserLink } from "../user-link";
 
 export function TradeHistory() {
   const { tgUser } = useTelegram();
+
   useTelegramBackButton("/trade");
-  const [tradeHistory, setTradeHistory] = useState<TradeHistoryType[] | null>(
-    null
-  );
-  const totalTrades = tradeHistory?.length ?? 0;
+
+  const query = useQuery({
+    queryKey: ["tradeHistroy", tgUser?.id],
+    queryFn: async () => {
+      if (!tgUser) return [];
+      const { data } = await api.get<TradeHistoryType[]>(
+        `/api/trade/history?id=${tgUser.id}`
+      );
+      return data;
+    },
+    placeholderData: keepPreviousData,
+  });
+  const totalTrades = query.data?.length ?? 0;
+
   const {
     page,
     setPage,
     pageItems: pageTradeHistory,
     cardsLeft,
-  } = useClientPagination(tradeHistory ?? [], 5);
-
-  useEffect(() => {
-    if (tgUser) {
-      fetch(`${process.env.NEXT_PUBLIC_URL}/api/trade/history?id=${tgUser.id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setTradeHistory(data.tradeHistory);
-        });
-    }
-  }, [tgUser]);
+  } = useClientPagination(query.data ?? [], 5);
 
   return (
     <main className="flex h-full flex-col">
       <Header title="История трейдов" />
 
       <div className="flex-1 overflow-y-auto px-3 py-4 md:container">
-        {tradeHistory === null ? (
-          <div className="flex flex-col gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-xl border border-border p-3">
-                <div className="mb-3 flex items-center gap-2.5">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <div className="flex flex-col gap-1">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-16" />
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  {[1, 2, 3].map((j) => (
-                    <Skeleton key={j} className="h-16 w-12 rounded-md" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : tradeHistory.length === 0 ? (
+        {!query.data ? (
+          <>
+            <Skeleton className="mb-2 h-4 w-12" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-[146px] w-full rounded-xl" />
+              ))}
+            </div>
+          </>
+        ) : query.data.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16">
             <div className="rounded-full bg-muted p-4">
               <History className="h-10 w-10 text-muted-foreground/50" />

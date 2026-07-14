@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import {
-  getCachedMarketListings,
-  createMarketListing,
-  addMarketListingCards,
-  validateCardsForTrade,
-  revalidateMarketListings,
-} from "@/lib/queries";
+
 import { errorResponse, requireAuth } from "@/lib/api-utils";
 import { MAX_LISTING_CARDS } from "@/lib/constants";
+import {
+  addMarketListingCards,
+  createMarketListing,
+  getMarketListings,
+  validateCardsForTrade,
+} from "@/lib/queries";
 
 export async function GET() {
-  const listings = await getCachedMarketListings();
+  const listings = await getMarketListings();
   return NextResponse.json({ listings });
 }
 
@@ -55,8 +55,6 @@ export async function POST(request: Request) {
   });
 
   await addMarketListingCards(listing.id, validation.cardIds);
-
-  revalidateMarketListings();
 
   return NextResponse.json({ listing });
 }

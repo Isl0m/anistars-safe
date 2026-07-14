@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { revalidateMarketListings } from "@/lib/queries";
 import {
   errorResponse,
   loadPendingOffer,
@@ -33,7 +32,6 @@ export async function POST(request: Request) {
       offerId,
       sellerId,
     });
-    revalidateMarketListings();
     return NextResponse.json(result);
   } catch (e) {
     console.error("market accept failed:", e);

@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, getRequiredParam, requireAuth } from "@/lib/api-utils";
+import { errorResponse, requireAuth } from "@/lib/api-utils";
 import {
   addFavouriteCard,
-  getUserFavouriteCards,
   getUserFavouriteCardIds,
+  getUserFavouriteCards,
   removeFavouriteCard,
   reorderFavouriteCards,
 } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const param = getRequiredParam(request, "id");
-  if ("error" in param) return param.error;
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
   const { searchParams } = new URL(request.url);
   if (searchParams.get("ids")) {
-    const cardIds = await getUserFavouriteCardIds(param.value);
+    const cardIds = await getUserFavouriteCardIds(userId);
     return NextResponse.json({ cardIds });
   }
 
-  const cards = await getUserFavouriteCards(param.value);
+  const cards = await getUserFavouriteCards(userId);
   return NextResponse.json({ cards });
 }
 
@@ -59,7 +60,7 @@ export async function PUT(request: Request) {
   const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
 
-  const { cardIds } = await request.json();
+  const cardIds = await request.json();
   if (!Array.isArray(cardIds)) {
     return errorResponse("cardIds array required", 400);
   }
@@ -72,9 +73,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("reorder favourites error:", e);
-    return errorResponse(
-      e instanceof Error ? e.message : "unknown error",
-      500
-    );
+    return errorResponse(e instanceof Error ? e.message : "unknown error", 500);
   }
 }

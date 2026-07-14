@@ -28,6 +28,7 @@ import {
   tUniverses,
 } from "@/db/schema/card";
 import { trialTowerRewards } from "@/db/schema/trialTower";
+
 import { cardDetailColumns, techniquesSql } from "./shared";
 
 export async function getRarities() {
@@ -126,10 +127,105 @@ export async function getCardsFullWithFilter(
   const [cards, totalRows] = await Promise.all([
     cardDetailSelect()
       .where(where)
-      .orderBy(order)
+      .orderBy(order, tCards.slug)
       .limit(pageSize)
       .offset((Math.max(page, 1) - 1) * pageSize),
     db.select({ value: count() }).from(tCards).where(where),
+  ]);
+
+  return { cards, total: totalRows[0]?.value ?? 0 };
+}
+export async function getUserCardsPaginated(
+  id: string,
+  filter?: Filter,
+  page = 1,
+  pageSize = CARDS_PAGE_SIZE
+) {
+  const { filters, order } = getSQLFilters(filter);
+  const where = and(eq(cardToTgUser.tgUserId, id), ...filters);
+  const [cards, totalRows] = await Promise.all([
+    userCardDetailSelect()
+      .where(where)
+      .orderBy(order, tCards.slug)
+      .limit(pageSize)
+      .offset((Math.max(page, 1) - 1) * pageSize),
+    db
+      .select({ value: count() })
+      .from(cardToTgUser)
+      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+      .where(where),
+  ]);
+  return { cards, total: totalRows[0]?.value ?? 0 };
+}
+
+export async function getUserMissingCardsPaginated(
+  id: string,
+  filter?: Filter,
+  page = 1,
+  pageSize = CARDS_PAGE_SIZE
+) {
+  const { filters, order } = getSQLFilters(filter);
+  const where = and(
+    notExists(
+      db
+        .select()
+        .from(cardToTgUser)
+        .where(
+          and(eq(cardToTgUser.tgUserId, id), eq(cardToTgUser.cardId, tCards.id))
+        )
+    ),
+    ...filters
+  );
+
+  const [cards, totalRows] = await Promise.all([
+    cardDetailSelect()
+      .where(where)
+      .orderBy(order, tCards.slug)
+      .limit(pageSize)
+      .offset((Math.max(page, 1) - 1) * pageSize),
+    db.select({ value: count() }).from(tCards).where(where),
+  ]);
+
+  return { cards, total: totalRows[0]?.value ?? 0 };
+}
+
+export async function getUserCardsDifferencePaginated(
+  id: string,
+  secondId: string,
+  filter?: Filter,
+  page = 1,
+  pageSize = CARDS_PAGE_SIZE
+) {
+  const { filters, order } = getSQLFilters(filter);
+  const secondUserCard = aliasedTable(cardToTgUser, "secondUserCard");
+  const where = and(
+    ...filters,
+    notExists(
+      db
+        .select()
+        .from(secondUserCard)
+        .where(
+          and(
+            eq(secondUserCard.tgUserId, secondId),
+            eq(secondUserCard.cardId, tCards.id)
+          )
+        )
+    ),
+    eq(cardToTgUser.tgUserId, id)
+  );
+
+  const [cards, totalRows] = await Promise.all([
+    userCardDetailSelect()
+      .where(where)
+      .orderBy(order, tCards.slug)
+      .limit(pageSize)
+      .offset((Math.max(page, 1) - 1) * pageSize),
+
+    db
+      .select({ value: count() })
+      .from(cardToTgUser)
+      .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+      .where(where),
   ]);
 
   return { cards, total: totalRows[0]?.value ?? 0 };
@@ -424,10 +520,7 @@ export async function removeFavouriteCard(userId: string, cardId: string) {
     .update(cardToTgUser)
     .set({ favouritePosition: null })
     .where(
-      and(
-        eq(cardToTgUser.tgUserId, userId),
-        eq(cardToTgUser.cardId, cardId)
-      )
+      and(eq(cardToTgUser.tgUserId, userId), eq(cardToTgUser.cardId, cardId))
     );
   return { success: true };
 }
@@ -455,7 +548,7 @@ export async function reorderFavouriteCards(userId: string, cardIds: string[]) {
       await tx
         .update(cardToTgUser)
         .set({
-          favouritePosition: sql`CASE ${sql.join(cases, sql` `)} END`,
+          favouritePosition: sql`(CASE ${sql.join(cases, sql` `)} END)::integer`,
         })
         .where(
           and(

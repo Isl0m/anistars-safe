@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight,
   Clock,
@@ -13,9 +13,11 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import { api } from "@/lib/api";
+
 import { Button, buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
-import { User } from "@/db/schema/user";
+import { User, UserExtended } from "@/db/schema/user";
 import { Input } from "@/ui/input";
 
 import { Header } from "../header";
@@ -30,32 +32,21 @@ export default function TradeReceiverPage() {
   const [receiver, setReceiver] = useState("");
   const [searchedId, setSearchedId] = useState<string | null>(null);
 
-  const selfQuery = useQuery({
-    queryKey: ["user", tgUser?.id],
-    queryFn: async () => {
-      if (!tgUser) return null;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user?id=${tgUser.id}`
-      );
-      return (await response.json()).user as Promise<User>;
-    },
-    placeholderData: keepPreviousData,
-  });
-
   const lookupQuery = useQuery({
     queryKey: ["trade-receiver-lookup", searchedId],
     enabled: !!searchedId,
     retry: false,
     queryFn: async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/check?id=${searchedId}`
-      );
-      if (!res.ok) throw new Error("not found");
-      return (await res.json()) as CheckResult;
+      const { data } = await api.get<{
+        user: UserExtended;
+        isCanTrade: boolean;
+      }>(`/api/user/check`, {
+        params: { id: searchedId },
+      });
+      if (!data.user) throw new Error("not found");
+      return data;
     },
   });
-
-  const selfId = selfQuery.data?.id ?? tgUser?.id?.toString();
 
   const handleSearch = () => {
     const id = receiver.trim();
@@ -67,7 +58,7 @@ export default function TradeReceiverPage() {
       });
       return;
     }
-    if (id === selfId) {
+    if (tgUser && id === tgUser.id.toString()) {
       toast({
         title: "Ошибка",
         description: "Нельзя трейдится с самим собой",
@@ -87,7 +78,7 @@ export default function TradeReceiverPage() {
   const profile = lookupQuery.data;
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main>
       <Header
         title="Трейд"
         element={
@@ -101,7 +92,7 @@ export default function TradeReceiverPage() {
         }
       />
 
-      <div className="flex flex-1 flex-col items-center px-4 pt-12">
+      <div className="flex flex-col items-center px-4 pt-12">
         <div className="mb-6 rounded-full bg-primary/10 p-4">
           <Repeat2 className="h-10 w-10 text-primary" />
         </div>

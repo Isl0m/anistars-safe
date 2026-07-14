@@ -33,11 +33,13 @@ import {
   X,
 } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
 
 import { Banner } from "@/db/schema/banner";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/ui/skeleton";
@@ -45,8 +47,6 @@ import { toast } from "@/ui/use-toast";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
-import { useApi } from "../use-api";
-import { useTelegramBackButton } from "../use-telegram-back-button";
 import { UserAvatar } from "../user-avatar";
 
 type ProfileStats = {
@@ -152,10 +152,8 @@ function ChangeBannerSection({
   isLoading: boolean;
   onClose: () => void;
 }) {
-  const api = useApi();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
-  // Snapshot captured when the editor opens, used to revert previews on cancel.
   const snapshotRef = useRef<ProfileData | undefined>(
     queryClient.getQueryData<ProfileData>(profileKey)
   );
@@ -171,8 +169,6 @@ function ChangeBannerSection({
     onClose();
   };
 
-  // Preview only: update the cached cover so the change is visible right away,
-  // but do not persist until the user confirms.
   const previewBanner = (banner: OwnedBanner) => {
     queryClient.setQueryData<ProfileData>(profileKey, (old) =>
       old
@@ -200,9 +196,8 @@ function ChangeBannerSection({
 
     setIsSaving(true);
     try {
-      await api("/api/user/banners", {
-        method: "PATCH",
-        body: { bannerId: currentBannerId },
+      await api.patch("/api/user/banners", {
+        bannerId: currentBannerId,
       });
       onClose();
     } catch {
@@ -330,10 +325,8 @@ export function ProfileInfo() {
     queryKey: ["user-profile", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return null;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/profile?id=${tgUser.id}`
-      );
-      return (await response.json()) as ProfileData;
+      const { data } = await api.get<ProfileData>(`/api/user/profile`);
+      return data;
     },
   });
 
@@ -341,10 +334,10 @@ export function ProfileInfo() {
     queryKey: ["owned-banners", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return [];
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/banners?userId=${tgUser.id}`
+      const { data } = await api.get<{ banners: OwnedBanner[] }>(
+        `/api/user/banners`
       );
-      return (await res.json()).banners as OwnedBanner[];
+      return data.banners;
     },
     enabled: !!tgUser,
   });
@@ -428,10 +421,12 @@ export function PublicProfileInfo({ userId }: { userId: string }) {
   const query = useQuery({
     queryKey: ["public-profile", userId],
     queryFn: async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/profile?id=${userId}`
-      );
-      return (await response.json()) as ProfileData;
+      const { data } = await api.get<ProfileData>(`/api/user/profile`, {
+        params: {
+          id: userId,
+        },
+      });
+      return data;
     },
   });
 
@@ -606,7 +601,6 @@ function SortableCard({
 }
 
 function FavouriteCardsEditable({ userId }: { userId: string }) {
-  const api = useApi();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editCards, setEditCards] = useState<FullCard[]>([]);
@@ -621,16 +615,21 @@ function FavouriteCardsEditable({ userId }: { userId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["favourite-cards", userId],
     queryFn: async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites?id=${userId}`
+      const { data } = await api.get<{ cards: FullCard[] }>(
+        `/api/user/favourites`,
+        {
+          params: {
+            id: userId,
+          },
+        }
       );
-      return (await res.json()) as { cards: FullCard[] };
+      return data;
     },
   });
 
   const reorderMutation = useMutation({
     mutationFn: async (cardIds: string[]) => {
-      await api("/api/user/favourites", { method: "PUT", body: { cardIds } });
+      await api.put("/api/user/favourites", cardIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["favourite-cards"] });
@@ -803,10 +802,13 @@ function FavouriteCardsSection({
   const { data, isLoading } = useQuery({
     queryKey: ["favourite-cards", userId],
     queryFn: async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/favourites?id=${userId}`
+      const { data } = await api.get<{ cards: FullCard[] }>(
+        `/api/user/favourites`,
+        {
+          params: { id: userId },
+        }
       );
-      return (await res.json()) as { cards: FullCard[] };
+      return data;
     },
     enabled: !editable,
   });

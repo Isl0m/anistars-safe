@@ -5,6 +5,7 @@ import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Check, ImageIcon, Play } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { cn, getImageProxyUrl } from "@/lib/utils";
 
 import { Banner } from "@/db/schema/banner";
@@ -23,10 +24,10 @@ export function BannersPage({ banners }: { banners: Banner[] }) {
     queryKey: ["userBanners", tgUser?.id],
     queryFn: async () => {
       if (!tgUser) return [];
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/banners?userId=${tgUser.id}`
+      const { data } = await api.get<{ banners: UserBanner[] }>(
+        `/api/user/banners`
       );
-      return (await response.json()).banners as Promise<UserBanner[]>;
+      return data.banners;
     },
     placeholderData: keepPreviousData,
   });

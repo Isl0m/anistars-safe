@@ -11,34 +11,41 @@ import {
   viewport,
 } from "@telegram-apps/sdk-react";
 
+import { api, setAuthToken } from "@/lib/api";
+
 import LoadingScreen from "./loading-screen";
 
 export interface ITelegramContext {
   tgUser?: TelegramUser;
   initDataRaw?: string;
+  isTelegram: boolean;
 }
 
-export const TelegramContext = createContext<ITelegramContext>({});
+export const TelegramContext = createContext<ITelegramContext>({
+  isTelegram: false,
+});
 
 export const TelegramProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  const [ctx, setCtx] = useState<ITelegramContext>({});
+  const [ctx, setCtx] = useState<ITelegramContext>({ isTelegram: false });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
       init();
       const lp = retrieveLaunchParams();
-      setCtx({ tgUser: lp.initData?.user, initDataRaw: lp.initDataRaw });
+      setCtx({
+        tgUser: lp.initData?.user,
+        initDataRaw: lp.initDataRaw,
+        isTelegram: true,
+      });
+      setAuthToken(lp.initDataRaw);
 
       if (lp.initDataRaw) {
-        fetch(`${process.env.NEXT_PUBLIC_URL}/api/user/sync`, {
-          method: "POST",
-          headers: { "x-telegram-init-data": lp.initDataRaw },
-        }).catch(() => {});
+        api.post("/api/user/sync").catch(() => {});
       }
 
       void (async () => {
@@ -73,7 +80,9 @@ export const TelegramProvider = ({
         }
       })();
     } catch (e) {
-      console.error("Error initializing Telegram SDK:", e);
+      console.warn("Not running inside Telegram:", e);
+      setCtx({ isTelegram: false });
+      setAuthToken();
     } finally {
       setReady(true);
     }

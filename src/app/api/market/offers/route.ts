@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import {
-  createMarketOffer,
-  addMarketOfferCards,
-  getMarketListingMeta,
-  validateCardsForTrade,
-  hasPendingOfferFromBuyer,
-  revalidateMarketListings,
-} from "@/lib/queries";
+
 import { errorResponse, requireAuth } from "@/lib/api-utils";
+import {
+  addMarketOfferCards,
+  createMarketOffer,
+  getMarketListingMeta,
+  hasPendingOfferFromBuyer,
+  validateCardsForTrade,
+} from "@/lib/queries";
 
 export async function POST(request: Request) {
   const authResult = await requireAuth(request);
@@ -63,8 +63,6 @@ export async function POST(request: Request) {
   });
 
   await addMarketOfferCards(offer.id, validation.cardIds);
-
-  revalidateMarketListings();
 
   return NextResponse.json({ offer });
 }

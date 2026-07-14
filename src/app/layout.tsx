@@ -4,6 +4,8 @@ import { GeistSans } from "geist/font/sans";
 
 import "./globals.css";
 
+import Script from "next/script";
+
 import { cn } from "@/lib/utils";
 
 import { QueryProvider } from "@/components/query-client-provider";
@@ -38,6 +40,17 @@ export default function RootLayout({
             <Toaster />
           </TelegramProvider>
         </QueryProvider>
+        {process.env.NODE_ENV === "development" && (
+          <>
+            <Script
+              src="https://cdn.jsdelivr.net/npm/eruda"
+              strategy="beforeInteractive"
+            />
+            <Script id="eruda-init" strategy="afterInteractive">
+              {`eruda.init();`}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );

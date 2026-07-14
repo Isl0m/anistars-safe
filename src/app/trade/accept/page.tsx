@@ -44,7 +44,7 @@ export default async function Trade({
   }
 
   return (
-    <main className="flex min-h-screen flex-col gap-4 ">
+    <main className="flex h-full flex-col md:container">
       <TradeAcceptPage trade={trade} />
     </main>
   );

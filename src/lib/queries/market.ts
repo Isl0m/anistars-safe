@@ -1,4 +1,3 @@
-import { revalidateTag, unstable_cache } from "next/cache";
 import {
   and,
   count,
@@ -85,16 +84,6 @@ export async function getMarketListings() {
     .orderBy(desc(marketListings.createdAt));
 
   return attachCardsAndOffers(listings);
-}
-
-export const getCachedMarketListings = unstable_cache(
-  getMarketListings,
-  ["market-listings"],
-  { revalidate: 30, tags: [MARKET_LISTINGS_TAG] }
-);
-
-export function revalidateMarketListings() {
-  revalidateTag(MARKET_LISTINGS_TAG);
 }
 
 export async function getMarketListing(id: number) {

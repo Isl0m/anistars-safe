@@ -14,6 +14,7 @@ import {
   Store,
 } from "lucide-react";
 
+import { api } from "@/lib/api";
 import {
   LISTINGS_PER_PAGE,
   listingStatusMap,
@@ -21,6 +22,16 @@ import {
 } from "@/lib/constants";
 import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
+import { useClientPagination } from "@/hook/use-client-pagination";
+import { useFilterOptions } from "@/hook/use-filter-options";
+import {
+  marketKeys,
+  MarketListingSummary,
+  useMarketListings,
+  UserMarketOffer,
+  useUserMarketListings,
+  useUserMarketOffers,
+} from "@/hook/use-market";
 import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
 import { Skeleton } from "@/ui/skeleton";
@@ -32,17 +43,6 @@ import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
-import { useApi } from "../use-api";
-import { useClientPagination } from "../use-client-pagination";
-import { useFilterOptions } from "../use-filter-options";
-import {
-  marketKeys,
-  MarketListingSummary,
-  useMarketListings,
-  UserMarketOffer,
-  useUserMarketListings,
-  useUserMarketOffers,
-} from "../use-market";
 import { UserAvatar } from "../user-avatar";
 import { UserLink } from "../user-link";
 
@@ -54,7 +54,6 @@ export default function MarketPage({
   initialFilterOptions: FilterOption[];
 }) {
   const { tgUser } = useTelegram();
-  const api = useApi();
   const queryClient = useQueryClient();
   const userId = tgUser?.id?.toString();
 
@@ -84,9 +83,8 @@ export default function MarketPage({
     if (!userId) return;
 
     try {
-      await api("/api/market/offers/cancel", {
-        method: "POST",
-        body: { offerId },
+      await api.post("/api/market/offers/cancel", {
+        offerId,
       });
 
       toast({
@@ -143,7 +141,7 @@ export default function MarketPage({
           </TabsList>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 py-4 pb-24 md:container">
+        <div className="flex-1 overflow-y-auto px-2 py-4 md:container">
           <TabsContent value="all" className="mt-0">
             <ListingsList
               listings={listings}

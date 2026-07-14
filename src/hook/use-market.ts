@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { Card } from "@/db/schema/card";
+import { api } from "@/lib/api";
 
-import { ListingFilters } from "./get-filter-options";
+import { ListingFilters } from "@/components/get-filter-options";
+import { Card } from "@/db/schema/card";
 
 const BASE = process.env.NEXT_PUBLIC_URL;
 
@@ -75,8 +76,9 @@ export function useMarketListings(initialData?: MarketListingSummary[]) {
   return useQuery({
     queryKey: marketKeys.listings,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/market/listings`);
-      const data = (await res.json()) as { listings: MarketListingSummary[] };
+      const { data } = await api.get<{ listings: MarketListingSummary[] }>(
+        `/api/market/listings`
+      );
       return data.listings;
     },
     staleTime: STALE_TIME,
@@ -92,10 +94,12 @@ export function useUserMarketListings(
     queryKey: [...marketKeys.userListings(userId ?? ""), opts?.status ?? "all"],
     enabled: (opts?.enabled ?? true) && !!userId,
     queryFn: async () => {
-      const params = new URLSearchParams({ id: userId! });
-      if (opts?.status) params.set("status", opts.status);
-      const res = await fetch(`${BASE}/api/market/user-listings?${params}`);
-      const data = (await res.json()) as { listings: MarketListingSummary[] };
+      const { data } = await api.get<{ listings: MarketListingSummary[] }>(
+        `/api/market/user-listings`,
+        {
+          params: { id: userId!, status: opts?.status },
+        }
+      );
       return data.listings;
     },
     staleTime: STALE_TIME,
@@ -107,8 +111,12 @@ export function useUserMarketOffers(userId?: string) {
     queryKey: marketKeys.userOffers(userId ?? ""),
     enabled: !!userId,
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/market/user-offers?id=${userId}`);
-      const data = (await res.json()) as { offers: UserMarketOffer[] };
+      const { data } = await api.get<{ offers: UserMarketOffer[] }>(
+        `/api/market/user-offers?id=${userId}`,
+        {
+          params: { id: userId },
+        }
+      );
       return data.offers;
     },
     staleTime: STALE_TIME,
@@ -119,8 +127,9 @@ export function useMarketOffers(id: string) {
   return useQuery({
     queryKey: marketKeys.offers(id),
     queryFn: async () => {
-      const res = await fetch(`${BASE}/api/market/listings/${id}/offers`);
-      const data = (await res.json()) as { offers: MarketOffer[] };
+      const { data } = await api.get<{ offers: MarketOffer[] }>(
+        `/api/market/listings/${id}/offers`
+      );
       return data.offers;
     },
     staleTime: STALE_TIME,

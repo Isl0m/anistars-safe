@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, requireUser } from "@/lib/api-utils";
 import {
+  errorResponse,
+  getRequiredParam,
+  requireAuth,
+  requireUser,
+} from "@/lib/api-utils";
+import {
+  getUserCardsDifferencePaginated,
   getUserCardsDifferenceWithFilter,
   getUserReservedCardIds,
 } from "@/lib/queries";
+import { parseFilter } from "@/lib/utils";
 
 import { Filter, getUserFilterOptions } from "@/components/get-filter-options";
 
@@ -29,4 +36,25 @@ export async function POST(request: Request) {
     filterOptions,
     reserved,
   });
+}
+
+export async function GET(request: Request) {
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
+
+  const { searchParams } = new URL(request.url);
+  const filter = parseFilter(searchParams);
+  const page = Math.max(Number(searchParams.get("page")) || 1, 1);
+  const paramSecond = getRequiredParam(request, "secondId");
+  if ("error" in paramSecond) return paramSecond.error;
+
+  const { cards, total } = await getUserCardsDifferencePaginated(
+    userId,
+    paramSecond.value,
+    filter,
+    page
+  );
+
+  return NextResponse.json({ cards, total });
 }

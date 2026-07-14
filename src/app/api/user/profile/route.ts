@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server";
 
-import { getRequiredParam, requireUser } from "@/lib/api-utils";
-import { authenticateRequest } from "@/lib/telegram-auth";
+import { requireAuth, requireUser } from "@/lib/api-utils";
 import { getUserBanner, getUserProfileStats } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const param = getRequiredParam(request, "id");
-  if ("error" in param) return param.error;
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
-  const result = await requireUser(param.value);
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  const profileId = id || userId;
+  const result = await requireUser(profileId);
   if ("error" in result) return result.error;
   const { user } = result;
 
-  const auth = authenticateRequest(request);
-  const isOwner = auth?.id === param.value;
+  const isOwner = userId === id;
 
   const [stats, banner] = await Promise.all([
-    getUserProfileStats(param.value, isOwner),
+    getUserProfileStats(profileId, isOwner),
     getUserBanner(user.bannerId),
   ]);
 

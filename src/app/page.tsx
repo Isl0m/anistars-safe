@@ -15,11 +15,7 @@ export default async function Home() {
 
   return (
     <main className="flex flex-col gap-4">
-      <CardsPage
-        title="Все карты"
-        filterOptions={filterOptions}
-        initialCards={initialCards}
-      />
+      <CardsPage filterOptions={filterOptions} initialCards={initialCards} />
     </main>
   );
 }

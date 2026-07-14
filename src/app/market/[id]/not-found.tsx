@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 
 import { Header } from "@/components/header";
-import { useTelegramBackButton } from "@/components/use-telegram-back-button";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { buttonVariants } from "@/ui/button";
 
 export default function MarketListingNotFound() {

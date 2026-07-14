@@ -1,14 +1,18 @@
 import { CheckCircle2 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 export function StepIndicator({
   currentStep,
   steps,
+  className,
 }: {
   currentStep: number;
   steps: string[];
+  className?: string;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn("flex items-center gap-2", className)}>
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const isActive = stepNum === currentStep;

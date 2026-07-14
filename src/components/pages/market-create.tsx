@@ -2,25 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Loader2, Package } from "lucide-react";
 
-import { CARDS_PER_PAGE, MAX_LISTING_CARDS } from "@/lib/constants";
+import { api } from "@/lib/api";
+import { MAX_LISTING_CARDS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { FullCard } from "@/db/schema/card";
-import { UserExtended } from "@/db/schema/user";
+import { useCardSelect } from "@/hook/use-card-select";
+import { useCardsFilterState } from "@/hook/use-cards-filter-state";
+import { useListingFilterOptions } from "@/hook/use-filter-options";
+import { marketKeys } from "@/hook/use-market";
+import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
+import { CardsSelectListServer } from "../cards-list";
 import {
   Filter,
   FilterOption,
@@ -32,46 +35,21 @@ import ListingFilter from "../listing-filter";
 import { ListingFilterDisplay } from "../listing-filter-display";
 import { StepIndicator } from "../step-indicator";
 import { useTelegram } from "../telegram-provider";
-import { useApi } from "../use-api";
-import { useCardSelect } from "../use-card-select";
-import { useClientPagination } from "../use-client-pagination";
-import { useListingFilterOptions } from "../use-filter-options";
-import { marketKeys } from "../use-market";
-import { useTelegramBackButton } from "../use-telegram-back-button";
-import { CardsSelectList, SelectedCardsList } from "./trade";
+import { fetchProfileCards, ProfileCardsData } from "./profile";
+import { SelectedCardsList } from "./trade";
 
 export default function MarketCreatePage() {
   const { tgUser } = useTelegram();
   useTelegramBackButton("/market");
-  const api = useApi();
-  const [filter, setFilter] = useState<Filter>();
   const { data: optionsData } = useListingFilterOptions();
 
-  const query = useQuery({
-    queryKey: ["user-cards", filter],
-    queryFn: async () => {
-      if (!tgUser) return;
-      return api<{ cards: FullCard[]; user: UserExtended }>(
-        `/api/user/cards?id=${tgUser.id}`,
-        { method: "POST", body: filter ?? {} }
-      );
-    },
-    placeholderData: keepPreviousData,
-  });
-
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
-
-  if (query.data && optionsData) {
+  if (optionsData && tgUser) {
     return (
       <main className="flex min-h-screen flex-col gap-4 md:container">
         <MarketCreateContent
-          user={query.data.user}
-          cards={query.data.cards}
+          userId={tgUser.id}
           filterOptions={optionsData.filterOptions}
           listingFilterOptions={optionsData.listingFilterOptions}
-          setFilters={handleFilterChange}
         />
       </main>
     );
@@ -107,37 +85,28 @@ export default function MarketCreatePage() {
 type Steps = "select" | "confirm";
 
 function MarketCreateContent({
-  user,
-  cards,
+  userId,
   filterOptions,
   listingFilterOptions,
-  setFilters,
 }: {
-  user: UserExtended;
-  cards: FullCard[];
+  userId: number;
   filterOptions: FilterOption[];
   listingFilterOptions: ListingFilterOption[];
-  setFilters: (filters: Filter) => void;
 }) {
-  const api = useApi();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
+  const { page, filter, handleChangePage, handleFilterChange } =
+    useCardsFilterState();
   const [desiredFilters, setDesiredFilters] = useState<ListingFilters>();
+
   const [minCardPrice, setMinCardPrice] = useState<number>();
   const [minCardCount, setMinCardCount] = useState<number>();
   const [maxCardCount, setMaxCardCount] = useState<number | undefined>(
     MAX_LISTING_CARDS
   );
-
-  const {
-    page,
-    setPage,
-    pageItems: pageCards,
-    cardsLeft,
-  } = useClientPagination(cards, CARDS_PER_PAGE);
 
   const handleCardSelect = (card: FullCard) => () => {
     const isSelected = selectedCards.some((c) => c.id === card.id);
@@ -165,27 +134,24 @@ function MarketCreateContent({
     }
 
     try {
-      await api("/api/market/listings", {
-        method: "POST",
-        body: {
-          cardIds: selectedCards.map((c) => c.id),
-          filters: desiredFilters
-            ? {
-                rarityIds: desiredFilters.rarityIds,
-                universeIds: desiredFilters.universeIds,
-                classIds: desiredFilters.classIds,
-                stats: desiredFilters.stats,
-                type: desiredFilters.type,
-                minCardPrice,
-                minCardCount,
-                maxCardCount,
-              }
-            : {
-                minCardPrice,
-                minCardCount,
-                maxCardCount,
-              },
-        },
+      await api.post("/api/market/listings", {
+        cardIds: selectedCards.map((c) => c.id),
+        filters: desiredFilters
+          ? {
+              rarityIds: desiredFilters.rarityIds,
+              universeIds: desiredFilters.universeIds,
+              classIds: desiredFilters.classIds,
+              stats: desiredFilters.stats,
+              type: desiredFilters.type,
+              minCardPrice,
+              minCardCount,
+              maxCardCount,
+            }
+          : {
+              minCardPrice,
+              minCardCount,
+              maxCardCount,
+            },
       });
 
       toast({
@@ -216,7 +182,7 @@ function MarketCreateContent({
             <div className="flex items-center gap-2">
               <CardsFilter
                 filterOptions={filterOptions}
-                setFilters={setFilters}
+                setFilters={handleFilterChange}
               />
             </div>
           ) : (
@@ -241,15 +207,13 @@ function MarketCreateContent({
 
       <div className="px-2 pb-24">
         {step === "select" ? (
-          <CardsSelectList
-            pageCards={pageCards}
+          <MarketCardsList
+            page={page}
+            filter={filter}
+            userId={userId}
             selectedCards={selectedCards}
-            onClick={handleCardSelect}
-            pagination={{
-              page,
-              cardsLeft,
-              changePage: setPage,
-            }}
+            onCardSelect={onCardSelect}
+            handleChangePage={handleChangePage}
           />
         ) : (
           <div className="flex flex-col gap-4">
@@ -398,5 +362,39 @@ function MarketCreateContent({
         )}
       </div>
     </>
+  );
+}
+
+export function MarketCardsList({
+  userId,
+  filter,
+  page,
+  selectedCards,
+  onCardSelect,
+  handleChangePage,
+}: {
+  page: number;
+  selectedCards: FullCard[];
+  filter: Filter;
+  userId: number;
+  handleChangePage: (page: number) => void;
+  onCardSelect: (card: FullCard) => () => void;
+}) {
+  const query = usePaginatedCardsQuery<ProfileCardsData>({
+    queryKey: ["profile-cards", userId],
+    filter,
+    page,
+    fetchFn: fetchProfileCards,
+  });
+  if (!query.data) return <h1>hi</h1>;
+  return (
+    <CardsSelectListServer
+      cards={query.data.cards}
+      selectedCards={selectedCards}
+      onClick={onCardSelect}
+      page={page}
+      total={query.data.total}
+      onPageChange={handleChangePage}
+    />
   );
 }

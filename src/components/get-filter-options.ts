@@ -1,5 +1,3 @@
-import { unstable_cache } from "next/cache";
-
 import {
   getAuthors,
   getClasses,
@@ -145,13 +143,6 @@ const listingTypeOptions: ListingFilterOption = {
   items: typeOptions.items,
 };
 
-const fetchBaseData = unstable_cache(
-  async () =>
-    Promise.all([getRarities(), getClasses(), getUniverses(), getAuthors()]),
-  ["filter-base-data"],
-  { revalidate: 3600, tags: ["filter-options"] }
-);
-
 const universeTypeLabels: Record<string, string> = {
   basic: "Базовые",
   chromo: "Хромо",
@@ -190,7 +181,12 @@ function buildFilterOptions(
 }
 
 export async function getFilterOptions() {
-  const [rarities, classes, universes, authors] = await fetchBaseData();
+  const [rarities, classes, universes, authors] = await Promise.all([
+    getRarities(),
+    getClasses(),
+    getUniverses(),
+    getAuthors(),
+  ]);
   return buildFilterOptions(rarities, classes, universes, authors);
 }
 
@@ -205,9 +201,18 @@ export async function getUserFilterOptions(userId: string) {
 }
 
 export async function getListingFilterOptions() {
-  const [rarities, classes, universes, authors] = await fetchBaseData();
-
-  const filterOptions = buildFilterOptions(rarities, classes, universes, authors);
+  const [rarities, classes, universes, authors] = await Promise.all([
+    getRarities(),
+    getClasses(),
+    getUniverses(),
+    getAuthors(),
+  ]);
+  const filterOptions = buildFilterOptions(
+    rarities,
+    classes,
+    universes,
+    authors
+  );
 
   const listingFilterOptions: ListingFilterOption[] = [
     { key: "rarityIds", name: "Редкость", items: rarities },

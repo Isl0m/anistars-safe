@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 import { FullCard } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
+import { useCardsFilterState } from "@/hook/use-cards-filter-state";
+import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 
 import CardsFilter from "../cards-filter";
 import { CardsList } from "../cards-list";
@@ -17,38 +18,37 @@ type MissingProps = {
   filterOptions: FilterOption[];
 };
 
+type MissingCardsData = {
+  cards: FullCard[];
+  user: User;
+  total: number;
+};
+
+export async function fetchMissingCards(filter: Filter, page: number) {
+  const params = new URLSearchParams({
+    page: String(page),
+    filter: JSON.stringify(filter),
+  });
+  const { data } = await api.get<MissingCardsData | undefined>(
+    `/api/user/missing?${params.toString()}`
+  );
+  return data;
+}
+
 export function Missing({ filterOptions }: MissingProps) {
   const { tgUser } = useTelegram();
-  const [filter, setFilter] = useState<Filter>();
+  const { page, filter, handleChangePage, handleFilterChange } =
+    useCardsFilterState();
 
-  const query = useQuery({
-    queryKey: ["profile-missing-cards", filter],
-    queryFn: async () => {
-      if (!tgUser) return;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/missing?id=${tgUser.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(filter ?? {}),
-        }
-      );
-      return (await response.json()) as Promise<{
-        cards: FullCard[];
-        user: User;
-      }>;
-    },
-    placeholderData: keepPreviousData,
+  const query = usePaginatedCardsQuery<MissingCardsData>({
+    queryKey: ["profile-missing-cards", tgUser?.id],
+    filter,
+    page,
+    fetchFn: fetchMissingCards,
   });
 
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
-
   return (
-    <main className="flex min-h-screen flex-col gap-4">
+    <>
       <Header
         title={"Отсутствующие карты"}
         element={
@@ -59,10 +59,15 @@ export function Missing({ filterOptions }: MissingProps) {
         }
       />
       {query.data ? (
-        <CardsList cards={query.data.cards} />
+        <CardsList
+          cards={query.data.cards}
+          total={query.data.total}
+          page={page}
+          onPageChange={handleChangePage}
+        />
       ) : (
         <CardsListSkeleton />
       )}
-    </main>
+    </>
   );
 }

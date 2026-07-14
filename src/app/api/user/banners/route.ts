@@ -4,13 +4,9 @@ import { errorResponse, requireAuth } from "@/lib/api-utils";
 import { getUserBanners, updateUserBanner } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
-  if (!userId)
-    return NextResponse.json(
-      { error: "userId is not provided" },
-      { status: 404 }
-    );
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
   const banners = await getUserBanners(userId);
   return NextResponse.json({

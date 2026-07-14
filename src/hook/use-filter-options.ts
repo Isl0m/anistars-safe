@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { FilterOption, ListingFilterOption } from "./get-filter-options";
+import { api } from "@/lib/api";
+
+import {
+  FilterOption,
+  ListingFilterOption,
+} from "@/components/get-filter-options";
 
 export function useFilterOptions(initialData?: {
   filterOptions: FilterOption[];
@@ -8,10 +13,10 @@ export function useFilterOptions(initialData?: {
   return useQuery({
     queryKey: ["filter-options"],
     queryFn: async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/cards/filter-options`
+      const { data } = await api.get<{ filterOptions: FilterOption[] }>(
+        `/api/cards/filter-options`
       );
-      return (await res.json()) as { filterOptions: FilterOption[] };
+      return data;
     },
     staleTime: Infinity,
     gcTime: Infinity,
@@ -23,13 +28,13 @@ export function useListingFilterOptions() {
   return useQuery({
     queryKey: ["filter-options", "listing"],
     queryFn: async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/cards/filter-options?listing=1`
-      );
-      return (await res.json()) as {
+      const { data } = await api.get<{
         filterOptions: FilterOption[];
         listingFilterOptions: ListingFilterOption[];
-      };
+      }>(`/api/cards/filter-options`, {
+        params: { listing: 1 },
+      });
+      return data;
     },
     staleTime: Infinity,
     gcTime: Infinity,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, Library } from "lucide-react";
 
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 import { Skeleton } from "@/ui/skeleton";
@@ -52,12 +53,11 @@ export function Collection() {
   const query = useQuery({
     queryKey: ["user-collection"],
     queryFn: async () => {
-      // if (!tgUser) return;
-      const response = await fetch(
-        // `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${tgUser.id}`
-        `${process.env.NEXT_PUBLIC_URL}/api/user/collection?id=${8057167755}`
+      if (!tgUser) return;
+      const { data } = await api.get<{ collection: UserCollection }>(
+        `/api/user/collection`
       );
-      return (await response.json()).collection as Promise<UserCollection>;
+      return data.collection;
     },
     placeholderData: keepPreviousData,
   });

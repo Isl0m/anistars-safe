@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAuth, requireUser } from "@/lib/api-utils";
+import { getUserReservedCardIds } from "@/lib/queries";
 
 export async function GET(request: Request) {
   const authResult = await requireAuth(request);
@@ -10,5 +11,7 @@ export async function GET(request: Request) {
   const result = await requireUser(userId);
   if ("error" in result) return result.error;
 
-  return NextResponse.json({ user: result.user });
+  const reserved = getUserReservedCardIds(userId);
+
+  return NextResponse.json({ user: result.user, reserved });
 }

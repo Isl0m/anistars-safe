@@ -4,7 +4,7 @@ import { getMarketListing } from "@/lib/queries";
 
 import { getFilterOptions } from "@/components/get-filter-options";
 import MarketViewPage from "@/components/pages/market-view";
-import { MarketListingDetail } from "@/components/use-market";
+import { MarketListingDetail } from "@/hook/use-market";
 
 export const revalidate = 30;
 

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { revalidateMarketListings } from "@/lib/queries";
 import { errorResponse, loadPendingOffer, requireAuth } from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
 
@@ -20,7 +19,6 @@ export async function POST(request: Request) {
 
   try {
     await addMarketJob({ type: "market-cancel-offer", offerId, buyerId });
-    revalidateMarketListings();
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("market cancel offer failed:", e);
