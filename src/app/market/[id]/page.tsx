@@ -8,11 +8,12 @@ import { MarketListingDetail } from "@/hook/use-market";
 
 export const revalidate = 30;
 
-export default async function MarketView({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function MarketView(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const numericId = Number(params.id);
   if (Number.isNaN(numericId)) notFound();
 

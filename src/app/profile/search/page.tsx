@@ -2,11 +2,12 @@ import { getUser } from "@/lib/queries";
 
 import { SearchFirstProfile, SearchProfile } from "@/components/pages/profile";
 
-export default async function Profile({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function Profile(
+  props: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const userId = searchParams.userId && String(searchParams.userId);
   if (!userId) return <SearchFirstProfile />;
 

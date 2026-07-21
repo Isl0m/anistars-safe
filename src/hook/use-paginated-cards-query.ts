@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import {
   keepPreviousData,
   useQuery,
@@ -13,22 +13,14 @@ export function usePaginatedCardsQuery<T extends { total: number }>({
   queryKey,
   filter,
   page,
-  initialData,
   fetchFn,
 }: {
   queryKey: unknown[];
   filter: Filter;
   page: number;
-  initialData?: T;
   fetchFn: (filter: Filter, page: number) => Promise<T | undefined>;
 }) {
   const queryClient = useQueryClient();
-
-  const didSeed = useRef(false);
-  if (!didSeed.current && initialData) {
-    queryClient.setQueryData([...queryKey, filter, 1], initialData);
-    didSeed.current = true;
-  }
 
   const query = useQuery({
     queryKey: [...queryKey, filter, page],

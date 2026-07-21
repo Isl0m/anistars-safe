@@ -18,9 +18,39 @@ export function useFilterOptions(initialData?: {
       );
       return data;
     },
-    staleTime: Infinity,
-    gcTime: Infinity,
     initialData,
+  });
+}
+
+export function useUserFilterOptions(userId?: string) {
+  return useQuery({
+    queryKey: ["user-options", userId],
+    queryFn: async () => {
+      const { data } = await api.get<{ filterOptions: FilterOption[] }>(
+        `/api/user/filter-options`,
+        {
+          params: { id: userId },
+        }
+      );
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useDiffFilterOptions(userId?: string, diffId?: string) {
+  return useQuery({
+    queryKey: ["diff-filter-options", userId, diffId],
+    queryFn: async () => {
+      const { data } = await api.get<{ filterOptions: FilterOption[] }>(
+        `/api/user/filter-options/difference`,
+        {
+          params: { id: userId, diffId },
+        }
+      );
+      return data;
+    },
+    enabled: !!userId,
   });
 }
 
@@ -36,7 +66,5 @@ export function useListingFilterOptions() {
       });
       return data;
     },
-    staleTime: Infinity,
-    gcTime: Infinity,
   });
 }

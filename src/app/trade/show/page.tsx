@@ -2,11 +2,12 @@ import { getTradeFull } from "@/lib/queries";
 
 import TradeShowPage from "@/components/pages/trade-show";
 
-export default async function Trade({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function Trade(
+  props: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const tradeId = searchParams.tradeId && Number(searchParams.tradeId);
   if (!tradeId)
     return (

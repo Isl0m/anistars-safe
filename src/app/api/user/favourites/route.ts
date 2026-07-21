@@ -19,8 +19,9 @@ export async function GET(request: Request) {
     const cardIds = await getUserFavouriteCardIds(userId);
     return NextResponse.json({ cardIds });
   }
+  const id = searchParams.get("id");
 
-  const cards = await getUserFavouriteCards(userId);
+  const cards = await getUserFavouriteCards(id || userId);
   return NextResponse.json({ cards });
 }
 

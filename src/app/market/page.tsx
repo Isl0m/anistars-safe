@@ -4,7 +4,7 @@ import { getFilterOptions } from "@/components/get-filter-options";
 import MarketPage from "@/components/pages/market";
 import { MarketListingSummary } from "@/hook/use-market";
 
-export const revalidate = 30;
+export const revalidate = 10;
 
 export default async function Market() {
   const [listings, initialFilterOptions] = await Promise.all([
@@ -15,7 +15,7 @@ export default async function Market() {
   return (
     <MarketPage
       initialListings={listings as unknown as MarketListingSummary[]}
-      initialFilterOptions={initialFilterOptions}
+      filterOptions={initialFilterOptions}
     />
   );
 }

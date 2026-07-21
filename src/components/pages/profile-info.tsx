@@ -32,6 +32,7 @@ import {
   Star,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { cn, getImageProxyUrl, prettyNumbers } from "@/lib/utils";
@@ -43,7 +44,6 @@ import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/ui/skeleton";
-import { toast } from "@/ui/use-toast";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
@@ -68,24 +68,21 @@ function ProfileSkeleton() {
     <main className="flex h-full flex-col">
       <Header title="Профиль" />
       <section className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="flex flex-col gap-4 md:container">
+        <div className="flex flex-col gap-3 md:container">
           <div className="overflow-hidden rounded-xl border bg-card">
-            <Skeleton className="h-28 rounded-none" />
+            <Skeleton className="h-28" />
             <div className="-mt-12 flex flex-col items-center gap-3 px-4 pb-4">
               <Skeleton className="h-20 w-20 rounded-full" />
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-[28px] w-32" />
+              <Skeleton className="h-4 w-52" />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
+          <div>
+            <Skeleton className="mb-2 h-4 w-20 px-1" />
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-[68px] rounded-xl" />
+              <Skeleton className="h-[68px] rounded-xl" />
+            </div>
           </div>
         </div>
       </section>
@@ -104,7 +101,7 @@ function formatDate(date: Date | string | null | undefined) {
 
 function BannerCover({ banner }: { banner: Banner | null }) {
   return (
-    <div className="relative h-28">
+    <div className="relative h-28 overflow-hidden rounded-t-xl">
       {banner ? (
         banner.type === "photo" ? (
           <Image
@@ -127,7 +124,7 @@ function BannerCover({ banner }: { banner: Banner | null }) {
       ) : (
         <div className="h-full bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+      <div className="absolute -inset-px bg-gradient-to-t from-card via-card/50 to-transparent" />
     </div>
   );
 }
@@ -202,11 +199,7 @@ function ChangeBannerSection({
       onClose();
     } catch {
       revert();
-      toast({
-        title: "Ошибка",
-        description: "Не удалось изменить фон",
-        variant: "destructive",
-      });
+      toast.error("Не удалось изменить фон");
     } finally {
       setIsSaving(false);
     }
@@ -293,7 +286,7 @@ function ChangeBannerSection({
 function UserHeader({ user }: { user: ProfileData["user"] }) {
   return (
     <>
-      <div className="mt-3 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <h2 className="text-lg font-bold">{user.name}</h2>
         {user.isPremium && (
           <Badge className="gap-1 bg-amber-500/15 text-amber-500 hover:bg-amber-500/25">
@@ -307,7 +300,7 @@ function UserHeader({ user }: { user: ProfileData["user"] }) {
           </Badge>
         )}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Calendar className="h-3 w-3" />С {formatDate(user.createdAt)}
         </span>
@@ -318,28 +311,29 @@ function UserHeader({ user }: { user: ProfileData["user"] }) {
 }
 
 export function ProfileInfo() {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const [isEditingBanner, setIsEditingBanner] = useState(false);
 
   const query = useQuery({
-    queryKey: ["user-profile", tgUser?.id],
+    queryKey: ["user-profile", userId],
     queryFn: async () => {
-      if (!tgUser) return null;
+      if (!userId) return null;
       const { data } = await api.get<ProfileData>(`/api/user/profile`);
       return data;
     },
+    enabled: !!userId,
   });
 
   const bannersQuery = useQuery({
-    queryKey: ["owned-banners", tgUser?.id],
+    queryKey: ["owned-banners", userId],
     queryFn: async () => {
-      if (!tgUser) return [];
+      if (!userId) return [];
       const { data } = await api.get<{ banners: OwnedBanner[] }>(
         `/api/user/banners`
       );
       return data.banners;
     },
-    enabled: !!tgUser,
+    enabled: !!userId,
   });
 
   if (query.isLoading || !query.data) {
@@ -353,7 +347,7 @@ export function ProfileInfo() {
   return (
     <main className="flex h-full flex-col">
       <Header title="Профиль" />
-      <section className="flex-1 overflow-y-auto px-3 py-4 pb-[calc(var(--safe-area-bottom)+1rem)]">
+      <section className="flex-1 overflow-y-auto px-3 py-4">
         <div className="flex flex-col gap-3 md:container">
           <div className="relative overflow-hidden rounded-xl border bg-card">
             <BannerCover banner={banner} />
@@ -366,7 +360,7 @@ export function ProfileInfo() {
                 <Pencil className="h-3.5 w-3.5" />
               </button>
             )}
-            <div className="relative -mt-12 flex flex-col items-center px-4 pb-4">
+            <div className="relative -mt-12 flex flex-col items-center gap-3 px-4 pb-4">
               <UserAvatar
                 name={user.name}
                 photoUrl={user.photoUrl}
@@ -379,7 +373,7 @@ export function ProfileInfo() {
 
           {isEditingBanner && (
             <ChangeBannerSection
-              profileKey={["user-profile", tgUser?.id]}
+              profileKey={["user-profile", userId]}
               currentBannerId={user.bannerId}
               banners={ownedBanners}
               isLoading={bannersQuery.isLoading}
@@ -415,7 +409,7 @@ export function ProfileInfo() {
 }
 
 export function PublicProfileInfo({ userId }: { userId: string }) {
-  const { tgUser } = useTelegram();
+  const { userId: searcherId } = useTelegram();
   useTelegramBackButton();
 
   const query = useQuery({
@@ -430,7 +424,7 @@ export function PublicProfileInfo({ userId }: { userId: string }) {
     },
   });
 
-  if (tgUser && userId === tgUser.id.toString()) {
+  if (userId === searcherId) {
     return <ProfileInfo />;
   }
 
@@ -631,17 +625,13 @@ function FavouriteCardsEditable({ userId }: { userId: string }) {
     mutationFn: async (cardIds: string[]) => {
       await api.put("/api/user/favourites", cardIds);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["favourite-cards"] });
-      queryClient.invalidateQueries({ queryKey: ["favourite-card-ids"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["favourite-cards"] });
       setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["favourite-card-ids"] });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(error.message);
     },
   });
 

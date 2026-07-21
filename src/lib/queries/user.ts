@@ -15,7 +15,7 @@ import { banners, userBanners } from "@/db/schema/banner";
 import { cardToTgUser, tCards } from "@/db/schema/card";
 import { marketListings } from "@/db/schema/market";
 import { multiTrades } from "@/db/schema/trade";
-import { tgUsers, userPasses } from "@/db/schema/user";
+import { tgUsers, tradingStatus, userPasses } from "@/db/schema/user";
 
 export async function getUser(id: string) {
   const userColumns = getTableColumns(tgUsers);
@@ -25,10 +25,15 @@ export async function getUser(id: string) {
       isPremium: sql<boolean>`COALESCE(${userPasses.isPremium}, false)`.mapWith(
         Boolean
       ),
+      isTradeBanned:
+        sql<boolean>`COALESCE(${tradingStatus.isBanned}, false)`.mapWith(
+          Boolean
+        ),
     })
     .from(tgUsers)
     .where(eq(tgUsers.id, id))
     .leftJoin(userPasses, eq(userPasses.id, tgUsers.id))
+    .leftJoin(tradingStatus, eq(tradingStatus.userId, tgUsers.id))
     .then((res) => res[0] ?? null);
 }
 
@@ -145,10 +150,7 @@ export async function updateUserBanner(userId: string, bannerId: number) {
 
   if (!owned) return { ok: false as const, error: "not_owned" };
 
-  await db
-    .update(tgUsers)
-    .set({ bannerId })
-    .where(eq(tgUsers.id, userId));
+  await db.update(tgUsers).set({ bannerId }).where(eq(tgUsers.id, userId));
 
   return { ok: true as const };
 }

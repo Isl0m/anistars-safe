@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const result = await requireUser(userId);
   if ("error" in result) return result.error;
 
-  const reserved = getUserReservedCardIds(userId);
+  const reserved = await getUserReservedCardIds(userId);
 
   return NextResponse.json({ user: result.user, reserved });
 }

@@ -13,6 +13,7 @@ import {
   Send,
   Store,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import {
@@ -23,7 +24,6 @@ import {
 import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { useClientPagination } from "@/hook/use-client-pagination";
-import { useFilterOptions } from "@/hook/use-filter-options";
 import {
   marketKeys,
   MarketListingSummary,
@@ -36,7 +36,6 @@ import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
 import { Skeleton } from "@/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
-import { toast } from "@/ui/use-toast";
 
 import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
@@ -48,14 +47,13 @@ import { UserLink } from "../user-link";
 
 export default function MarketPage({
   initialListings,
-  initialFilterOptions,
+  filterOptions,
 }: {
   initialListings: MarketListingSummary[];
-  initialFilterOptions: FilterOption[];
+  filterOptions: FilterOption[];
 }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const queryClient = useQueryClient();
-  const userId = tgUser?.id?.toString();
 
   const [activeTab, setActiveTab] = useState("all");
 
@@ -68,11 +66,6 @@ export default function MarketPage({
       status: "inactive",
       enabled: activeTab === "my",
     });
-
-  const { data: filterData } = useFilterOptions({
-    filterOptions: initialFilterOptions,
-  });
-  const filterOptions = filterData?.filterOptions ?? initialFilterOptions;
 
   const myActiveListings = userId
     ? listings.filter((l) => l.sellerId === userId)
@@ -87,21 +80,14 @@ export default function MarketPage({
         offerId,
       });
 
-      toast({
-        title: "Отменено",
-        description: "Предложение отменено",
-      });
+      toast.success("Предложение отменено");
 
       queryClient.invalidateQueries({
         queryKey: marketKeys.userOffers(userId),
       });
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
     } catch {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось отменить предложение",
-        variant: "destructive",
-      });
+      toast.error("Не удалось отменить предложение");
     }
   };
 
@@ -257,6 +243,7 @@ function ListingCard({
                 src={getImageProxyUrl(card.image)}
                 alt={card.name}
                 fill
+                sizes="300px"
                 className="object-cover"
               />
             </div>
@@ -504,6 +491,7 @@ function OffersList({
                             src={getImageProxyUrl(card.image)}
                             alt={card.name}
                             fill
+                            sizes="300px"
                             className="object-cover"
                           />
                         </div>
@@ -526,6 +514,7 @@ function OffersList({
                           src={getImageProxyUrl(card.image)}
                           alt={card.name}
                           fill
+                          sizes="300px"
                           className="object-cover"
                         />
                       </div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Filter } from "@/components/get-filter-options";
 
-const DEFAULT_FILTER = { sort: "createdAt-desc" } as Filter;
+const DEFAULT_FILTER = { sort: "power-desc" } as Filter;
 
 export function useCardsFilterState(defaultFilter: Filter = DEFAULT_FILTER) {
   const [filter, setFilter] = useState<Filter>(defaultFilter);

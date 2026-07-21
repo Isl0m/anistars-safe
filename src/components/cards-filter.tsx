@@ -41,7 +41,6 @@ type Props = {
   defaultSort?: SortOptions;
   buttonText?: string;
   initialValues?: Filter;
-  lockedFilters?: Partial<Filter>;
 };
 
 const chipKeys = new Set([
@@ -70,7 +69,6 @@ export default function CardsFilter({
   defaultSort,
   buttonText,
   initialValues,
-  lockedFilters,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState("Базовые");
@@ -177,10 +175,8 @@ export default function CardsFilter({
                       const Icon = meta?.Icon;
 
                       return (
-                        <form.Field
-                          key={item.id}
-                          name="sort"
-                          children={(field) => {
+                        <form.Field key={item.id} name="sort">
+                          {(field) => {
                             const selected = field.state.value === item.id;
 
                             return (
@@ -200,7 +196,7 @@ export default function CardsFilter({
                               </button>
                             );
                           }}
-                        />
+                        </form.Field>
                       );
                     })}
                   </div>
@@ -208,27 +204,15 @@ export default function CardsFilter({
               )}
 
               {chipOptions.map(({ key, name, items }) => {
-                const lockedValues = lockedFilters?.[key as keyof Filter];
-                const isCategoryLocked =
-                  Array.isArray(lockedValues) && lockedValues.length > 0;
                 const isRarity = key === "rarityIds";
 
                 return (
                   <section key={key}>
-                    <SectionLabel
-                      locked={isCategoryLocked}
-                      fieldName={key}
-                      form={form}
-                    >
+                    <SectionLabel fieldName={key} form={form}>
                       {name}
                     </SectionLabel>
                     <div className="flex flex-wrap gap-2">
                       {items.map((item) => {
-                        const isItemLocked =
-                          isCategoryLocked &&
-                          (lockedValues as any[]).includes(item.id);
-                        const isOtherDisabled =
-                          isCategoryLocked && !isItemLocked;
                         const rarityStyle = isRarity
                           ? getRarityChipStyle(item.name)
                           : null;
@@ -237,10 +221,8 @@ export default function CardsFilter({
                           : item.name;
 
                         return (
-                          <form.Field
-                            key={item.id}
-                            name={key as any}
-                            children={(field: any) => {
+                          <form.Field key={item.id} name={key as any}>
+                            {(field: any) => {
                               const isSelected = Array.isArray(
                                 field.state.value
                               )
@@ -250,9 +232,7 @@ export default function CardsFilter({
                               return (
                                 <button
                                   type="button"
-                                  disabled={isItemLocked || isOtherDisabled}
                                   onClick={() => {
-                                    if (isItemLocked || isOtherDisabled) return;
                                     if (!isSelected) {
                                       Array.isArray(field.state.value)
                                         ? field.pushValue(item.id)
@@ -272,13 +252,13 @@ export default function CardsFilter({
                                         "border-primary bg-primary/10 text-primary")
                                       : (rarityStyle?.base ??
                                         "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground")
-                                  } ${isOtherDisabled ? "pointer-events-none opacity-30" : ""} ${isItemLocked ? "pointer-events-none opacity-50" : ""}`}
+                                  }`}
                                 >
                                   {label}
                                 </button>
                               );
                             }}
-                          />
+                          </form.Field>
                         );
                       })}
                     </div>
@@ -296,12 +276,7 @@ export default function CardsFilter({
                     <span className="text-[13px] font-semibold text-foreground">
                       {universeOption.name}
                     </span>
-                    {Array.isArray(lockedFilters?.universeIds) &&
-                      lockedFilters!.universeIds!.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          locked
-                        </span>
-                      )}
+
                     <SelectedCount fieldName="universeIds" form={form} />
                     <ChevronDown
                       className={`ml-auto h-4 w-4 text-muted-foreground transition-transform duration-200 ${universeExpanded ? "rotate-180" : ""}`}
@@ -309,9 +284,6 @@ export default function CardsFilter({
                   </button>
                   {universeExpanded &&
                     (() => {
-                      const lockedValues = lockedFilters?.universeIds;
-                      const isCategoryLocked =
-                        Array.isArray(lockedValues) && lockedValues.length > 0;
                       const groupLabels = getGroupLabels(universeOption.items);
 
                       return (
@@ -343,19 +315,12 @@ export default function CardsFilter({
                                   item.group === activeGroup
                               )
                               .map((item) => {
-                                const isItemLocked =
-                                  isCategoryLocked &&
-                                  (lockedValues as number[]).includes(
-                                    item.id as number
-                                  );
-                                const isOtherDisabled =
-                                  isCategoryLocked && !isItemLocked;
-
                                 return (
                                   <form.Field
                                     key={item.id}
                                     name={"universeIds" as any}
-                                    children={(field: any) => {
+                                  >
+                                    {(field: any) => {
                                       const isSelected =
                                         field.state.value.includes(item.id);
                                       return (
@@ -365,20 +330,13 @@ export default function CardsFilter({
                                             isSelected
                                               ? "bg-primary/10 text-primary"
                                               : "text-foreground hover:bg-muted"
-                                          } ${isOtherDisabled ? "pointer-events-none opacity-30" : ""}`}
+                                          }`}
                                         >
                                           <Checkbox
                                             id={`uni-${item.id}`}
-                                            disabled={
-                                              isItemLocked || isOtherDisabled
-                                            }
+
                                             checked={isSelected}
                                             onCheckedChange={(checked) => {
-                                              if (
-                                                isItemLocked ||
-                                                isOtherDisabled
-                                              )
-                                                return;
                                               if (checked) {
                                                 field.pushValue(item.id);
                                               } else {
@@ -397,7 +355,7 @@ export default function CardsFilter({
                                         </Label>
                                       );
                                     }}
-                                  />
+                                  </form.Field>
                                 );
                               })}
                           </div>
@@ -425,10 +383,8 @@ export default function CardsFilter({
                   {authorExpanded && (
                     <div className="space-y-0.5">
                       {authorOption.items.map((item) => (
-                        <form.Field
-                          key={item.id}
-                          name={"authorIds" as any}
-                          children={(field: any) => {
+                        <form.Field key={item.id} name={"authorIds" as any}>
+                          {(field: any) => {
                             const isSelected = field.state.value.includes(
                               item.id
                             );
@@ -460,7 +416,7 @@ export default function CardsFilter({
                               </Label>
                             );
                           }}
-                        />
+                        </form.Field>
                       ))}
                     </div>
                   )}
@@ -521,9 +477,8 @@ function SectionLabel({
 
 function SelectedCount({ fieldName, form }: { fieldName: string; form: any }) {
   return (
-    <form.Field
-      name={fieldName}
-      children={(field: any) => {
+    <form.Field name={fieldName}>
+      {(field: any) => {
         const count = Array.isArray(field.state.value)
           ? field.state.value.length
           : 0;
@@ -534,6 +489,6 @@ function SelectedCount({ fieldName, form }: { fieldName: string; form: any }) {
           </span>
         );
       }}
-    />
+    </form.Field>
   );
 }

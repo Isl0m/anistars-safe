@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckIcon, Gavel, Loader2, Tag } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { getImageProxyUrl } from "@/lib/utils";
@@ -17,13 +18,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { toast } from "@/components/ui/use-toast";
 import { CreateTradeType } from "@/app/api/trade/create/route";
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
 import { useCardSelect } from "@/hook/use-card-select";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
-import { useFilterOptions } from "@/hook/use-filter-options";
+import { useDiffFilterOptions } from "@/hook/use-filter-options";
 import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
@@ -31,6 +31,7 @@ import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
 import { CardsSelectListServer } from "../cards-list";
+import { CardsListSkeleton } from "../cards-list-skeleton";
 import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { StepIndicator } from "../step-indicator";
@@ -168,23 +169,24 @@ export function ReservedTradeWarning({
 }
 
 export default function TradePage({ receiver }: { receiver: string }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
 
   useTelegramBackButton("/trade");
 
   const query = useQuery({
-    queryKey: ["trade-user", tgUser?.id],
+    queryKey: ["trade-user", userId],
     queryFn: async () => {
-      if (!tgUser) return;
+      if (!userId) return;
       const { data } = await api.get<{
         user: UserExtended;
         reserved: ReservedCards;
       }>(`/api/user/trade`);
       return data;
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   });
-  const { data: filterData } = useFilterOptions();
+  const { data: filterData } = useDiffFilterOptions(userId, receiver);
 
   if (query.data && filterData) {
     return (
@@ -246,20 +248,14 @@ function TradePageContent({
   const handleTrade = async () => {
     setIsLoading(true);
     if (selectedCards.length === 0) {
-      toast({
-        title: "Ошибка",
-        description: "Пожалуйста, выберите хотя бы одну карту для обмена.",
-        variant: "destructive",
-      });
+      toast.warning("Пожалуйста, выберите хотя бы одну карту для обмена.");
       setIsLoading(false);
       return;
     }
     if (selectedCards.length > maxCardsPerTrade) {
-      toast({
-        title: "Ошибка",
-        description: `Максимальное количество выбираемых карт - ${maxCardsPerTrade}.`,
-        variant: "destructive",
-      });
+      toast.warning(
+        `Максимальное количество выбираемых карт - ${maxCardsPerTrade}.`
+      );
       setIsLoading(false);
       return;
     }
@@ -271,18 +267,12 @@ function TradePageContent({
 
     try {
       await api.post("/api/trade/create", data);
-      toast({
-        title: "Трейд отправлен",
-        description: `Трейд ${selectedCards.length} карт отправлен`,
-      });
+      toast.success(`Трейд ${selectedCards.length} карт отправлен`);
       router.push(`/trade`);
     } catch (e) {
-      toast({
-        title: "Ошибка",
-        description:
-          e instanceof Error ? e.message : "Не удалось отправить трейд",
-        variant: "destructive",
-      });
+      toast.error(
+        e instanceof Error ? e.message : "Не удалось отправить трейд"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -295,6 +285,7 @@ function TradePageContent({
         element={
           step === "select" ? (
             <CardsFilter
+              defaultSort={filterState.filter.sort}
               filterOptions={filterOptions}
               setFilters={filterState.handleFilterChange}
             />
@@ -322,6 +313,7 @@ function TradePageContent({
               secondId={receiver}
               selectedCards={selectedCards}
               onCardSelect={onCardSelect}
+              reserved={reservedLookup}
               {...filterState}
             />
           ) : (
@@ -419,6 +411,7 @@ export function TradeCardsList({
   selectedCards,
   onCardSelect,
   handleChangePage,
+  reserved,
 }: {
   page: number;
   selectedCards: FullCard[];
@@ -426,6 +419,7 @@ export function TradeCardsList({
   secondId: string;
   handleChangePage: (page: number) => void;
   onCardSelect: (card: FullCard) => () => void;
+  reserved?: ReservedLookup;
 }) {
   const fetchFn = useCallback(
     (filter: Filter, page: number) => fetchTradeCards(filter, page, secondId),
@@ -437,7 +431,7 @@ export function TradeCardsList({
     page,
     fetchFn,
   });
-  if (!query.data) return <h1>hi</h1>;
+  if (!query.data) return <CardsListSkeleton className="px-0" />;
   return (
     <CardsSelectListServer
       cards={query.data.cards}
@@ -446,6 +440,7 @@ export function TradeCardsList({
       page={page}
       total={query.data.total}
       onPageChange={handleChangePage}
+      reserved={reserved}
     />
   );
 }

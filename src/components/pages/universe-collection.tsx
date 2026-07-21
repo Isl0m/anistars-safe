@@ -42,13 +42,13 @@ const rarityColors: Record<string, string> = {
 };
 
 export function UniverseCollection({ universeId }: { universeId: number }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   useTelegramBackButton("/profile/collection");
 
   const query = useQuery({
     queryKey: ["universe-collection", universeId],
     queryFn: async () => {
-      if (!tgUser) return;
+      if (!userId) return;
       const { data } = await api.get<UniverseCollection>(
         `/api/user/collection/${universeId}`
       );

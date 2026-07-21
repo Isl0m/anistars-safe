@@ -11,6 +11,7 @@ import {
   Search,
   Users,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 
@@ -18,13 +19,12 @@ import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
 import { useFavouriteCards } from "@/hook/use-favourite-cards";
-import { useFilterOptions } from "@/hook/use-filter-options";
+import { useUserFilterOptions } from "@/hook/use-filter-options";
 import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
-import { toast } from "@/ui/use-toast";
 
 import CardsFilter from "../cards-filter";
 import { CardsList } from "../cards-list";
@@ -68,55 +68,59 @@ export async function fetchProfileCards(
 }
 
 export function Profile() {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const { page, filter, handleChangePage, handleFilterChange } =
     useCardsFilterState();
-  const { data: filterData } = useFilterOptions();
+  const { data: filterData } = useUserFilterOptions(userId);
 
   const query = usePaginatedCardsQuery<ProfileCardsData>({
-    queryKey: ["profile-cards", tgUser?.id],
+    queryKey: ["profile-cards", userId],
     filter,
     page,
     fetchFn: fetchProfileCards,
   });
 
   const userQuery = useQuery({
-    queryKey: ["user-data", tgUser?.id],
+    queryKey: ["user-data", userId],
     queryFn: async () => {
-      if (!tgUser) return;
+      if (!userId) return;
       const { data } = await api.get<{ user: UserExtended }>(`/api/user`);
       return data.user;
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   });
 
-  const { favouritesQuery, toggleFavourite } = useFavouriteCards(tgUser?.id);
+  const { favouritesQuery, toggleFavourite } = useFavouriteCards(userId);
 
   return (
-    <main className="flex flex-col gap-4">
+    <main className="flex h-full flex-col">
       <Header
         title={userQuery.data?.name ?? "Мои карты"}
         element={
           filterData ? (
             <CardsFilter
+              defaultSort={filter.sort}
               filterOptions={filterData.filterOptions}
               setFilters={handleFilterChange}
             />
           ) : undefined
         }
       />
-      {query.data ? (
-        <CardsList
-          cards={query.data.cards}
-          total={query.data.total}
-          page={page}
-          onPageChange={handleChangePage}
-          favouriteCardIds={favouritesQuery.data}
-          onToggleFavourite={(cardId) => toggleFavourite.mutate(cardId)}
-        />
-      ) : (
-        <CardsListSkeleton />
-      )}
+      <section className="flex-1 overflow-y-auto py-4">
+        {query.data ? (
+          <CardsList
+            cards={query.data.cards}
+            total={query.data.total}
+            page={page}
+            onPageChange={handleChangePage}
+            favouriteCardIds={favouritesQuery.data}
+            onToggleFavourite={(cardId) => toggleFavourite.mutate(cardId)}
+          />
+        ) : (
+          <CardsListSkeleton />
+        )}
+      </section>
     </main>
   );
 }
@@ -132,7 +136,7 @@ export function SearchProfile({ user }: SearchProfileProps) {
 
   const { page, filter, handleChangePage, handleFilterChange } =
     useCardsFilterState();
-  const { data: filterData } = useFilterOptions();
+  const { data: filterData } = useUserFilterOptions(user.id);
 
   const fetchFn = useCallback(
     (filter: Filter, page: number) => fetchProfileCards(filter, page, user.id),
@@ -142,16 +146,17 @@ export function SearchProfile({ user }: SearchProfileProps) {
     queryKey: ["others-profile-cards", user.id],
     filter,
     page,
-    fetchFn: fetchProfileCards,
+    fetchFn,
   });
 
   return (
-    <main className="flex flex-col gap-4">
+    <main className="flex h-full flex-col gap-4">
       <Header
         title="Профиль игрока"
         element={
           filterData ? (
             <CardsFilter
+              defaultSort={filter.sort}
               filterOptions={filterData.filterOptions}
               setFilters={handleFilterChange}
             />
@@ -190,16 +195,18 @@ export function SearchProfile({ user }: SearchProfileProps) {
           <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         </UserLink>
       </section>
-      {query.data ? (
-        <CardsList
-          cards={query.data.cards}
-          total={query.data.total}
-          page={page}
-          onPageChange={handleChangePage}
-        />
-      ) : (
-        <CardsListSkeleton />
-      )}
+      <section className="flex-1 overflow-y-auto pb-4">
+        {query.data ? (
+          <CardsList
+            cards={query.data.cards}
+            total={query.data.total}
+            page={page}
+            onPageChange={handleChangePage}
+          />
+        ) : (
+          <CardsListSkeleton />
+        )}
+      </section>
     </main>
   );
 }
@@ -239,12 +246,8 @@ export function SearchFirstProfile() {
       );
       if (!data.user) throw new Error("not found");
       router.push(createQueryString("userId", searchId));
-    } catch (e) {
-      toast({
-        title: "Ошибка",
-        description: "Пользователь не найден",
-        variant: "destructive",
-      });
+    } catch {
+      toast.error("Пользователь не найден");
     } finally {
       setIsLoading(false);
     }

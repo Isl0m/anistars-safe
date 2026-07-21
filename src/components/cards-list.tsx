@@ -53,14 +53,14 @@ export function CardsList({
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   const cardsLeft = total - page * cardsPerPage;
-  const selectedCard = selectedIdx ? cards[selectedIdx] : null;
+  const selectedCard = selectedIdx !== null ? cards[selectedIdx] : null;
 
   const closeDrawer = () => setSelectedIdx(null);
   const handleSelect = (idx: number) => {
     setSelectedIdx(idx);
   };
   return (
-    <section>
+    <>
       {cards.length > 0 ? (
         <div className="space-y-4 px-2">
           <CardsListRaw cards={cards} onSelect={handleSelect} />
@@ -71,11 +71,16 @@ export function CardsList({
           />
         </div>
       ) : (
-        <h1>Нет подходящих карт</h1>
+        <div className="flex flex-col items-center gap-3 py-16">
+          <div className="rounded-full bg-muted p-4">
+            <Package className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm text-muted-foreground">Нет подходящих карт</p>
+        </div>
       )}
       <Drawer open={selectedCard !== null} onClose={closeDrawer}>
         <DrawerContent aria-describedby="card-details">
-          {selectedCard ? (
+          {selectedCard !== null ? (
             <CardDetailsContent
               card={selectedCard}
               closeDrawer={closeDrawer}
@@ -89,7 +94,7 @@ export function CardsList({
           )}
         </DrawerContent>
       </Drawer>
-    </section>
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ["devislom.a.pinggy.link"],
   images: {
     minimumCacheTTL: 604800,
     remotePatterns: [

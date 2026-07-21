@@ -29,19 +29,20 @@ import { useTelegram } from "../telegram-provider";
 import { UserLink } from "../user-link";
 
 export function TradeHistory() {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
 
   useTelegramBackButton("/trade");
 
   const query = useQuery({
-    queryKey: ["tradeHistroy", tgUser?.id],
+    queryKey: ["tradeHistroy", userId],
     queryFn: async () => {
-      if (!tgUser) return [];
-      const { data } = await api.get<TradeHistoryType[]>(
-        `/api/trade/history?id=${tgUser.id}`
-      );
+      if (!userId) return [];
+      const { data } = await api.get<TradeHistoryType[]>(`/api/trade/history`, {
+        params: { id: userId },
+      });
       return data;
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   });
   const totalTrades = query.data?.length ?? 0;
@@ -175,6 +176,7 @@ function CardPreview({ cards }: { cards: Card[] }) {
                   src={getImageProxyUrl(card.image)}
                   alt={card.name}
                   fill
+                  sizes="300px"
                   className="object-cover"
                 />
               </div>

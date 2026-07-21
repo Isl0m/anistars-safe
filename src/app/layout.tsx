@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { QueryProvider } from "@/components/query-client-provider";
 import { TelegramProvider } from "@/components/telegram-provider";
-import { Toaster } from "@/ui/toaster";
+import { Toaster } from "@/ui/sonner";
 
 export const metadata: Metadata = {
   title: "⭐️AniStars | Cards List",
@@ -37,7 +37,7 @@ export default function RootLayout({
             <div className="relative h-screen pb-[var(--safe-area-bottom)] pt-[var(--safe-area-top)]">
               {children}
             </div>
-            <Toaster />
+            <Toaster position="top-center" richColors />
           </TelegramProvider>
         </QueryProvider>
         {process.env.NODE_ENV === "development" && (

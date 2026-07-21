@@ -1,5 +1,6 @@
 import MarketOfferPage from "@/components/pages/market-offer";
 
-export default function MarketOffer({ params }: { params: { id: string } }) {
+export default async function MarketOffer(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   return <MarketOfferPage listingId={params.id} />;
 }

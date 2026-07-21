@@ -11,12 +11,12 @@ import {
   Loader2,
   Package,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
 import { Card, FullCard } from "@/db/schema/card";
 import { useCardSelect } from "@/hook/use-card-select";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
@@ -24,6 +24,7 @@ import { useFilterOptions } from "@/hook/use-filter-options";
 import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
+import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
 import { CardsSelectListServer } from "../cards-list";
@@ -42,8 +43,28 @@ type MarketListing = {
   cards: Card[];
 };
 
+export function restrictOptionsToLocked(
+  filterOptions: FilterOption[],
+  locked: Partial<Filter>
+): FilterOption[] {
+  console.log(locked);
+  return filterOptions.map((option) => {
+    const lockedValues = locked[option.key];
+    if (!Array.isArray(lockedValues) || lockedValues?.length === 0) {
+      return option;
+    }
+
+    const allowedIds = lockedValues as Array<number | string>;
+    const lockedItems = option.items.filter((item) =>
+      allowedIds.includes(item.id)
+    );
+
+    return { ...option, items: lockedItems };
+  });
+}
+
 export default function MarketOfferPage({ listingId }: { listingId: string }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const router = useRouter();
   useTelegramBackButton(`/market/${listingId}`);
   const { data: filterData } = useFilterOptions();
@@ -60,14 +81,30 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
 
   if (listingQuery.isLoading || !filterData) {
     return (
-      <main className="flex min-h-screen flex-col gap-4">
-        <Header title="Загрузка..." />
-        <CardsListSkeleton />
+      <main className="flex h-full flex-col md:container">
+        <Header title="Предложение" />
+        <div className="flex items-center p-3">
+          <Skeleton className="h-7 w-44 rounded-full" />
+        </div>
+        <div className="flex-1 px-2">
+          <Skeleton className="mb-3 h-24 w-full rounded-xl p-3" />
+          <ul className="grid grid-cols-4 gap-2">
+            {new Array(16).fill(0).map((_, idx) => (
+              <li key={idx}>
+                <Skeleton className="aspect-[3/4] rounded-md" />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className=" flex w-full gap-4 border-t bg-card px-4 py-2">
+          <Skeleton className="h-10 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md" />
+        </div>
       </main>
     );
   }
 
-  if (listingQuery.data && filterData && tgUser) {
+  if (listingQuery.data && filterData && userId) {
     const listing = listingQuery.data;
     const initialFilter: Filter = {
       authorIds: [],
@@ -80,31 +117,17 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
       sort: "power-desc",
       minPrice: listing.filters?.minCardPrice,
     };
-    const lockedFilters: Partial<Filter> = {
-      rarityIds: listing.filters?.rarityIds?.length
-        ? listing.filters.rarityIds
-        : undefined,
-      classIds: listing.filters?.classIds?.length
-        ? listing.filters.classIds
-        : undefined,
-      universeIds: listing.filters?.universeIds?.length
-        ? listing.filters.universeIds
-        : undefined,
-      stats: listing.filters?.stats?.length ? listing.filters.stats : undefined,
-      droppable: listing.filters?.type?.length
-        ? listing.filters.type
-        : undefined,
-      minPrice: listing.filters?.minCardPrice,
-    };
 
     return (
-      <main className="flex h-full flex-col">
+      <main className="flex h-full flex-col md:container">
         <MarketOfferContent
-          userId={tgUser.id}
+          userId={userId}
           listing={listingQuery.data}
-          filterOptions={filterData.filterOptions}
+          filterOptions={restrictOptionsToLocked(
+            filterData.filterOptions,
+            initialFilter
+          )}
           initialFilter={initialFilter}
-          lockedFilters={lockedFilters}
         />
       </main>
     );
@@ -127,13 +150,11 @@ function MarketOfferContent({
   listing,
   filterOptions,
   initialFilter,
-  lockedFilters,
 }: {
-  userId: number;
+  userId: string;
   listing: MarketListing;
   filterOptions: FilterOption[];
   initialFilter: Filter;
-  lockedFilters: Partial<Filter>;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
@@ -148,11 +169,9 @@ function MarketOfferContent({
       listing.filters?.minCardCount &&
       selectedCards.length < listing.filters.minCardCount
     ) {
-      toast({
-        title: "Ошибка",
-        description: `Минимальное количество карт: ${listing.filters.minCardCount}`,
-        variant: "destructive",
-      });
+      toast.warning(
+        `Минимальное количество карт: ${listing.filters.minCardCount}`
+      );
       setIsLoading(false);
       return;
     }
@@ -161,11 +180,9 @@ function MarketOfferContent({
       listing.filters?.maxCardCount &&
       selectedCards.length > listing.filters.maxCardCount
     ) {
-      toast({
-        title: "Ошибка",
-        description: `Максимальное количество карт: ${listing.filters.maxCardCount}`,
-        variant: "destructive",
-      });
+      toast.warning(
+        `Максимальное количество карт: ${listing.filters.maxCardCount}`
+      );
       setIsLoading(false);
       return;
     }
@@ -176,19 +193,13 @@ function MarketOfferContent({
         cardIds: selectedCards.map((c) => c.id),
       });
 
-      toast({
-        title: "Предложение отправлено",
-        description: "Ваше предложение успешно отправлено продавцу",
-      });
+      toast.success("Ваше предложение успешно отправлено продавцу");
 
       router.push("/market");
     } catch (e) {
-      toast({
-        title: "Ошибка",
-        description:
-          e instanceof Error ? e.message : "Не удалось отправить предложение",
-        variant: "destructive",
-      });
+      toast(
+        e instanceof Error ? e.message : "Не удалось отправить предложение"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -247,7 +258,7 @@ function MarketOfferContent({
             <CardsFilter
               filterOptions={filterOptions}
               setFilters={handleFilterChange}
-              lockedFilters={lockedFilters}
+              initialValues={filter}
             />
           ) : (
             <Button variant="ghost" size="sm" onClick={() => setStep("select")}>
@@ -257,16 +268,15 @@ function MarketOfferContent({
         }
       />
 
-      <div className="px-3 pb-2 pt-3">
-        <StepIndicator
-          currentStep={step === "select" ? 1 : 2}
-          steps={["Выбор карт", "Подтверждение"]}
-        />
-      </div>
+      <StepIndicator
+        currentStep={step === "select" ? 1 : 2}
+        steps={["Выбор карт", "Подтверждение"]}
+        className="p-3"
+      />
 
-      <div className="flex-1 overflow-y-auto px-3 pb-6">
+      <div className="flex-1 overflow-y-auto p-2">
         {step === "select" && listing.filters && (
-          <div className="mb-3 mt-2 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+          <div className="mb-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
             <div className="mb-2 flex items-center gap-2">
               <Info className="h-4 w-4 text-blue-500" />
               <span className="text-xs font-semibold text-blue-500">
@@ -318,6 +328,7 @@ function MarketOfferContent({
                       src={getImageProxyUrl(c.image)}
                       alt={c.name}
                       fill
+                      sizes="300px"
                       className="object-cover"
                     />
                   </div>
@@ -341,52 +352,50 @@ function MarketOfferContent({
         )}
       </div>
 
-      <div className="border-t bg-card p-4">
-        <div className="flex gap-3">
-          {step === "select" ? (
-            <>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={resetSelected}
-                disabled={selectedCards.length === 0}
-              >
-                Сбросить
-              </Button>
-              <Button
-                className="w-full"
-                disabled={selectedCards.length === 0}
-                onClick={() => setStep("confirm")}
-              >
-                Далее ({selectedCards.length})
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setStep("select")}
-              >
-                Назад
-              </Button>
-              <Button
-                className="w-full"
-                disabled={isLoading}
-                onClick={handleCreateOffer}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Загрузка...
-                  </>
-                ) : (
-                  "Отправить"
-                )}
-              </Button>
-            </>
-          )}
-        </div>
+      <div className="flex w-full gap-4 border-t bg-card px-4 py-2">
+        {step === "select" ? (
+          <>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={resetSelected}
+              disabled={selectedCards.length === 0}
+            >
+              Сбросить
+            </Button>
+            <Button
+              className="w-full"
+              disabled={selectedCards.length === 0}
+              onClick={() => setStep("confirm")}
+            >
+              Далее ({selectedCards.length})
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setStep("select")}
+            >
+              Назад
+            </Button>
+            <Button
+              className="w-full"
+              disabled={isLoading}
+              onClick={handleCreateOffer}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Отправить"
+              )}
+            </Button>
+          </>
+        )}
       </div>
     </>
   );
@@ -404,7 +413,7 @@ export function MarketCardsList({
   page: number;
   selectedCards: FullCard[];
   filter: Filter;
-  userId: number;
+  userId: string;
   secondId: string;
   handleChangePage: (page: number) => void;
   onCardSelect: (card: FullCard) => () => void;
@@ -419,7 +428,7 @@ export function MarketCardsList({
     page,
     fetchFn,
   });
-  if (!query.data) return <h1>hi</h1>;
+  if (!query.data) return <CardsListSkeleton className="px-0" />;
   return (
     <CardsSelectListServer
       cards={query.data.cards}

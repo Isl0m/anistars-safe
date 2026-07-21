@@ -19,16 +19,17 @@ type UserBanner = {
 };
 
 export function BannersPage({ banners }: { banners: Banner[] }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const query = useQuery({
-    queryKey: ["userBanners", tgUser?.id],
+    queryKey: ["userBanners", userId],
     queryFn: async () => {
-      if (!tgUser) return [];
+      if (!userId) return [];
       const { data } = await api.get<{ banners: UserBanner[] }>(
         `/api/user/banners`
       );
       return data.banners;
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   });
   const [selected, setSelected] = useState<Banner>();

@@ -1,6 +1,7 @@
 import {
   getAuthors,
   getClasses,
+  getDiffUniverses,
   getRarities,
   getUniverses,
   getUserUniverses,
@@ -31,11 +32,7 @@ export type FilterOption = {
 };
 
 export type ListingFilterOptionKey =
-  | "rarityIds"
-  | "classIds"
-  | "universeIds"
-  | "stats"
-  | "type";
+  "rarityIds" | "classIds" | "universeIds" | "stats" | "type";
 
 export type ListingFilterOption = {
   key: ListingFilterOptionKey;
@@ -77,11 +74,7 @@ export type ListingFilters = {
 };
 
 export type TechniqueType =
-  | "power"
-  | "heal"
-  | "power+heal"
-  | "dodge"
-  | "reflect";
+  "power" | "heal" | "power+heal" | "dodge" | "reflect";
 
 const statsOptions: FilterOption = {
   key: "stats",
@@ -196,6 +189,16 @@ export async function getUserFilterOptions(userId: string) {
     getClasses(),
     getAuthors(),
     getUserUniverses(userId),
+  ]);
+  return buildFilterOptions(rarities, classes, universes, authors);
+}
+
+export async function getDiffFilterOptions(userId: string, diffId: string) {
+  const [rarities, classes, authors, universes] = await Promise.all([
+    getRarities(),
+    getClasses(),
+    getAuthors(),
+    getDiffUniverses(userId, diffId),
   ]);
   return buildFilterOptions(rarities, classes, universes, authors);
 }

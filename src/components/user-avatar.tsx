@@ -28,6 +28,7 @@ export function UserAvatar({ name, photoUrl, size = 32, className }: Props) {
           src={photoUrl}
           alt={name}
           fill
+          sizes="300px"
           className="object-cover"
           unoptimized
         />

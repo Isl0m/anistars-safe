@@ -17,6 +17,7 @@ export type CardsPageData = { cards: FullCard[]; total: number };
 type Props = {
   filterOptions: FilterOption[];
   initialCards?: CardsPageData;
+  defaultFilter: Filter;
 };
 
 async function fetchCards(filter: Filter, page: number) {
@@ -29,40 +30,41 @@ async function fetchCards(filter: Filter, page: number) {
   return data;
 }
 
-export function CardsPage({ filterOptions, initialCards }: Props) {
+export function CardsPage({ filterOptions, defaultFilter }: Props) {
   const { page, filter, handleChangePage, handleFilterChange } =
-    useCardsFilterState();
+    useCardsFilterState(defaultFilter);
   const query = usePaginatedCardsQuery<CardsPageData>({
     queryKey: ["all-cards"],
     filter,
     page,
-    initialData: initialCards,
     fetchFn: fetchCards,
   });
 
   return (
-    <>
+    <main className="flex h-full flex-col">
       <Header
         title="Все карты"
         element={
           <CardsFilter
-            defaultSort="createdAt-desc"
+            defaultSort={filter.sort}
             filterOptions={filterOptions}
             setFilters={handleFilterChange}
           />
         }
       />
 
-      {query.data ? (
-        <CardsList
-          cards={query.data.cards}
-          total={query.data.total}
-          page={page}
-          onPageChange={handleChangePage}
-        />
-      ) : (
-        <CardsListSkeleton />
-      )}
-    </>
+      <section className="flex-1 overflow-y-auto py-4">
+        {query.data ? (
+          <CardsList
+            cards={query.data.cards}
+            total={query.data.total}
+            page={page}
+            onPageChange={handleChangePage}
+          />
+        ) : (
+          <CardsListSkeleton />
+        )}
+      </section>
+    </main>
   );
 }

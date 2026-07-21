@@ -5,19 +5,19 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
 import { UpdateTradeType } from "@/app/api/trade/update/route";
 import { Card } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
 import { UserExtended } from "@/db/schema/user";
 import { useCardSelect } from "@/hook/use-card-select";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
-import { useFilterOptions } from "@/hook/use-filter-options";
+import { useDiffFilterOptions } from "@/hook/use-filter-options";
 import { Badge } from "@/ui/badge";
 import { Skeleton } from "@/ui/skeleton";
 
@@ -48,21 +48,25 @@ export default function AcceptTradePage({
     senderCards: (Card & { rarity: string })[];
   };
 }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
 
   const query = useQuery({
-    queryKey: ["trade-user", tgUser?.id],
+    queryKey: ["trade-user", userId],
     queryFn: async () => {
-      if (!tgUser) return;
+      if (!userId) return;
       const { data } = await api.get<{
         user: UserExtended;
         reserved: ReservedCards;
       }>(`/api/user/trade`);
       return data;
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   });
-  const { data: filterData } = useFilterOptions();
+  const { data: filterData } = useDiffFilterOptions(
+    trade.receiverId,
+    trade.senderId
+  );
 
   if (query.data && filterData) {
     return (
@@ -138,11 +142,7 @@ export function AcceptTradePageContent({
   const handleTrade = async () => {
     setIsLoading(true);
     if (selectedCards.length !== requiredCount) {
-      toast({
-        title: "Ошибка",
-        description: `Нужно выбрать ровно ${requiredCount} карт.`,
-        variant: "destructive",
-      });
+      toast.warning(`Нужно выбрать ровно ${requiredCount} карт.`);
       setIsLoading(false);
       return;
     }
@@ -155,18 +155,10 @@ export function AcceptTradePageContent({
 
     try {
       await api.post("/api/trade/update", data);
-      toast({
-        title: "Трейд успешно принят",
-        variant: "default",
-      });
+      toast.success("Трейд успешно принят");
       router.push("/trade");
     } catch (e) {
-      toast({
-        title: "Ошибка",
-        description:
-          e instanceof Error ? e.message : "Не удалось принять трейд",
-        variant: "destructive",
-      });
+      toast.error(e instanceof Error ? e.message : "Не удалось принять трейд");
     } finally {
       setIsLoading(false);
     }
@@ -178,18 +170,12 @@ export function AcceptTradePageContent({
       await api.delete("/api/trade/cancel", {
         data: { id: trade.id },
       });
-      toast({
-        title: "Трейд отклонён",
-        variant: "default",
-      });
+      toast.warning("Трейд отклонён");
       router.push("/trade");
     } catch (e) {
-      toast({
-        title: "Ошибка",
-        description:
-          e instanceof Error ? e.message : "Не удалось отклонить трейд",
-        variant: "destructive",
-      });
+      toast.error(
+        e instanceof Error ? e.message : "Не удалось отклонить трейд"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -223,6 +209,7 @@ export function AcceptTradePageContent({
         element={
           step === "select" ? (
             <CardsFilter
+              defaultSort={filterState.filter.sort}
               filterOptions={filterOptions}
               setFilters={filterState.handleFilterChange}
             />
@@ -291,6 +278,7 @@ export function AcceptTradePageContent({
               secondId={trade.senderId}
               selectedCards={selectedCards}
               onCardSelect={onCardSelect}
+              reserved={reservedLookup}
               {...filterState}
             />
           )}

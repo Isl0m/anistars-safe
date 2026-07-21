@@ -12,22 +12,20 @@ import {
   Search,
   ShieldAlert,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
-import { User, UserExtended } from "@/db/schema/user";
+import { UserExtended } from "@/db/schema/user";
 import { Input } from "@/ui/input";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 import { UserAvatar } from "../user-avatar";
 
-type CheckResult = { user: User; isCanTrade: boolean };
-
 export default function TradeReceiverPage() {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const router = useRouter();
   const [receiver, setReceiver] = useState("");
   const [searchedId, setSearchedId] = useState<string | null>(null);
@@ -51,19 +49,11 @@ export default function TradeReceiverPage() {
   const handleSearch = () => {
     const id = receiver.trim();
     if (!id) {
-      toast({
-        title: "Ошибка",
-        description: "Введите ид получателя",
-        variant: "destructive",
-      });
+      toast.warning("Введите ид получателя");
       return;
     }
-    if (tgUser && id === tgUser.id.toString()) {
-      toast({
-        title: "Ошибка",
-        description: "Нельзя трейдится с самим собой",
-        variant: "destructive",
-      });
+    if (id === userId) {
+      toast.warning("Нельзя трейдится с самим собой");
       return;
     }
     setSearchedId(id);

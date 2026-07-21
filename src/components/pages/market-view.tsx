@@ -13,6 +13,7 @@ import {
   MessageSquare,
   UserIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { listingStatusMap, offerStatusMap } from "@/lib/constants";
@@ -36,7 +37,6 @@ import {
   DialogTrigger,
 } from "@/ui/dialog";
 import { Skeleton } from "@/ui/skeleton";
-import { toast } from "@/ui/use-toast";
 
 import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
@@ -53,7 +53,7 @@ export default function MarketViewPage({
   listing: MarketListingDetail;
   filterOptions: FilterOption[];
 }) {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
   const router = useRouter();
   const queryClient = useQueryClient();
   useTelegramBackButton("/market");
@@ -64,13 +64,12 @@ export default function MarketViewPage({
   const [isRejecting, setIsRejecting] = useState<number | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const userIdStr = tgUser?.id?.toString();
   const buyerHasOffer =
-    !!userIdStr &&
-    listing.sellerId !== userIdStr &&
-    offers.some((o) => o.buyerId === userIdStr && o.status === "pending");
+    !!userId &&
+    listing.sellerId !== userId &&
+    offers.some((o) => o.buyerId === userId && o.status === "pending");
 
-  const isSeller = tgUser?.id?.toString() === listing.sellerId;
+  const isSeller = userId === listing.sellerId;
   const pendingOffers = offers.filter((o) => o.status === "pending");
   const listingStatus =
     listingStatusMap[listing.status] ?? listingStatusMap.active;
@@ -82,20 +81,14 @@ export default function MarketViewPage({
         offerId,
       });
 
-      toast({
-        title: "Успешно",
-        description: "Вы приняли предложение обмена!",
-      });
+      toast.success("Вы приняли предложение обмена!");
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
       queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
       router.push("/market");
     } catch (e) {
-      toast({
-        title: "Ошибка",
-        description:
-          e instanceof Error ? e.message : "Не удалось принять предложение",
-        variant: "destructive",
-      });
+      toast.error(
+        e instanceof Error ? e.message : "Не удалось принять предложение"
+      );
     } finally {
       setIsAccepting(false);
     }
@@ -108,19 +101,12 @@ export default function MarketViewPage({
         offerId,
       });
 
-      toast({
-        title: "Отклонено",
-        description: "Предложение отклонено",
-      });
+      toast.success("Предложение отклонено");
 
       queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
     } catch {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось отклонить предложение",
-        variant: "destructive",
-      });
+      toast.error("Не удалось отклонить предложение");
     } finally {
       setIsRejecting(null);
     }
@@ -131,19 +117,12 @@ export default function MarketViewPage({
     try {
       await api.post(`/api/market/listings/${listing.id}/cancel`);
 
-      toast({
-        title: "Отменено",
-        description: "Объявление отменено",
-      });
+      toast.success("Объявление отменено");
 
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
       router.push("/market");
     } catch {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось отменить объявление",
-        variant: "destructive",
-      });
+      toast.error("Не удалось отменить объявление");
     } finally {
       setIsCancelling(false);
     }
@@ -202,6 +181,7 @@ export default function MarketViewPage({
                   src={getImageProxyUrl(card.image)}
                   alt={card.name}
                   fill
+                  sizes="300px"
                   className="object-cover"
                 />
               </li>
@@ -328,7 +308,7 @@ export default function MarketViewPage({
                 const statusInfo =
                   offerStatusMap[offer.status] ?? offerStatusMap.pending;
                 const isPending = offer.status === "pending";
-                const isMyOffer = tgUser?.id?.toString() === offer.buyerId;
+                const isMyOffer = userId === offer.buyerId;
 
                 return (
                   <div
@@ -390,6 +370,7 @@ export default function MarketViewPage({
                               src={getImageProxyUrl(card.image)}
                               alt={card.name}
                               fill
+                              sizes="300px"
                               className="object-cover"
                             />
                           </div>
@@ -475,6 +456,7 @@ function AcceptOfferDialog({
                       src={getImageProxyUrl(card.image)}
                       alt={card.name}
                       fill
+                      sizes="300px"
                       className="object-cover"
                     />
                   </div>
@@ -503,6 +485,7 @@ function AcceptOfferDialog({
                       src={getImageProxyUrl(card.image)}
                       alt={card.name}
                       fill
+                      sizes="300px"
                       className="object-cover"
                     />
                   </div>

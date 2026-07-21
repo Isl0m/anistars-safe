@@ -82,6 +82,37 @@ export async function getUserUniverses(userId: string) {
     .groupBy(tUniverses.id, tUniverses.name, tUniverses.type);
 }
 
+export async function getDiffUniverses(userId: string, diffId: string) {
+  const secondUserCard = aliasedTable(cardToTgUser, "secondUserCard");
+
+  return db
+    .select({
+      id: tUniverses.id,
+      name: tUniverses.name,
+      type: tUniverses.type,
+    })
+    .from(cardToTgUser)
+    .innerJoin(tCards, eq(tCards.id, cardToTgUser.cardId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .where(
+      and(
+        eq(cardToTgUser.tgUserId, userId),
+        notExists(
+          db
+            .select()
+            .from(secondUserCard)
+            .where(
+              and(
+                eq(secondUserCard.tgUserId, diffId),
+                eq(secondUserCard.cardId, tCards.id)
+              )
+            )
+        )
+      )
+    )
+    .groupBy(tUniverses.id, tUniverses.name, tUniverses.type);
+}
+
 export const CARDS_PAGE_SIZE = 16;
 
 export type PaginatedCards = {

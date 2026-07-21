@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
-  foreignKey,
   integer,
   pgTable,
   text,
@@ -14,76 +13,64 @@ import { banners } from "./banner";
 
 export type UserTypes = "admin" | "support" | "basic";
 
-export const tgUsers = pgTable(
-  "TgUser",
-  {
-    id: text("id").notNull().primaryKey(),
-    name: text("name").notNull().default("Noname"),
+export const tgUsers = pgTable("TgUser", {
+  id: text("id").notNull().primaryKey(),
+  name: text("name").notNull().default("Noname"),
 
-    tgName: text("tgName"),
-    tgUserName: text("tgUserName"),
-    photoUrl: text("photoUrl"),
+  tgName: text("tgName"),
+  tgUserName: text("tgUserName"),
+  photoUrl: text("photoUrl"),
 
-    coins: integer("coins").default(0).notNull(),
-    sparkles: integer("sparkles").default(0).notNull(),
-    tries: integer("tries").default(3).notNull(),
-    event: integer("event").default(0).notNull(),
-    astrals: integer("astrals").default(0).notNull(),
+  coins: integer("coins").default(0).notNull(),
+  sparkles: integer("sparkles").default(0).notNull(),
+  tries: integer("tries").default(3).notNull(),
+  event: integer("event").default(0).notNull(),
+  astrals: integer("astrals").default(0).notNull(),
 
-    customEmojiId: text("customEmojiId"),
-    emojiFileId: text("emojiFileId"),
-    emojiPackId: integer("emojiPackId"),
+  customEmojiId: text("customEmojiId"),
+  emojiFileId: text("emojiFileId"),
+  emojiPackId: integer("emojiPackId"),
 
-    referrals: integer("referrals").default(0).notNull(),
-    universes: integer("universes")
-      .array()
-      .default(sql`'{1, 5, 8, 10, 17, 22, 34, 71, 82, 99}'`)
-      .notNull(),
+  referrals: integer("referrals").default(0).notNull(),
+  universes: integer("universes")
+    .array()
+    .default(sql`'{1, 5, 8, 10, 17, 22, 34, 71, 82, 99}'`)
+    .notNull(),
 
-    giftStreak: integer("giftStreak").default(1).notNull(),
-    isBlocked: boolean("isBlocked").default(false).notNull(),
-    isBotBlocked: boolean("isBotBlocked").default(false).notNull(),
+  giftStreak: integer("giftStreak").default(1).notNull(),
+  isBlocked: boolean("isBlocked").default(false).notNull(),
+  isBotBlocked: boolean("isBotBlocked").default(false).notNull(),
 
-    isInvisible: boolean("isInvisible").default(false).notNull(),
-    isNotification: boolean("isNotification").default(true).notNull(),
+  isInvisible: boolean("isInvisible").default(false).notNull(),
+  isNotification: boolean("isNotification").default(true).notNull(),
 
-    isTradeBanned: boolean("isTradeBanned").default(false).notNull(),
-    invitedById: text("invitedById"),
-    type: text("type").$type<UserTypes>().default("basic").notNull(),
+  isTradeBanned: boolean("isTradeBanned").default(false).notNull(),
+  invitedById: text("invitedById"),
+  type: text("type").$type<UserTypes>().default("basic").notNull(),
 
-    bannerId: integer("bannerId")
-      .references(() => banners.id, {
-        onDelete: "set default",
-      })
-      .default(1)
-      .notNull(),
-    lastTimeGetBoostGift: timestamp("lastTimeGetBoostGift", {
-      withTimezone: true,
-    }),
-    lastTimeGetGift: timestamp("lastTimeGetGift", {
-      withTimezone: true,
-    }),
-    lastTimeGetCard: timestamp("lastTimeGetCard", {
-      withTimezone: true,
-    }),
-    lastActivityAt: timestamp("lastActivityAt", {
-      withTimezone: true,
-    }),
-    emojiUpdatedAt: timestamp("emojiUpdatedAt", {
-      withTimezone: true,
-    }),
-    createdAt: timestamp("createdAt").defaultNow(),
-  },
-  (table) => {
-    return {
-      parentReference: foreignKey({
-        columns: [table.invitedById],
-        foreignColumns: [table.id],
-        name: "contracts_invitedby_id_fkey",
-      }),
-    };
-  }
-);
+  bannerId: integer("bannerId")
+    .references(() => banners.id, {
+      onDelete: "set default",
+    })
+    .default(1)
+    .notNull(),
+  lastTimeGetBoostGift: timestamp("lastTimeGetBoostGift", {
+    withTimezone: true,
+  }),
+  lastTimeGetGift: timestamp("lastTimeGetGift", {
+    withTimezone: true,
+  }),
+  lastTimeGetCard: timestamp("lastTimeGetCard", {
+    withTimezone: true,
+  }),
+  lastActivityAt: timestamp("lastActivityAt", {
+    withTimezone: true,
+  }),
+  emojiUpdatedAt: timestamp("emojiUpdatedAt", {
+    withTimezone: true,
+  }),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
 
 export const userPasses = pgTable("UserPass", {
   id: text("id").notNull().primaryKey(),
@@ -92,6 +79,20 @@ export const userPasses = pgTable("UserPass", {
   premiumStep: integer("premiumStep").default(0).notNull(),
   isPremium: boolean("isPremium").default(false).notNull(),
   tasksGeneratedAt: timestamp("tasksGeneratedAt", {
+    withTimezone: true,
+  }),
+});
+
+export const tradingStatus = pgTable("TradingStatus", {
+  userId: text("userId")
+    .references(() => tgUsers.id, { onDelete: "cascade" })
+    .primaryKey(),
+  acceptedVersion: text("acceptedVersion"),
+  isBanned: boolean("isBanned").default(false),
+  banExpiresAt: timestamp("banExpiresAt", {
+    withTimezone: true,
+  }),
+  rulesAcceptedAt: timestamp("rulesAcceptedAt", {
     withTimezone: true,
   }),
 });

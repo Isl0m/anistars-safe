@@ -48,17 +48,18 @@ function getGradient(name: string) {
 }
 
 export function Collection() {
-  const { tgUser } = useTelegram();
+  const { userId } = useTelegram();
 
   const query = useQuery({
-    queryKey: ["user-collection"],
+    queryKey: ["user-collection", userId],
     queryFn: async () => {
-      if (!tgUser) return;
+      if (!userId) return;
       const { data } = await api.get<{ collection: UserCollection }>(
         `/api/user/collection`
       );
       return data.collection;
     },
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   });
 
