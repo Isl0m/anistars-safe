@@ -15,7 +15,6 @@ export function useRouteAccessMap() {
       const { data } = await api.get<{ access: RouteAccessMap }>(
         `/api/settings/route-access`
       );
-      console.log(data);
       return data.access;
     },
   });

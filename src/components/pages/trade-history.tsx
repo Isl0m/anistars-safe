@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowRightLeft, Clock, History, X } from "lucide-react";
+import { ArrowRightLeft, Clock, History, Search, X } from "lucide-react";
 
 import { api } from "@/lib/api";
 import {
@@ -48,9 +48,14 @@ const TYPE_FILTERS: { value: TradeType | "all"; label: string }[] = [
   { value: "market", label: "Маркет" },
 ];
 
+function getCounterparty(trade: TradeHistoryType, userId?: string) {
+  return trade.sender.id === userId ? trade.receiver : trade.sender;
+}
+
 export function TradeHistory() {
   const { userId } = useTelegram();
   const [typeFilter, setTypeFilter] = useState<TradeType | "all">("all");
+  const [userSearch, setUserSearch] = useState("");
 
   useTelegramBackButton("/trade");
 
@@ -69,9 +74,18 @@ export function TradeHistory() {
 
   const filteredTrades = useMemo(() => {
     const trades = query.data ?? [];
-    if (typeFilter === "all") return trades;
-    return trades.filter((trade) => trade.type === typeFilter);
-  }, [query.data, typeFilter]);
+    const search = userSearch.trim().toLowerCase();
+    return trades.filter((trade) => {
+      if (typeFilter !== "all" && trade.type !== typeFilter) return false;
+      if (search) {
+        const counterparty = getCounterparty(trade, userId);
+        const matchesName = counterparty.name?.toLowerCase().includes(search);
+        const matchesId = counterparty.id.toLowerCase().includes(search);
+        if (!matchesName && !matchesId) return false;
+      }
+      return true;
+    });
+  }, [query.data, typeFilter, userSearch, userId]);
 
   const totalTrades = filteredTrades.length;
 
@@ -112,6 +126,24 @@ export function TradeHistory() {
           </div>
         ) : (
           <>
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Поиск по пользователю"
+                className="h-9 w-full rounded-lg border border-border bg-card pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              {userSearch && (
+                <button
+                  onClick={() => setUserSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
               {TYPE_FILTERS.map((filter) => (
                 <button
@@ -131,7 +163,7 @@ export function TradeHistory() {
 
             {filteredTrades.length === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">
-                Нет трейдов этого типа
+                Ничего не найдено
               </p>
             ) : (
               <>
