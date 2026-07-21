@@ -1,12 +1,16 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, Clock, History, X } from "lucide-react";
 
 import { api } from "@/lib/api";
-import { TradeHistory as TradeHistoryType } from "@/lib/queries";
-import { getImageProxyUrl, timeAgo } from "@/lib/utils";
+import {
+  TradeHistory as TradeHistoryType,
+  TradeType,
+} from "@/lib/queries";
+import { cn, getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
 import { useClientPagination } from "@/hook/use-client-pagination";
@@ -28,8 +32,25 @@ import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { UserLink } from "../user-link";
 
+const TRADE_TYPE_META: Record<
+  TradeType,
+  { label: string; variant: "default" | "secondary" | "outline" }
+> = {
+  single: { label: "Обмен", variant: "secondary" },
+  multi: { label: "Мульти", variant: "default" },
+  market: { label: "Маркет", variant: "outline" },
+};
+
+const TYPE_FILTERS: { value: TradeType | "all"; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "single", label: "Обмен" },
+  { value: "multi", label: "Мульти" },
+  { value: "market", label: "Маркет" },
+];
+
 export function TradeHistory() {
   const { userId } = useTelegram();
+  const [typeFilter, setTypeFilter] = useState<TradeType | "all">("all");
 
   useTelegramBackButton("/trade");
 
@@ -45,14 +66,21 @@ export function TradeHistory() {
     enabled: !!userId,
     placeholderData: keepPreviousData,
   });
-  const totalTrades = query.data?.length ?? 0;
+
+  const filteredTrades = useMemo(() => {
+    const trades = query.data ?? [];
+    if (typeFilter === "all") return trades;
+    return trades.filter((trade) => trade.type === typeFilter);
+  }, [query.data, typeFilter]);
+
+  const totalTrades = filteredTrades.length;
 
   const {
     page,
     setPage,
     pageItems: pageTradeHistory,
     cardsLeft,
-  } = useClientPagination(query.data ?? [], 5);
+  } = useClientPagination(filteredTrades, 5);
 
   return (
     <main className="flex h-full flex-col">
@@ -84,24 +112,52 @@ export function TradeHistory() {
           </div>
         ) : (
           <>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                Всего: {totalTrades}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {pageTradeHistory.map((trade) => (
-                <TradeHistoryCard key={trade.id} trade={trade} />
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              {TYPE_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => setTypeFilter(filter.value)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    typeFilter === filter.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground"
+                  )}
+                >
+                  {filter.label}
+                </button>
               ))}
             </div>
 
-            <div className="mt-4">
-              <CardsPagination
-                page={page}
-                cardsLeft={cardsLeft}
-                handleChangePage={setPage}
-              />
-            </div>
+            {filteredTrades.length === 0 ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                Нет трейдов этого типа
+              </p>
+            ) : (
+              <>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Всего: {totalTrades}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {pageTradeHistory.map((trade) => (
+                    <TradeHistoryCard
+                      key={`${trade.type}-${trade.id}`}
+                      trade={trade}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <CardsPagination
+                    page={page}
+                    cardsLeft={cardsLeft}
+                    handleChangePage={setPage}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -117,6 +173,12 @@ function TradeHistoryCard({ trade }: { trade: TradeHistoryType }) {
           <Clock className="h-3 w-3" />
           {timeAgo(trade.createdAt)}
         </div>
+        <Badge
+          variant={TRADE_TYPE_META[trade.type].variant}
+          className="h-5 px-1.5 py-0 text-[10px]"
+        >
+          {TRADE_TYPE_META[trade.type].label}
+        </Badge>
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 p-3">
         <div>

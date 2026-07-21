@@ -10,6 +10,7 @@ import {
   Library,
   Menu,
   Repeat2,
+  Settings,
   Store,
   User,
   Users,
@@ -17,6 +18,10 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { canAccess, resolveAccess } from "@/lib/route-access";
+
+import { useCurrentUser } from "@/hook/use-current-user";
+import { useRouteAccessMap } from "@/hook/use-route-access";
 
 import { Button } from "./ui/button";
 import {
@@ -56,6 +61,7 @@ const navGroups = [
     items: [
       { name: "Улучшения", href: "/upgrades", Icon: Zap },
       { name: "Фоны", href: "/banners", Icon: ImageIcon },
+      { name: "Админ", href: "/admin", Icon: Settings },
     ],
   },
 ];
@@ -79,6 +85,17 @@ function isNavActive(pathname: string, href: string) {
 
 export function Header({ title = "AniStars", element }: Props) {
   const pathname = usePathname();
+  const { data: currentUser } = useCurrentUser();
+  const { data: accessMap } = useRouteAccessMap();
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        canAccess(resolveAccess(accessMap, item.href), currentUser?.type)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <header className="sticky top-0 z-20 border-b bg-card px-3 py-2.5">
@@ -105,7 +122,7 @@ export function Header({ title = "AniStars", element }: Props) {
                 <SheetTitle className="text-left text-lg">AniStars</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 overflow-y-auto px-2 py-3">
-                {navGroups.map((group) => (
+                {visibleGroups.map((group) => (
                   <div key={group.label} className="mb-1">
                     <span className="mb-1 block px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {group.label}

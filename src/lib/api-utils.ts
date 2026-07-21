@@ -35,6 +35,17 @@ export async function requireListingOwner(listingId: number, sellerId: string) {
   return { listing };
 }
 
+export async function requireAdmin(request: Request) {
+  const authed = await requireAuth(request);
+  if ("error" in authed) return authed;
+  const result = await requireUser(authed.auth.id);
+  if ("error" in result) return result;
+  if (result.user.type !== "admin") {
+    return { error: errorResponse("Forbidden", 403) };
+  }
+  return result;
+}
+
 export function getRequiredParam(request: Request, param: string) {
   const { searchParams } = new URL(request.url);
   const value = searchParams.get(param);

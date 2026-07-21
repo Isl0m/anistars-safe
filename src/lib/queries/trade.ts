@@ -4,12 +4,19 @@ import {
   desc,
   eq,
   getTableColumns,
+  inArray,
   or,
   sql,
 } from "drizzle-orm";
 
 import { db } from "@/db";
 import { Card, tCards, tRarities } from "@/db/schema/card";
+import {
+  marketListingCards,
+  marketListings,
+  marketOfferCards,
+  marketOffers,
+} from "@/db/schema/market";
 import {
   InsertMultiTrade,
   multiTradeCards,
@@ -170,8 +177,11 @@ export async function fulfillTradeWithCards(
   });
 }
 
+export type TradeType = "single" | "multi" | "market";
+
 export type TradeHistory = {
   id: number;
+  type: TradeType;
   sender: User;
   receiver: User;
   senderCards: Card[];
@@ -217,6 +227,7 @@ async function getMultiTradeUserHistory(id: string) {
     if (!entry) {
       entry = {
         id: trade.id,
+        type: "multi",
         sender: trade.sender,
         receiver: trade.receiver,
         senderCards: [],
@@ -269,6 +280,7 @@ async function getSingleTradeUserHistory(id: string) {
 
   const tradesHistory: TradeHistory[] = trades.map((trade) => ({
     id: trade.id,
+    type: "single",
     sender: trade.fromUser,
     receiver: trade.toUser,
     senderCards: [trade.fromCard],
@@ -280,12 +292,83 @@ async function getSingleTradeUserHistory(id: string) {
   return tradesHistory;
 }
 
+async function getMarketTradeUserHistory(id: string) {
+  const cardColumns = getTableColumns(tCards);
+  const seller = aliasedTable(tgUsers, "seller");
+  const buyer = aliasedTable(tgUsers, "buyer");
+
+  const sellerColumns = getTableColumns(seller);
+  const buyerColumns = getTableColumns(buyer);
+
+  // A completed market trade = a completed listing joined to its accepted
+  // offer. The seller gives the listing cards; the buyer gives the offer cards.
+  const trades = await db
+    .select({
+      listingId: marketListings.id,
+      offerId: marketOffers.id,
+      seller: sellerColumns,
+      buyer: buyerColumns,
+      createdAt: marketOffers.createdAt,
+    })
+    .from(marketListings)
+    .innerJoin(
+      marketOffers,
+      and(
+        eq(marketOffers.listingId, marketListings.id),
+        eq(marketOffers.status, "accepted")
+      )
+    )
+    .innerJoin(seller, eq(seller.id, marketListings.sellerId))
+    .innerJoin(buyer, eq(buyer.id, marketOffers.buyerId))
+    .where(
+      and(
+        eq(marketListings.status, "completed"),
+        or(eq(marketListings.sellerId, id), eq(marketOffers.buyerId, id))
+      )
+    );
+
+  if (trades.length === 0) return [];
+
+  const listingIds = trades.map((t) => t.listingId);
+  const offerIds = trades.map((t) => t.offerId);
+
+  const [listingCards, offerCards] = await Promise.all([
+    db
+      .select({ listingId: marketListingCards.listingId, card: cardColumns })
+      .from(marketListingCards)
+      .where(inArray(marketListingCards.listingId, listingIds))
+      .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId)),
+    db
+      .select({ offerId: marketOfferCards.offerId, card: cardColumns })
+      .from(marketOfferCards)
+      .where(inArray(marketOfferCards.offerId, offerIds))
+      .innerJoin(tCards, eq(tCards.id, marketOfferCards.cardId)),
+  ]);
+
+  const listingCardsMap = Map.groupBy(listingCards, (c) => c.listingId);
+  const offerCardsMap = Map.groupBy(offerCards, (c) => c.offerId);
+
+  const tradesHistory: TradeHistory[] = trades.map((trade) => ({
+    id: trade.listingId,
+    type: "market",
+    sender: trade.seller,
+    receiver: trade.buyer,
+    senderCards: (listingCardsMap.get(trade.listingId) ?? []).map((c) => c.card),
+    receiverCards: (offerCardsMap.get(trade.offerId) ?? []).map((c) => c.card),
+    createdAt: trade.createdAt!,
+    cost: 0,
+  }));
+
+  return tradesHistory;
+}
+
 export async function userTradeHistory(userId: string) {
-  const [singleTrades, multiTrades] = await Promise.all([
+  const [singleTrades, multiTrades, marketTrades] = await Promise.all([
     getSingleTradeUserHistory(userId),
     getMultiTradeUserHistory(userId),
+    getMarketTradeUserHistory(userId),
   ]);
-  return [...singleTrades, ...multiTrades].sort(
+  return [...singleTrades, ...multiTrades, ...marketTrades].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
