@@ -1,5 +1,10 @@
 export const MAX_LISTING_CARDS = 12;
 
+// Max simultaneously active market entries, by account tier.
+// Listings are "active"; offers are "pending".
+export const MAX_ACTIVE_LISTINGS = { premium: 3, basic: 1 } as const;
+export const MAX_ACTIVE_OFFERS = { premium: 5, basic: 3 } as const;
+
 export const CARDS_PER_PAGE = 16;
 
 export const LISTINGS_PER_PAGE = 10;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, Loader2, Package } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
@@ -14,7 +14,7 @@ import { FullCard } from "@/db/schema/card";
 import { useCardSelect } from "@/hook/use-card-select";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
 import { useListingFilterOptions } from "@/hook/use-filter-options";
-import { marketKeys } from "@/hook/use-market";
+import { marketKeys, useMarketLimits } from "@/hook/use-market";
 import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
@@ -93,6 +93,9 @@ function MarketCreateContent({
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { data: limits } = useMarketLimits();
+  const listingLimit = limits?.listings;
+  const limitReached = listingLimit ? !listingLimit.canCreate : false;
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
@@ -119,6 +122,13 @@ function MarketCreateContent({
 
   const handleCreateListing = async () => {
     setIsLoading(true);
+    if (limitReached && listingLimit) {
+      toast.warning(
+        `Достигнут лимит активных объявлений (${listingLimit.active}/${listingLimit.limit}).`
+      );
+      setIsLoading(false);
+      return;
+    }
     if (selectedCards.length === 0) {
       toast.warning("Выберите хотя бы одну карту.");
       setIsLoading(false);
@@ -155,6 +165,7 @@ function MarketCreateContent({
       toast.success("Ваши карты выставлены на маркетплейс");
 
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
+      queryClient.invalidateQueries({ queryKey: marketKeys.limits });
       router.push("/market");
     } catch (e) {
       toast.error(
@@ -197,6 +208,23 @@ function MarketCreateContent({
           </Badge>
         )}
       </div>
+
+      {limitReached && listingLimit && (
+        <div className="mx-3 mb-1 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          <div className="text-[11px] text-amber-600">
+            <p className="font-semibold">
+              Достигнут лимит активных объявлений ({listingLimit.active}/
+              {listingLimit.limit})
+            </p>
+            <p className="text-amber-600/80">
+              {limits?.isPremium
+                ? "Дождитесь завершения или отмените одно из объявлений."
+                : "Оформите премиум, чтобы выставлять больше объявлений."}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-2">
         {step === "select" ? (
@@ -329,7 +357,7 @@ function MarketCreateContent({
             </Button>
             <Button
               className="w-full"
-              disabled={selectedCards.length === 0}
+              disabled={selectedCards.length === 0 || limitReached}
               onClick={() => setStep("confirm")}
             >
               Далее ({selectedCards.length})
@@ -346,7 +374,7 @@ function MarketCreateContent({
             </Button>
             <Button
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || limitReached}
               onClick={handleCreateListing}
             >
               {isLoading ? (

@@ -248,6 +248,32 @@ export async function getUserMarketOffers(userId: string) {
   });
 }
 
+export async function countActiveListings(sellerId: string) {
+  const [row] = await db
+    .select({ value: count() })
+    .from(marketListings)
+    .where(
+      and(
+        eq(marketListings.sellerId, sellerId),
+        eq(marketListings.status, "active")
+      )
+    );
+  return row?.value ?? 0;
+}
+
+export async function countActiveOffers(buyerId: string) {
+  const [row] = await db
+    .select({ value: count() })
+    .from(marketOffers)
+    .where(
+      and(
+        eq(marketOffers.buyerId, buyerId),
+        eq(marketOffers.status, "pending")
+      )
+    );
+  return row?.value ?? 0;
+}
+
 export function createMarketListing(data: typeof marketListings.$inferInsert) {
   return db.insert(marketListings).values(data).returning();
 }

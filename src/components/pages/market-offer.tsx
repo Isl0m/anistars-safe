@@ -3,8 +3,9 @@
 import { useCallback, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowRightLeft,
   ChevronLeft,
   Info,
@@ -21,6 +22,7 @@ import { Card, FullCard } from "@/db/schema/card";
 import { useCardSelect } from "@/hook/use-card-select";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
 import { useFilterOptions } from "@/hook/use-filter-options";
+import { marketKeys, useMarketLimits } from "@/hook/use-market";
 import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
@@ -157,6 +159,10 @@ function MarketOfferContent({
   initialFilter: Filter;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: limits } = useMarketLimits();
+  const offerLimit = limits?.offers;
+  const limitReached = offerLimit ? !offerLimit.canCreate : false;
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
@@ -164,6 +170,14 @@ function MarketOfferContent({
     useCardsFilterState(initialFilter);
   const handleCreateOffer = async () => {
     setIsLoading(true);
+
+    if (limitReached && offerLimit) {
+      toast.warning(
+        `Достигнут лимит активных предложений (${offerLimit.active}/${offerLimit.limit}).`
+      );
+      setIsLoading(false);
+      return;
+    }
 
     if (
       listing.filters?.minCardCount &&
@@ -195,6 +209,7 @@ function MarketOfferContent({
 
       toast.success("Ваше предложение успешно отправлено продавцу");
 
+      queryClient.invalidateQueries({ queryKey: marketKeys.limits });
       router.push("/market");
     } catch (e) {
       toast(
@@ -273,6 +288,23 @@ function MarketOfferContent({
         steps={["Выбор карт", "Подтверждение"]}
         className="p-3"
       />
+
+      {limitReached && offerLimit && (
+        <div className="mx-3 mb-1 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          <div className="text-[11px] text-amber-600">
+            <p className="font-semibold">
+              Достигнут лимит активных предложений ({offerLimit.active}/
+              {offerLimit.limit})
+            </p>
+            <p className="text-amber-600/80">
+              {limits?.isPremium
+                ? "Дождитесь ответа или отмените одно из предложений."
+                : "Оформите премиум, чтобы отправлять больше предложений."}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-2">
         {step === "select" && listing.filters && (
@@ -365,7 +397,7 @@ function MarketOfferContent({
             </Button>
             <Button
               className="w-full"
-              disabled={selectedCards.length === 0}
+              disabled={selectedCards.length === 0 || limitReached}
               onClick={() => setStep("confirm")}
             >
               Далее ({selectedCards.length})
@@ -382,7 +414,7 @@ function MarketOfferContent({
             </Button>
             <Button
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || limitReached}
               onClick={handleCreateOffer}
             >
               {isLoading ? (

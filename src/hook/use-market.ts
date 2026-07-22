@@ -5,8 +5,6 @@ import { api } from "@/lib/api";
 import { ListingFilters } from "@/components/get-filter-options";
 import { Card } from "@/db/schema/card";
 
-const BASE = process.env.NEXT_PUBLIC_URL;
-
 const STALE_TIME = 10 * 1000;
 
 export type MarketUser = {
@@ -70,7 +68,28 @@ export const marketKeys = {
     ["market", "user-listings", userId] as const,
   userOffers: (userId: string) => ["market", "user-offers", userId] as const,
   offers: (id: string) => ["market", "offers", id] as const,
+  limits: ["market", "limits"] as const,
 };
+
+type MarketLimit = { active: number; limit: number; canCreate: boolean };
+
+export type MarketLimits = {
+  isPremium: boolean;
+  listings: MarketLimit;
+  offers: MarketLimit;
+};
+
+export function useMarketLimits(enabled = true) {
+  return useQuery({
+    queryKey: marketKeys.limits,
+    enabled,
+    queryFn: async () => {
+      const { data } = await api.get<MarketLimits>(`/api/market/limits`);
+      return data;
+    },
+    staleTime: STALE_TIME,
+  });
+}
 
 export function useMarketListings(initialData?: MarketListingSummary[]) {
   return useQuery({

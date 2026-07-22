@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { MAX_ACTIVE_OFFERS } from "@/lib/constants";
 import {
   addMarketOfferCards,
+  countActiveOffers,
   createMarketOffer,
   getMarketListingMeta,
+  getUser,
   hasPendingOfferFromBuyer,
   validateCardsForTrade,
 } from "@/lib/queries";
@@ -53,6 +56,20 @@ export async function POST(request: Request) {
     return errorResponse(
       "You already have a pending offer on this listing",
       409
+    );
+  }
+
+  const buyer = await getUser(buyerId);
+  if (!buyer) return errorResponse("user not found", 404);
+
+  const offerLimit = buyer.isPremium
+    ? MAX_ACTIVE_OFFERS.premium
+    : MAX_ACTIVE_OFFERS.basic;
+  const activeOffers = await countActiveOffers(buyerId);
+  if (activeOffers >= offerLimit) {
+    return errorResponse(
+      `You can have at most ${offerLimit} active offers`,
+      400
     );
   }
 

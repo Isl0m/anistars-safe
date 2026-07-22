@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { errorResponse, requireAuth } from "@/lib/api-utils";
-import { MAX_LISTING_CARDS } from "@/lib/constants";
+import { MAX_ACTIVE_LISTINGS, MAX_LISTING_CARDS } from "@/lib/constants";
 import {
   addMarketListingCards,
+  countActiveListings,
   createMarketListing,
   getMarketListings,
+  getUser,
   validateCardsForTrade,
 } from "@/lib/queries";
 
@@ -27,6 +29,20 @@ export async function POST(request: Request) {
   if (cardIds.length > MAX_LISTING_CARDS) {
     return errorResponse(
       `A listing can contain at most ${MAX_LISTING_CARDS} cards`,
+      400
+    );
+  }
+
+  const seller = await getUser(sellerId);
+  if (!seller) return errorResponse("user not found", 404);
+
+  const listingLimit = seller.isPremium
+    ? MAX_ACTIVE_LISTINGS.premium
+    : MAX_ACTIVE_LISTINGS.basic;
+  const activeListings = await countActiveListings(sellerId);
+  if (activeListings >= listingLimit) {
+    return errorResponse(
+      `You can have at most ${listingLimit} active listings`,
       400
     );
   }
