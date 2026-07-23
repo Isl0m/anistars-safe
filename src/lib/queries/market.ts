@@ -131,7 +131,10 @@ export async function getUserMarketListings(
   return attachCardsAndOffers(listings);
 }
 
-export async function getMarketOffersForListing(listingId: number) {
+export async function getMarketOffersForListing(
+  listingId: number,
+  sellerId?: string
+) {
   const offerColumns = getTableColumns(marketOffers);
 
   const offers = await db
@@ -160,11 +163,29 @@ export async function getMarketOffersForListing(listingId: number) {
     )
     .innerJoin(tCards, eq(tCards.id, marketOfferCards.cardId));
 
+  const offeredCardIds = [...new Set(allCards.map((c) => c.id))];
+  let ownedCardIds = new Set<string>();
+  if (sellerId && offeredCardIds.length > 0) {
+    const owned = await db
+      .selectDistinct({ cardId: cardToTgUser.cardId })
+      .from(cardToTgUser)
+      .where(
+        and(
+          eq(cardToTgUser.tgUserId, sellerId),
+          inArray(cardToTgUser.cardId, offeredCardIds)
+        )
+      );
+    ownedCardIds = new Set(owned.map((o) => o.cardId));
+  }
+
   const cardsByOffer = Map.groupBy(allCards, (c) => c.offerId);
 
   return offers.map((offer) => ({
     ...offer,
-    cards: cardsByOffer.get(offer.id) ?? [],
+    cards: (cardsByOffer.get(offer.id) ?? []).map((card) => ({
+      ...card,
+      owned: sellerId ? ownedCardIds.has(card.id) : undefined,
+    })),
   }));
 }
 

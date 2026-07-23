@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
+  Check,
   Clock,
+  Copy,
   Info,
   Loader2,
   MessageSquare,
@@ -24,6 +26,7 @@ import {
   marketKeys,
   MarketListingDetail,
   MarketOffer,
+  OfferedCard,
   useMarketOffers,
 } from "@/hook/use-market";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
@@ -364,18 +367,32 @@ export default function MarketViewPage({
                         {offer.cards.map((card) => (
                           <div
                             key={card.id}
-                            className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-sm border shadow-sm"
+                            title={card.owned ? "Уже есть у вас" : undefined}
+                            className={`relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-sm border shadow-sm ${
+                              card.owned
+                                ? "border-amber-500/60 ring-1 ring-amber-500/40"
+                                : ""
+                            }`}
                           >
                             <Image
                               src={getImageProxyUrl(card.image)}
                               alt={card.name}
                               fill
                               sizes="300px"
-                              className="object-cover"
+                              className={`object-cover ${
+                                card.owned ? "opacity-60" : ""
+                              }`}
                             />
+                            {card.owned && (
+                              <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-bl-sm bg-amber-500 text-white">
+                                <Copy className="h-2.5 w-2.5" />
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
+
+                      <OfferOwnershipSummary cards={offer.cards} />
 
                       {isSeller && isPending && (
                         <div className="mt-2.5 flex gap-2">
@@ -408,6 +425,37 @@ export default function MarketViewPage({
           )}
         </div>
       </section>
+    </div>
+  );
+}
+
+function OfferOwnershipSummary({ cards }: { cards: OfferedCard[] }) {
+  const rated = cards.filter((card) => card.owned !== undefined);
+  if (rated.length === 0) return null;
+
+  const ownedCount = rated.filter((card) => card.owned).length;
+  const newCount = rated.length - ownedCount;
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+      {newCount > 0 && (
+        <Badge
+          variant="outline"
+          className="border-emerald-500/40 bg-emerald-500/10 text-[10px] text-emerald-600"
+        >
+          <Check className="mr-1 h-2.5 w-2.5" />
+          Новых: {newCount}
+        </Badge>
+      )}
+      {ownedCount > 0 && (
+        <Badge
+          variant="outline"
+          className="border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-600"
+        >
+          <Copy className="mr-1 h-2.5 w-2.5" />
+          Уже есть: {ownedCount}
+        </Badge>
+      )}
     </div>
   );
 }

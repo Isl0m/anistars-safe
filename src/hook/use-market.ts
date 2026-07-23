@@ -37,13 +37,15 @@ export type MarketListingDetail = {
   cards: MarketCard[];
 };
 
+export type OfferedCard = MarketCard & { owned?: boolean };
+
 export type MarketOffer = {
   id: number;
   buyerId: string;
   status: string;
   createdAt: string;
   buyer: MarketUser;
-  cards: MarketCard[];
+  cards: OfferedCard[];
 };
 
 export type UserMarketOffer = {
