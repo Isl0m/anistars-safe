@@ -1,22 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { getRequiredParam, requireAuth, requireUser } from "@/lib/api-utils";
-import { getUserCardsPaginated, getUserCardsWithFilter } from "@/lib/queries";
+import { requireAuth, requireUser } from "@/lib/api-utils";
+import { getUserCardsPaginated } from "@/lib/queries";
 import { parseFilter } from "@/lib/utils";
-
-import { Filter } from "@/components/get-filter-options";
-
-export async function POST(request: Request) {
-  const param = getRequiredParam(request, "id");
-  if ("error" in param) return param.error;
-
-  const result = await requireUser(param.value);
-  if ("error" in result) return result.error;
-
-  const body = (await request.json()) as Filter | undefined;
-  const cards = await getUserCardsWithFilter(param.value, body ?? undefined);
-  return NextResponse.json({ user: result.user, cards });
-}
 
 export async function GET(request: Request) {
   const authResult = await requireAuth(request);

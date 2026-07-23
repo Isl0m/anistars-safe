@@ -116,7 +116,7 @@ export function useUserMarketListings(
       const { data } = await api.get<{ listings: MarketListingSummary[] }>(
         `/api/market/user-listings`,
         {
-          params: { id: userId!, status: opts?.status },
+          params: { status: opts?.status },
         }
       );
       return data.listings;
@@ -131,10 +131,7 @@ export function useUserMarketOffers(userId?: string) {
     enabled: !!userId,
     queryFn: async () => {
       const { data } = await api.get<{ offers: UserMarketOffer[] }>(
-        `/api/market/user-offers?id=${userId}`,
-        {
-          params: { id: userId },
-        }
+        `/api/market/user-offers`
       );
       return data.offers;
     },

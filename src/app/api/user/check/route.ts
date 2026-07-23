@@ -11,7 +11,9 @@ export async function GET(request: Request) {
 
   const { user } = result;
   return NextResponse.json({
-    user,
+    id: user.id,
+    name: user.name,
+    photoUrl: user.photoUrl,
     isCanTrade: !(user.isBlocked || user.isTradeBanned),
   });
 }

@@ -17,7 +17,6 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { UserExtended } from "@/db/schema/user";
 import { Input } from "@/ui/input";
 
 import { Header } from "../header";
@@ -36,12 +35,14 @@ export default function TradeReceiverPage() {
     retry: false,
     queryFn: async () => {
       const { data } = await api.get<{
-        user: UserExtended;
+        id: string;
+        name: string;
+        photoUrl: string;
         isCanTrade: boolean;
       }>(`/api/user/check`, {
         params: { id: searchedId },
       });
-      if (!data.user) throw new Error("not found");
+      if (!data) throw new Error("not found");
       return data;
     },
   });
@@ -136,17 +137,17 @@ export default function TradeReceiverPage() {
                   className="flex w-full items-center gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/30 hover:bg-card/80 active:scale-[0.99]"
                 >
                   <UserAvatar
-                    name={profile.user.name}
-                    photoUrl={profile.user.photoUrl}
+                    name={profile.name}
+                    photoUrl={profile.photoUrl}
                     size={48}
                     className="ring-2 ring-card"
                   />
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-sm font-bold">
-                      {profile.user.name}
+                      {profile.name}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      ID: {profile.user.id}
+                      ID: {profile.id}
                     </p>
                     <p className="mt-0.5 text-[11px] font-medium text-primary">
                       Нажмите, чтобы продолжить обмен
@@ -158,17 +159,17 @@ export default function TradeReceiverPage() {
                 <div className="rounded-xl border bg-card p-3.5">
                   <div className="flex items-center gap-3">
                     <UserAvatar
-                      name={profile.user.name}
-                      photoUrl={profile.user.photoUrl}
+                      name={profile.name}
+                      photoUrl={profile.photoUrl}
                       size={48}
                       className="ring-2 ring-card"
                     />
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate text-sm font-bold">
-                        {profile.user.name}
+                        {profile.name}
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        ID: {profile.user.id}
+                        ID: {profile.id}
                       </p>
                     </div>
                     <ShieldAlert className="h-5 w-5 flex-shrink-0 text-destructive" />

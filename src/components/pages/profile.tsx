@@ -238,13 +238,15 @@ export function SearchFirstProfile() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const { data } = await api.get<{ user: UserExtended }>(
-        `/api/user/check`,
-        {
-          params: { id: searchId },
-        }
-      );
-      if (!data.user) throw new Error("not found");
+      const { data } = await api.get<{
+        id: string;
+        name: string;
+        photoUrl: string;
+        isCanTrade: boolean;
+      }>(`/api/user/check`, {
+        params: { id: searchId },
+      });
+      if (!data) throw new Error("not found");
       router.push(createQueryString("userId", searchId));
     } catch {
       toast.error("Пользователь не найден");

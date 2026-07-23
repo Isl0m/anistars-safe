@@ -266,39 +266,6 @@ export async function getAuthors() {
   return db.select().from(tAuthors);
 }
 
-export async function getUserCardsWithFilter(id: string, filter?: Filter) {
-  const { filters, order } = getSQLFilters(filter);
-
-  return userCardDetailSelect()
-    .where(and(eq(cardToTgUser.tgUserId, id), ...filters))
-    .orderBy(order);
-}
-
-export async function getUserMissingCardsWithFilter(
-  id: string,
-  filter?: Filter
-) {
-  const { filters, order } = getSQLFilters(filter);
-
-  return cardDetailSelect()
-    .where(
-      and(
-        notExists(
-          db
-            .select()
-            .from(cardToTgUser)
-            .where(
-              and(
-                eq(cardToTgUser.tgUserId, id),
-                eq(cardToTgUser.cardId, tCards.id)
-              )
-            )
-        ),
-        ...filters
-      )
-    )
-    .orderBy(order);
-}
 
 function buildCardFilters(filter?: Filter): (SQL | undefined)[] {
   const filters: (SQL | undefined)[] = [];
@@ -381,35 +348,6 @@ function getSQLFilters(filter?: Filter) {
     filters,
     order,
   };
-}
-
-export async function getUserCardsDifferenceWithFilter(
-  id: string,
-  secondId: string,
-  filter?: Filter
-) {
-  const { filters, order } = getSQLFilters(filter);
-  const secondUserCard = aliasedTable(cardToTgUser, "secondUserCard");
-
-  return userCardDetailSelect()
-    .where(
-      and(
-        ...filters,
-        notExists(
-          db
-            .select()
-            .from(secondUserCard)
-            .where(
-              and(
-                eq(secondUserCard.tgUserId, secondId),
-                eq(secondUserCard.cardId, tCards.id)
-              )
-            )
-        ),
-        eq(cardToTgUser.tgUserId, id)
-      )
-    )
-    .orderBy(order);
 }
 
 export async function getUserCollection(id: string, filter?: Filter) {
