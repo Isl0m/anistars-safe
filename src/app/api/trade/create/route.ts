@@ -3,6 +3,7 @@ import { InlineKeyboard } from "grammy";
 import { z } from "zod";
 
 import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { MAX_CARDS_PER_TRADE } from "@/lib/constants";
 import { getApi, getMe, getProfileLink } from "@/lib/bot";
 import {
   createTradeWithCards,
@@ -28,10 +29,10 @@ export async function POST(request: Request) {
   const { receiverId, cardIds } = parsed.data;
 
   if (cardIds.length === 0) {
-    return errorResponse("No cards selected", 400);
+    return errorResponse("Не выбрано ни одной карты", 400);
   }
   if (receiverId === senderId) {
-    return errorResponse("Cannot trade with yourself", 400);
+    return errorResponse("Нельзя обменяться с самим собой", 400);
   }
 
   const [receiver, sender, me] = await Promise.all([
@@ -40,7 +41,16 @@ export async function POST(request: Request) {
     getMe(),
   ]);
   if (!receiver || !sender) {
-    return errorResponse("Receiver or sender not found", 404);
+    return errorResponse("Отправитель или получатель не найден", 404);
+  }
+
+  // The tier cap existed only in the browser, so a crafted request could
+  // attach any number of cards.
+  const maxCards = sender.isPremium
+    ? MAX_CARDS_PER_TRADE.premium
+    : MAX_CARDS_PER_TRADE.basic;
+  if (cardIds.length > maxCards) {
+    return errorResponse(`Максимум ${maxCards} карт в трейде`, 400);
   }
 
   const validation = await validateCardsForTrade(cardIds, senderId);

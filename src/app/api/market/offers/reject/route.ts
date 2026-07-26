@@ -1,9 +1,11 @@
 import {
   loadPendingOffer,
   marketJobResponse,
+  parseBody,
   requireListingOwner,
   requireMarketAccess,
 } from "@/lib/api-utils";
+import { offerIdSchema } from "@/lib/market-schemas";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
@@ -11,7 +13,9 @@ export async function POST(request: Request) {
   if ("error" in authResult) return authResult.error;
   const sellerId = authResult.auth.id;
 
-  const { offerId } = await request.json();
+  const body = await parseBody(request, offerIdSchema);
+  if ("error" in body) return body.error;
+  const { offerId } = body.data;
 
   const offerResult = await loadPendingOffer(offerId);
   if ("error" in offerResult) return offerResult.error;

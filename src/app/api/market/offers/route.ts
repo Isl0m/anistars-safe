@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, requireMarketAccess } from "@/lib/api-utils";
-import { MAX_ACTIVE_OFFERS } from "@/lib/constants";
+import {
+  errorResponse,
+  parseBody,
+  requireMarketAccess,
+} from "@/lib/api-utils";
+import { MAX_ACTIVE_OFFERS, MAX_LISTING_CARDS } from "@/lib/constants";
+import { createOfferSchema } from "@/lib/market-schemas";
 import {
   addMarketOfferCards,
   countActiveOffers,
@@ -17,11 +22,9 @@ export async function POST(request: Request) {
   if ("error" in authResult) return authResult.error;
   const buyerId = authResult.auth.id;
 
-  const { listingId, cardIds } = await request.json();
-
-  if (!listingId || !cardIds || cardIds.length === 0) {
-    return errorResponse("Missing required fields", 400);
-  }
+  const body = await parseBody(request, createOfferSchema);
+  if ("error" in body) return body.error;
+  const { listingId, cardIds } = body.data;
 
   const listing = await getMarketListingMeta(listingId);
   if (!listing) {
@@ -41,14 +44,20 @@ export async function POST(request: Request) {
     return errorResponse(validation.error, validation.status);
   }
 
-  if (listing.filters) {
-    const { minCardCount, maxCardCount } = listing.filters;
-    if (minCardCount && validation.cardIds.length < minCardCount) {
-      return errorResponse(`Minimum ${minCardCount} cards required`, 400);
-    }
-    if (maxCardCount && validation.cardIds.length > maxCardCount) {
-      return errorResponse(`Maximum ${maxCardCount} cards allowed`, 400);
-    }
+  // The hard cap applies whether or not the seller set filters — a listing
+  // created without them used to accept an offer of unbounded size, which
+  // fans out into per-card ownership queries and an unbounded transaction.
+  const maxCardCount = Math.min(
+    listing.filters?.maxCardCount ?? MAX_LISTING_CARDS,
+    MAX_LISTING_CARDS
+  );
+  if (validation.cardIds.length > maxCardCount) {
+    return errorResponse(`Максимум ${maxCardCount} карт в предложении`, 400);
+  }
+
+  const minCardCount = listing.filters?.minCardCount;
+  if (minCardCount && validation.cardIds.length < minCardCount) {
+    return errorResponse(`Минимум ${minCardCount} карт в предложении`, 400);
   }
 
   const hasPendingOffer = await hasPendingOfferFromBuyer(listingId, buyerId);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z, ZodType } from "zod";
 
 import {
   getAccessFor,
@@ -13,6 +14,31 @@ import { MarketJobOutcome } from "@/lib/trade-queue";
 
 export function errorResponse(error: string, status: number) {
   return NextResponse.json({ error }, { status });
+}
+
+/**
+ * Reads and validates a JSON body.
+ *
+ * `await request.json()` throws on malformed input, which surfaces as a 500;
+ * the market routes also used to destructure the raw object and rely on
+ * truthiness checks, so untyped values reached the query layer.
+ */
+export async function parseBody<T extends ZodType>(
+  request: Request,
+  schema: T
+): Promise<{ data: z.infer<T> } | { error: NextResponse }> {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return { error: errorResponse("Некорректный запрос", 400) };
+  }
+
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: errorResponse("Некорректные данные запроса", 400) };
+  }
+  return { data: parsed.data };
 }
 
 /**

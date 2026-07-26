@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { showApiError } from "@/lib/api-feedback";
+import { MAX_CARDS_PER_TRADE } from "@/lib/constants";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -244,7 +245,9 @@ function TradePageContent({
   const router = useRouter();
   const [step, setStep] = useState<Steps>("select");
   const [isLoading, setIsLoading] = useState(false);
-  const maxCardsPerTrade = user.isPremium ? 10 : 5;
+  const maxCardsPerTrade = user.isPremium
+    ? MAX_CARDS_PER_TRADE.premium
+    : MAX_CARDS_PER_TRADE.basic;
 
   const handleTrade = async () => {
     setIsLoading(true);
