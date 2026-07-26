@@ -1,7 +1,7 @@
 import {
   errorResponse,
   marketJobResponse,
-  requireMarketAccess,
+  requireAuth,
 } from "@/lib/api-utils";
 import { getMarketListingMeta } from "@/lib/queries";
 import { addMarketJob } from "@/lib/trade-queue";
@@ -11,7 +11,7 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const authResult = await requireMarketAccess(request);
+  const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
   const sellerId = authResult.auth.id;
 

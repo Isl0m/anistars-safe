@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   errorResponse,
   parseBody,
-  requireMarketAccess,
+  requireAuth,
 } from "@/lib/api-utils";
 import { MAX_ACTIVE_OFFERS, MAX_LISTING_CARDS } from "@/lib/constants";
 import { createOfferSchema } from "@/lib/market-schemas";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/queries";
 
 export async function POST(request: Request) {
-  const authResult = await requireMarketAccess(request);
+  const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
   const buyerId = authResult.auth.id;
 

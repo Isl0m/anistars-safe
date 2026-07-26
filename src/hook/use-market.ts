@@ -144,7 +144,7 @@ export function useUserMarketOffers(userId?: string) {
 
 export function useMarketListing(
   id: string,
-  initialData?: MarketListingDetail
+  initialData: MarketListingDetail
 ) {
   return useQuery({
     queryKey: marketKeys.listing(id),

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   errorResponse,
   parseBody,
-  requireMarketAccess,
+  requireAuth,
 } from "@/lib/api-utils";
 import { MAX_ACTIVE_LISTINGS, MAX_LISTING_CARDS } from "@/lib/constants";
 import { createListingSchema } from "@/lib/market-schemas";
@@ -17,7 +17,7 @@ import {
 } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const authResult = await requireMarketAccess(request);
+  const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
 
   const listings = await getMarketListings();
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authResult = await requireMarketAccess(request);
+  const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
   const sellerId = authResult.auth.id;
 

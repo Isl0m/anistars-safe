@@ -3,13 +3,13 @@ import {
   loadPendingOffer,
   marketJobResponse,
   parseBody,
-  requireMarketAccess,
+  requireAuth,
 } from "@/lib/api-utils";
 import { offerIdSchema } from "@/lib/market-schemas";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
-  const authResult = await requireMarketAccess(request);
+  const authResult = await requireAuth(request);
   if ("error" in authResult) return authResult.error;
   const buyerId = authResult.auth.id;
 
