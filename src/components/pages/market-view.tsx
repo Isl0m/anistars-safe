@@ -15,9 +15,13 @@ import {
   MessageSquare,
   UserIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import {
+  MarketActionResponse,
+  showApiError,
+  showMarketResult,
+} from "@/lib/api-feedback";
 import { listingStatusMap, offerStatusMap } from "@/lib/constants";
 import { getImageProxyUrl, timeAgo } from "@/lib/utils";
 
@@ -116,21 +120,28 @@ function MarketViewContent({
   const listingStatus =
     listingStatusMap[listing.status] ?? listingStatusMap.active;
 
+  const refreshListingViews = () => {
+    queryClient.invalidateQueries({ queryKey: marketKeys.listings });
+    queryClient.invalidateQueries({ queryKey: marketKeys.listing(id) });
+    queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
+  };
+
   const handleAcceptOffer = async (offerId: number) => {
     setIsAccepting(true);
     try {
-      await api.post("/api/market/offers/accept", {
-        offerId,
-      });
-
-      toast.success("Вы приняли предложение обмена!");
-      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
-      queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
-      router.push("/market");
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Не удалось принять предложение"
+      const { data } = await api.post<MarketActionResponse>(
+        "/api/market/offers/accept",
+        { offerId }
       );
+
+      const settled = showMarketResult(data, "Вы приняли предложение обмена!");
+      refreshListingViews();
+      // Leave the user on the listing while the worker is still running — the
+      // outcome is not known yet and /market would show stale state.
+      if (settled) router.push("/market");
+    } catch (e) {
+      showApiError(e, "Не удалось принять предложение");
+      refreshListingViews();
     } finally {
       setIsAccepting(false);
     }
@@ -139,16 +150,16 @@ function MarketViewContent({
   const handleRejectOffer = async (offerId: number) => {
     setIsRejecting(offerId);
     try {
-      await api.post("/api/market/offers/reject", {
-        offerId,
-      });
+      const { data } = await api.post<MarketActionResponse>(
+        "/api/market/offers/reject",
+        { offerId }
+      );
 
-      toast.success("Предложение отклонено");
-
-      queryClient.invalidateQueries({ queryKey: marketKeys.offers(id) });
-      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
-    } catch {
-      toast.error("Не удалось отклонить предложение");
+      showMarketResult(data, "Предложение отклонено");
+      refreshListingViews();
+    } catch (e) {
+      showApiError(e, "Не удалось отклонить предложение");
+      refreshListingViews();
     } finally {
       setIsRejecting(null);
     }
@@ -157,14 +168,16 @@ function MarketViewContent({
   const handleCancelListing = async () => {
     setIsCancelling(true);
     try {
-      await api.post(`/api/market/listings/${listing.id}/cancel`);
+      const { data } = await api.post<MarketActionResponse>(
+        `/api/market/listings/${listing.id}/cancel`
+      );
 
-      toast.success("Объявление отменено");
-
-      queryClient.invalidateQueries({ queryKey: marketKeys.listings });
-      router.push("/market");
-    } catch {
-      toast.error("Не удалось отменить объявление");
+      const settled = showMarketResult(data, "Объявление отменено");
+      refreshListingViews();
+      if (settled) router.push("/market");
+    } catch (e) {
+      showApiError(e, "Не удалось отменить объявление");
+      refreshListingViews();
     } finally {
       setIsCancelling(false);
     }

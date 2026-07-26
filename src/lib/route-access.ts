@@ -4,7 +4,7 @@ export type RouteAccessMap = Record<string, Access>;
 
 export const ROUTE_ACCESS_DEFAULTS: RouteAccessMap = {
   "/admin": "admin",
-  "/market": "admin",
+  "/market": "all",
   "/trade": "all",
 };
 

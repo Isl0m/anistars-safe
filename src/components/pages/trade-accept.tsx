@@ -8,6 +8,7 @@ import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { showApiError } from "@/lib/api-feedback";
 import { calcTradeCost } from "@/lib/trade-cost";
 import { getImageProxyUrl } from "@/lib/utils";
 
@@ -158,7 +159,7 @@ export function AcceptTradePageContent({
       toast.success("Трейд успешно принят");
       router.push("/trade");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось принять трейд");
+      showApiError(e, "Не удалось принять трейд");
     } finally {
       setIsLoading(false);
     }
@@ -173,9 +174,7 @@ export function AcceptTradePageContent({
       toast.warning("Трейд отклонён");
       router.push("/trade");
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Не удалось отклонить трейд"
-      );
+      showApiError(e, "Не удалось отклонить трейд");
     } finally {
       setIsLoading(false);
     }

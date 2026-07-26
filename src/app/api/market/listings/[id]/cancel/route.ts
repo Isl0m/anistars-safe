@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
-
-import { errorResponse, requireMarketAccess } from "@/lib/api-utils";
+import {
+  errorResponse,
+  marketJobResponse,
+  requireMarketAccess,
+} from "@/lib/api-utils";
 import { getMarketListingMeta } from "@/lib/queries";
 import { addMarketJob } from "@/lib/trade-queue";
 
@@ -14,29 +16,33 @@ export async function POST(
   const sellerId = authResult.auth.id;
 
   const listingId = parseInt(params.id);
+  if (Number.isNaN(listingId)) {
+    return errorResponse("Некорректный лот", 400);
+  }
+
   const listing = await getMarketListingMeta(listingId);
 
   if (!listing) {
-    return errorResponse("Listing not found", 404);
+    return errorResponse("Лот не найден", 404);
   }
 
   if (listing.sellerId !== sellerId) {
-    return errorResponse("Forbidden", 403);
+    return errorResponse("Нет доступа к этому лоту", 403);
   }
 
   if (listing.status !== "active") {
-    return errorResponse("Listing is not active", 400);
+    return errorResponse("Лот больше не активен", 400);
   }
 
-  try {
-    await addMarketJob({
-      type: "market-cancel-listing",
-      listingId,
-      sellerId,
-    });
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error("market cancel listing failed:", e);
-    return errorResponse("Failed to cancel listing", 500);
-  }
+  const outcome = await addMarketJob({
+    type: "market-cancel-listing",
+    listingId,
+    sellerId,
+  });
+
+  return marketJobResponse(
+    outcome,
+    "Снятие лота обрабатывается — бот пришлёт результат в Telegram",
+    "Не удалось снять лот"
+  );
 }

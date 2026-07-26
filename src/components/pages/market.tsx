@@ -13,9 +13,13 @@ import {
   Send,
   Store,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import {
+  MarketActionResponse,
+  showApiError,
+  showMarketResult,
+} from "@/lib/api-feedback";
 import {
   LISTINGS_PER_PAGE,
   listingStatusMap,
@@ -75,19 +79,24 @@ export default function MarketPage({
   const handleCancelOffer = async (offerId: number) => {
     if (!userId) return;
 
-    try {
-      await api.post("/api/market/offers/cancel", {
-        offerId,
-      });
-
-      toast.success("Предложение отменено");
-
+    const refresh = () => {
       queryClient.invalidateQueries({
         queryKey: marketKeys.userOffers(userId),
       });
       queryClient.invalidateQueries({ queryKey: marketKeys.listings });
-    } catch {
-      toast.error("Не удалось отменить предложение");
+    };
+
+    try {
+      const { data } = await api.post<MarketActionResponse>(
+        "/api/market/offers/cancel",
+        { offerId }
+      );
+
+      showMarketResult(data, "Предложение отменено");
+      refresh();
+    } catch (e) {
+      showApiError(e, "Не удалось отменить предложение");
+      refresh();
     }
   };
 

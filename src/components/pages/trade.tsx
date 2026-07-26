@@ -8,6 +8,7 @@ import { AlertTriangle, CheckIcon, Gavel, Loader2, Tag } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { showApiError } from "@/lib/api-feedback";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -270,9 +271,7 @@ function TradePageContent({
       toast.success(`Трейд ${selectedCards.length} карт отправлен`);
       router.push(`/trade`);
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Не удалось отправить трейд"
-      );
+      showApiError(e, "Не удалось отправить трейд");
     } finally {
       setIsLoading(false);
     }

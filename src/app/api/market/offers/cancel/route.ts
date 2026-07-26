@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
-
 import {
   errorResponse,
   loadPendingOffer,
+  marketJobResponse,
   requireMarketAccess,
 } from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
@@ -18,14 +17,18 @@ export async function POST(request: Request) {
   if ("error" in offerResult) return offerResult.error;
 
   if (offerResult.offer.buyerId !== buyerId) {
-    return errorResponse("Forbidden", 403);
+    return errorResponse("Нет доступа к этому предложению", 403);
   }
 
-  try {
-    await addMarketJob({ type: "market-cancel-offer", offerId, buyerId });
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error("market cancel offer failed:", e);
-    return errorResponse("Failed to cancel offer", 500);
-  }
+  const outcome = await addMarketJob({
+    type: "market-cancel-offer",
+    offerId,
+    buyerId,
+  });
+
+  return marketJobResponse(
+    outcome,
+    "Отмена обрабатывается — бот пришлёт результат в Telegram",
+    "Не удалось отменить предложение"
+  );
 }

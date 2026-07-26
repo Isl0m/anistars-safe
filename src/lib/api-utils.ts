@@ -9,9 +9,44 @@ import {
 } from "@/lib/queries";
 import { canAccess } from "@/lib/route-access";
 import { authenticateRequest, AuthResult } from "@/lib/telegram-auth";
+import { MarketJobOutcome } from "@/lib/trade-queue";
 
 export function errorResponse(error: string, status: number) {
   return NextResponse.json({ error }, { status });
+}
+
+/**
+ * Turns a worker outcome into a response the UI can render.
+ *
+ * The worker reports business refusals ("Лот уже недоступен") by *returning*
+ * `ok: false`, not by throwing, so forwarding the raw object with a 200 makes
+ * every refusal look like a success to the client.
+ *
+ * - 200 `{ ok: true, message }`  — done, show the worker's message
+ * - 409 `{ error }`             — refused, `error` is the worker's message
+ * - 202 `{ pending: true }`     — still queued; the bot will notify over Telegram
+ * - 500 `{ error }`             — queue unreachable or the job threw
+ */
+export function marketJobResponse(
+  outcome: MarketJobOutcome,
+  pendingMessage: string,
+  failedMessage: string
+) {
+  if (outcome.status === "failed") {
+    console.error("market job failed:", outcome.error);
+    return errorResponse(failedMessage, 500);
+  }
+
+  if (outcome.status === "pending") {
+    return NextResponse.json(
+      { ok: false, pending: true, message: pendingMessage },
+      { status: 202 }
+    );
+  }
+
+  const { ok, message } = outcome.result;
+  if (!ok) return errorResponse(message, 409);
+  return NextResponse.json({ ok: true, message });
 }
 
 export async function requireUser(id: string) {

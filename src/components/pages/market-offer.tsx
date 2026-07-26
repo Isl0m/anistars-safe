@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { showApiError } from "@/lib/api-feedback";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -212,9 +213,7 @@ function MarketOfferContent({
       queryClient.invalidateQueries({ queryKey: marketKeys.limits });
       router.push("/market");
     } catch (e) {
-      toast(
-        e instanceof Error ? e.message : "Не удалось отправить предложение"
-      );
+      showApiError(e, "Не удалось отправить предложение");
     } finally {
       setIsLoading(false);
     }

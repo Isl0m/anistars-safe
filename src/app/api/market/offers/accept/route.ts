@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
-
 import {
   errorResponse,
   loadPendingOffer,
+  marketJobResponse,
   requireListingOwner,
   requireMarketAccess,
 } from "@/lib/api-utils";
@@ -23,18 +22,18 @@ export async function POST(request: Request) {
   if ("error" in listingResult) return listingResult.error;
 
   if (listingResult.listing.status !== "active") {
-    return errorResponse("Listing is not active", 400);
+    return errorResponse("Лот больше не активен", 400);
   }
 
-  try {
-    const result = await addMarketJob({
-      type: "market-accept",
-      offerId,
-      sellerId,
-    });
-    return NextResponse.json(result);
-  } catch (e) {
-    console.error("market accept failed:", e);
-    return errorResponse("Failed to process trade", 500);
-  }
+  const outcome = await addMarketJob({
+    type: "market-accept",
+    offerId,
+    sellerId,
+  });
+
+  return marketJobResponse(
+    outcome,
+    "Обмен обрабатывается — бот пришлёт результат в Telegram",
+    "Не удалось обработать обмен"
+  );
 }

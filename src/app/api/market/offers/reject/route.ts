@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server";
-
 import {
-  errorResponse,
   loadPendingOffer,
+  marketJobResponse,
   requireListingOwner,
   requireMarketAccess,
 } from "@/lib/api-utils";
@@ -24,11 +22,15 @@ export async function POST(request: Request) {
   );
   if ("error" in listingResult) return listingResult.error;
 
-  try {
-    await addMarketJob({ type: "market-reject-offer", offerId, sellerId });
-    return NextResponse.json({ success: true });
-  } catch (e) {
-    console.error("market reject offer failed:", e);
-    return errorResponse("Failed to reject offer", 500);
-  }
+  const outcome = await addMarketJob({
+    type: "market-reject-offer",
+    offerId,
+    sellerId,
+  });
+
+  return marketJobResponse(
+    outcome,
+    "Отклонение обрабатывается — бот пришлёт результат в Telegram",
+    "Не удалось отклонить предложение"
+  );
 }

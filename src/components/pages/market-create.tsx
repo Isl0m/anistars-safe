@@ -7,6 +7,7 @@ import { AlertTriangle, ChevronLeft, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { showApiError } from "@/lib/api-feedback";
 import { MAX_LISTING_CARDS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
@@ -168,9 +169,7 @@ function MarketCreateContent({
       queryClient.invalidateQueries({ queryKey: marketKeys.limits });
       router.push("/market");
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Не удалось создать объявление"
-      );
+      showApiError(e, "Не удалось создать объявление");
     } finally {
       setIsLoading(false);
     }
