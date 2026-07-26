@@ -6,15 +6,17 @@ import { errorResponse, requireAuth } from "@/lib/api-utils";
 import { getApi, getMe, getProfileLink } from "@/lib/bot";
 import {
   fulfillTradeWithCards,
+  getCardRarityIds,
   getTrade,
+  getTradeSenderRarityIds,
   getUser,
   validateCardsForTrade,
 } from "@/lib/queries";
+import { calcTradeCost } from "@/lib/trade-cost";
 
 const updateTradeSchema = z.object({
-  tradeId: z.number(),
+  tradeId: z.number().int().positive(),
   cardIds: z.string().array(),
-  cost: z.number(),
 });
 export type UpdateTradeType = z.infer<typeof updateTradeSchema>;
 
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return errorResponse("Data schema not correct", 400);
   }
-  const { tradeId, cardIds, cost } = parsed.data;
+  const { tradeId, cardIds } = parsed.data;
 
   const trade = await getTrade(tradeId);
   if (!trade) {
@@ -44,6 +46,28 @@ export async function POST(request: Request) {
   if (!validation.ok) {
     return errorResponse(validation.error, validation.status);
   }
+
+  // The cost is never taken from the request: it is what the receiver pays and
+  // the receiver is the one calling here, so a client-supplied value is worth
+  // nothing. Recompute it from the two card sets instead.
+  const senderRarityIds = await getTradeSenderRarityIds(tradeId);
+  if (validation.cardIds.length !== senderRarityIds.length) {
+    return errorResponse(
+      `You must offer exactly ${senderRarityIds.length} cards`,
+      400
+    );
+  }
+  const rarityByCardId = await getCardRarityIds(validation.cardIds);
+  const receiverRarityIds = validation.cardIds.map((id) =>
+    rarityByCardId.get(id)
+  );
+  if (receiverRarityIds.some((rarityId) => rarityId === undefined)) {
+    return errorResponse("Some cards no longer exist", 400);
+  }
+  const cost = calcTradeCost(
+    senderRarityIds,
+    receiverRarityIds as number[]
+  );
 
   let updated;
   try {

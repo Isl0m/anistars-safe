@@ -122,6 +122,30 @@ export async function getTrade(id: number) {
   return trade ?? null;
 }
 
+/** Rarities of the cards the sender put up, in no particular order. */
+export async function getTradeSenderRarityIds(tradeId: number) {
+  return db
+    .select({ rarityId: tCards.rarityId })
+    .from(multiTradeCards)
+    .where(
+      and(
+        eq(multiTradeCards.tradeId, tradeId),
+        eq(multiTradeCards.isSenderCard, true)
+      )
+    )
+    .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
+    .then((rows) => rows.map((r) => r.rarityId));
+}
+
+export async function getCardRarityIds(cardIds: string[]) {
+  if (cardIds.length === 0) return new Map<string, number>();
+  const rows = await db
+    .select({ id: tCards.id, rarityId: tCards.rarityId })
+    .from(tCards)
+    .where(inArray(tCards.id, cardIds));
+  return new Map(rows.map((r) => [r.id, r.rarityId]));
+}
+
 export function updateTrade(id: number, data: Partial<SelectMultiTrade>) {
   return db
     .update(multiTrades)

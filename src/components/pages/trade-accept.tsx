@@ -8,6 +8,7 @@ import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { calcTradeCost } from "@/lib/trade-cost";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,6 @@ export function AcceptTradePageContent({
     const data: UpdateTradeType = {
       tradeId: trade.id,
       cardIds: selectedCards.map((c) => c.id),
-      cost: calcDifference(),
     };
 
     try {
@@ -181,26 +181,12 @@ export function AcceptTradePageContent({
     }
   }
 
-  function calcDifference() {
-    const raritiesDiff: Record<string, number> = {};
-    trade.senderCards.forEach((c) => {
-      if (raritiesDiff[c.rarity]) {
-        raritiesDiff[c.rarity] += 1;
-      } else {
-        raritiesDiff[c.rarity] = 1;
-      }
-    });
-    selectedCards.forEach((c) => {
-      if (raritiesDiff[c.rarity]) {
-        raritiesDiff[c.rarity] -= 1;
-      }
-    });
-    return (
-      Object.values(raritiesDiff)
-        .map(Number)
-        .reduce((prev, curr) => prev + curr, 0) * 100
-    );
-  }
+  // Preview only — /api/trade/update recomputes this from the same helper and
+  // persists its own result.
+  const previewCost = calcTradeCost(
+    trade.senderCards.map((c) => c.rarityId),
+    selectedCards.map((c) => c.rarityId)
+  );
 
   return (
     <>
@@ -295,13 +281,13 @@ export function AcceptTradePageContent({
                     <ArrowRightLeft className="h-4 w-4" />
                     Вы отдаёте ({selectedCards.length})
                   </h4>
-                  {calcDifference() > 0 && (
+                  {previewCost > 0 && (
                     <Badge
                       variant="outline"
                       className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
                     >
                       <Coins className="mr-1 h-3 w-3" />
-                      {calcDifference()}
+                      {previewCost}
                     </Badge>
                   )}
                 </div>
