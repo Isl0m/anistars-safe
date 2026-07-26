@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { errorResponse, requireMarketAccess } from "@/lib/api-utils";
 import { MAX_ACTIVE_LISTINGS, MAX_LISTING_CARDS } from "@/lib/constants";
 import {
   addMarketListingCards,
@@ -11,13 +11,16 @@ import {
   validateCardsForTrade,
 } from "@/lib/queries";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authResult = await requireMarketAccess(request);
+  if ("error" in authResult) return authResult.error;
+
   const listings = await getMarketListings();
   return NextResponse.json({ listings });
 }
 
 export async function POST(request: Request) {
-  const authResult = await requireAuth(request);
+  const authResult = await requireMarketAccess(request);
   if ("error" in authResult) return authResult.error;
   const sellerId = authResult.auth.id;
 

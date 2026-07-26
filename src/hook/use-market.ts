@@ -66,6 +66,7 @@ export type UserMarketOffer = {
 
 export const marketKeys = {
   listings: ["market", "listings"] as const,
+  listing: (id: string) => ["market", "listing", id] as const,
   userListings: (userId: string) =>
     ["market", "user-listings", userId] as const,
   userOffers: (userId: string) => ["market", "user-offers", userId] as const,
@@ -138,6 +139,23 @@ export function useUserMarketOffers(userId?: string) {
       return data.offers;
     },
     staleTime: STALE_TIME,
+  });
+}
+
+export function useMarketListing(
+  id: string,
+  initialData?: MarketListingDetail
+) {
+  return useQuery({
+    queryKey: marketKeys.listing(id),
+    queryFn: async () => {
+      const { data } = await api.get<{ listing: MarketListingDetail }>(
+        `/api/market/listings/${id}`
+      );
+      return data.listing;
+    },
+    staleTime: STALE_TIME,
+    initialData,
   });
 }
 

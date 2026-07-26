@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { requireAuth } from "@/lib/api-utils";
+import { requireMarketAccess } from "@/lib/api-utils";
 import { getUserMarketListings } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const authResult = await requireAuth(request);
+  const authResult = await requireMarketAccess(request);
   if ("error" in authResult) return authResult.error;
   const userId = authResult.auth.id;
 

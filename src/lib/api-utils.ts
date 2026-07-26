@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
+  getAccessFor,
   getMarketListingMeta,
   getMarketOffer,
   getUser,
   updateUserPhotoUrl,
 } from "@/lib/queries";
+import { canAccess } from "@/lib/route-access";
 import { authenticateRequest, AuthResult } from "@/lib/telegram-auth";
 
 export function errorResponse(error: string, status: number) {
@@ -64,4 +66,30 @@ export async function requireAuth(
   }
   await updateUserPhotoUrl(auth.id, auth.photoUrl);
   return { auth };
+}
+
+/**
+ * The same gate `RouteGuard` applies in the browser, enforced on the server.
+ * The guard is a client component: on its own it hides the navigation entry
+ * and the page shell, not the endpoints behind them.
+ */
+export async function requireRouteAccess(
+  request: Request,
+  path: string
+): Promise<{ auth: AuthResult } | { error: NextResponse }> {
+  const authed = await requireAuth(request);
+  if ("error" in authed) return authed;
+
+  const access = await getAccessFor(path);
+  if (access === "all") return authed;
+
+  const user = await getUser(authed.auth.id);
+  if (!user || !canAccess(access, user.type)) {
+    return { error: errorResponse("Forbidden", 403) };
+  }
+  return authed;
+}
+
+export function requireMarketAccess(request: Request) {
+  return requireRouteAccess(request, "/market");
 }

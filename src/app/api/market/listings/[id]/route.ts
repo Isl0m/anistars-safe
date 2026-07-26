@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
+
+import { errorResponse, requireMarketAccess } from "@/lib/api-utils";
 import { getMarketListing } from "@/lib/queries";
 
-export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  const authResult = await requireMarketAccess(request);
+  if ("error" in authResult) return authResult.error;
+
   const params = await props.params;
   const id = parseInt(params.id);
   if (isNaN(id)) {
-    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    return errorResponse("Invalid id", 400);
   }
 
   const listing = await getMarketListing(id);
   if (!listing) {
-    return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    return errorResponse("Listing not found", 404);
   }
 
   return NextResponse.json({ listing });

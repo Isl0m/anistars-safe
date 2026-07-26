@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { errorResponse, requireMarketAccess } from "@/lib/api-utils";
 import { MAX_ACTIVE_LISTINGS, MAX_ACTIVE_OFFERS } from "@/lib/constants";
 import { countActiveListings, countActiveOffers, getUser } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const authResult = await requireAuth(request);
+  const authResult = await requireMarketAccess(request);
   if ("error" in authResult) return authResult.error;
   const userId = authResult.auth.id;
 

@@ -49,7 +49,7 @@ export default function MarketPage({
   initialListings,
   filterOptions,
 }: {
-  initialListings: MarketListingSummary[];
+  initialListings?: MarketListingSummary[];
   filterOptions: FilterOption[];
 }) {
   const { userId } = useTelegram();

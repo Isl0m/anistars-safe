@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, requireAuth } from "@/lib/api-utils";
+import { errorResponse, requireMarketAccess } from "@/lib/api-utils";
 import { getMarketListingMeta } from "@/lib/queries";
 import { addMarketJob } from "@/lib/trade-queue";
 
@@ -9,7 +9,7 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const authResult = await requireAuth(request);
+  const authResult = await requireMarketAccess(request);
   if ("error" in authResult) return authResult.error;
   const sellerId = authResult.auth.id;
 

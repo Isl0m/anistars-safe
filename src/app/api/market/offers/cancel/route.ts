@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, loadPendingOffer, requireAuth } from "@/lib/api-utils";
+import {
+  errorResponse,
+  loadPendingOffer,
+  requireMarketAccess,
+} from "@/lib/api-utils";
 import { addMarketJob } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
-  const authResult = await requireAuth(request);
+  const authResult = await requireMarketAccess(request);
   if ("error" in authResult) return authResult.error;
   const buyerId = authResult.auth.id;
 

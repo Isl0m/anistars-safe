@@ -64,10 +64,7 @@ export async function POST(request: Request) {
   if (receiverRarityIds.some((rarityId) => rarityId === undefined)) {
     return errorResponse("Some cards no longer exist", 400);
   }
-  const cost = calcTradeCost(
-    senderRarityIds,
-    receiverRarityIds as number[]
-  );
+  const cost = calcTradeCost(senderRarityIds, receiverRarityIds as number[]);
 
   let updated;
   try {

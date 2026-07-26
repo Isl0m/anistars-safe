@@ -27,6 +27,7 @@ import {
   MarketListingDetail,
   MarketOffer,
   OfferedCard,
+  useMarketListing,
   useMarketOffers,
 } from "@/hook/use-market";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
@@ -48,6 +49,44 @@ import { useTelegram } from "../telegram-provider";
 import { UserLink } from "../user-link";
 
 export default function MarketViewPage({
+  id,
+  listing: initialListing,
+  filterOptions,
+}: {
+  id: string;
+  /**
+   * Absent when the market section is gated: the page cannot tell who is
+   * asking, so the listing is fetched client-side through the guarded API.
+   */
+  listing?: MarketListingDetail;
+  filterOptions: FilterOption[];
+}) {
+  const { data: listing, isLoading } = useMarketListing(id, initialListing);
+
+  if (!listing) return <MarketViewFallback isLoading={isLoading} />;
+
+  return (
+    <MarketViewContent
+      id={id}
+      listing={listing}
+      filterOptions={filterOptions}
+    />
+  );
+}
+
+function MarketViewFallback({ isLoading }: { isLoading: boolean }) {
+  return (
+    <div className="flex h-full items-center justify-center p-6 text-center">
+      {isLoading ? (
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      ) : (
+        <p className="text-sm text-muted-foreground">Лот не найден</p>
+      )}
+    </div>
+  );
+}
+
+function MarketViewContent({
   id,
   listing,
   filterOptions,
