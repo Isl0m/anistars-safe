@@ -36,7 +36,6 @@ import { UserLink } from "../user-link";
 
 export type ProfileCardsData = {
   cards: FullCard[];
-  user: UserExtended;
   total: number;
 };
 

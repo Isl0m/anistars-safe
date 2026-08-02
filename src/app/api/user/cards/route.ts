@@ -16,6 +16,10 @@ export async function GET(request: Request) {
   const id = searchParams.get("id");
   const cardsUserId = id || userId;
 
+  // Kept for the 404 when the id does not exist. The row itself is deliberately
+  // not returned: `id` is caller-supplied, so echoing the full user row handed
+  // any authenticated user another player's coins, astrals, moderation flags
+  // and admin status. No caller ever read it.
   const result = await requireUser(cardsUserId);
   if ("error" in result) return result.error;
 
@@ -24,5 +28,5 @@ export async function GET(request: Request) {
     filter,
     page
   );
-  return NextResponse.json({ cards, total, user: result.user });
+  return NextResponse.json({ cards, total });
 }
