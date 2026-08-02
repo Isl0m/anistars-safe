@@ -1,4 +1,4 @@
-import { getUser } from "@/lib/queries";
+import { getPublicUser } from "@/lib/queries";
 
 import { SearchFirstProfile, SearchProfile } from "@/components/pages/profile";
 
@@ -11,7 +11,7 @@ export default async function Profile(
   const userId = searchParams.userId && String(searchParams.userId);
   if (!userId) return <SearchFirstProfile />;
 
-  const user = await getUser(userId);
+  const user = await getPublicUser(userId);
 
   if (!user) return <SearchFirstProfile />;
 

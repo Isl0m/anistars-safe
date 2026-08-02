@@ -37,6 +37,35 @@ export async function getUser(id: string) {
     .then((res) => res[0] ?? null);
 }
 
+/**
+ * The subset of a user that is safe to show a stranger.
+ *
+ * Server components pass their data to client components as props, and Next
+ * serialises those props into the RSC payload — so selecting the whole row
+ * server-side ships every column to the browser just as surely as returning it
+ * from an API route would.
+ */
+export async function getPublicUser(id: string) {
+  return db
+    .select({
+      id: tgUsers.id,
+      name: tgUsers.name,
+      photoUrl: tgUsers.photoUrl,
+      createdAt: tgUsers.createdAt,
+      isPremium: sql<boolean>`COALESCE(${userPasses.isPremium}, false)`.mapWith(
+        Boolean
+      ),
+    })
+    .from(tgUsers)
+    .where(eq(tgUsers.id, id))
+    .leftJoin(userPasses, eq(userPasses.id, tgUsers.id))
+    .then((res) => res[0] ?? null);
+}
+
+export type PublicUser = NonNullable<
+  Awaited<ReturnType<typeof getPublicUser>>
+>;
+
 export function updateUserPhotoUrl(id: string, photoUrl: string | undefined) {
   if (!photoUrl) return;
   return db
