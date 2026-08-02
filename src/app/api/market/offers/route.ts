@@ -11,11 +11,14 @@ import {
   addMarketOfferCards,
   countActiveOffers,
   createMarketOffer,
+  getCardIdsMatchingFilter,
   getMarketListingMeta,
   getUser,
   hasPendingOfferFromBuyer,
   validateCardsForTrade,
 } from "@/lib/queries";
+
+import { listingFiltersToCardFilter } from "@/lib/listing-filter";
 
 export async function POST(request: Request) {
   const authResult = await requireAuth(request);
@@ -58,6 +61,24 @@ export async function POST(request: Request) {
   const minCardCount = listing.filters?.minCardCount;
   if (minCardCount && validation.cardIds.length < minCardCount) {
     return errorResponse(`Минимум ${minCardCount} карт в предложении`, 400);
+  }
+
+  // Card counts used to be the only requirement checked here. Rarity, class,
+  // universe, type, stats and minimum price were enforced by the picker
+  // greying out cards — which a request that does not come from the picker
+  // simply skips, so the seller's stated terms were advisory.
+  if (listing.filters) {
+    const required = listingFiltersToCardFilter(listing.filters);
+    const matching = await getCardIdsMatchingFilter(
+      validation.cardIds,
+      required
+    );
+    if (matching.size !== validation.cardIds.length) {
+      return errorResponse(
+        "Некоторые карты не соответствуют условиям лота",
+        400
+      );
+    }
   }
 
   const hasPendingOffer = await hasPendingOfferFromBuyer(listingId, buyerId);

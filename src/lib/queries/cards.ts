@@ -266,6 +266,28 @@ export async function getAuthors() {
   return db.select().from(tAuthors);
 }
 
+/**
+ * Which of `cardIds` satisfy `filter`.
+ *
+ * Evaluated through `buildCardFilters`, the same predicate the card picker
+ * pages through, so a card the picker offered always passes here. Answering
+ * this in the database rather than re-deriving the rules in JS is what keeps
+ * the two from drifting.
+ */
+export async function getCardIdsMatchingFilter(
+  cardIds: string[],
+  filter?: Filter
+) {
+  if (cardIds.length === 0) return new Set<string>();
+
+  const rows = await db
+    .select({ id: tCards.id })
+    .from(tCards)
+    .where(and(inArray(tCards.id, cardIds), ...buildCardFilters(filter)));
+
+  return new Set(rows.map((r) => r.id));
+}
+
 
 function buildCardFilters(filter?: Filter): (SQL | undefined)[] {
   const filters: (SQL | undefined)[] = [];

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { showApiError } from "@/lib/api-feedback";
+import { listingFiltersToCardFilter } from "@/lib/listing-filter";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -109,17 +110,8 @@ export default function MarketOfferPage({ listingId }: { listingId: string }) {
 
   if (listingQuery.data && filterData && userId) {
     const listing = listingQuery.data;
-    const initialFilter: Filter = {
-      authorIds: [],
-      classIds: listing.filters?.classIds ?? [],
-      universeIds: listing.filters?.universeIds ?? [],
-      rarityIds: listing.filters?.rarityIds ?? [],
-      stats: listing.filters?.stats ?? [],
-      droppable: listing.filters?.type ?? [],
-      techniques: [],
-      sort: "power-desc",
-      minPrice: listing.filters?.minCardPrice,
-    };
+    // Shared with /api/market/offers, which validates against the same filter.
+    const initialFilter = listingFiltersToCardFilter(listing.filters);
 
     return (
       <main className="flex h-full flex-col md:container">
