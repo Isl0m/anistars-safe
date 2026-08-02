@@ -3,9 +3,10 @@ import { InlineKeyboard } from "grammy";
 import { z } from "zod";
 
 import { errorResponse, requireAuth } from "@/lib/api-utils";
-import { MAX_CARDS_PER_TRADE } from "@/lib/constants";
+import { MAX_CARDS_PER_TRADE, MAX_OUTSTANDING_TRADES } from "@/lib/constants";
 import { getApi, getMe, getProfileLink } from "@/lib/bot";
 import {
+  countOutstandingTrades,
   createTradeWithCards,
   getUser,
   validateCardsForTrade,
@@ -51,6 +52,23 @@ export async function POST(request: Request) {
     : MAX_CARDS_PER_TRADE.basic;
   if (cardIds.length > maxCards) {
     return errorResponse(`Максимум ${maxCards} карт в трейде`, 400);
+  }
+
+  // Every trade created here fires a Telegram notification at the receiver.
+  // Without a cap one account could open unlimited trades against anyone whose
+  // id it knows and use this route as a notification cannon.
+  const outstanding = await countOutstandingTrades(senderId, receiverId);
+  if (outstanding.toReceiver >= MAX_OUTSTANDING_TRADES.perReceiver) {
+    return errorResponse(
+      `У вас уже ${MAX_OUTSTANDING_TRADES.perReceiver} активных трейда с этим игроком. Дождитесь ответа или отмените один из них.`,
+      429
+    );
+  }
+  if (outstanding.total >= MAX_OUTSTANDING_TRADES.total) {
+    return errorResponse(
+      `Нельзя иметь больше ${MAX_OUTSTANDING_TRADES.total} активных трейдов одновременно.`,
+      429
+    );
   }
 
   const validation = await validateCardsForTrade(cardIds, senderId);

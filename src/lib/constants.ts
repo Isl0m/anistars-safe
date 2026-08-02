@@ -8,6 +8,16 @@ export const MAX_ACTIVE_OFFERS = { premium: 5, basic: 3 } as const;
 // Cards one side may put into a single multi-trade, by account tier.
 export const MAX_CARDS_PER_TRADE = { premium: 10, basic: 5 } as const;
 
+/**
+ * Caps on trades a sender may have outstanding (pending or fulfilled).
+ *
+ * Each created trade sends the receiver a Telegram notification, so without a
+ * per-pair cap one account can flood any user it knows the id of. `perReceiver`
+ * is the anti-spam limit; `total` bounds how much one account can put on the
+ * table across everyone.
+ */
+export const MAX_OUTSTANDING_TRADES = { perReceiver: 3, total: 15 } as const;
+
 export const CARDS_PER_PAGE = 16;
 
 export const LISTINGS_PER_PAGE = 10;
