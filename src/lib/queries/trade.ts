@@ -1,6 +1,7 @@
 import {
   aliasedTable,
   and,
+  count,
   desc,
   eq,
   getTableColumns,
@@ -156,6 +157,38 @@ export function updateTrade(id: number, data: Partial<SelectMultiTrade>) {
 
 export function removeTrade(id: number) {
   return db.delete(multiTrades).where(eq(multiTrades.id, id)).returning();
+}
+
+/**
+ * Outstanding trades a sender has open, in total and against one receiver.
+ *
+ * "Outstanding" is `pending` or `fulfilled`: both still occupy the receiver's
+ * attention and can still be confirmed, so both count toward the caps.
+ */
+export async function countOutstandingTrades(
+  senderId: string,
+  receiverId: string
+) {
+  const outstanding = inArray(multiTrades.status, ["pending", "fulfilled"]);
+
+  const [[total], [toReceiver]] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(multiTrades)
+      .where(and(eq(multiTrades.senderId, senderId), outstanding)),
+    db
+      .select({ value: count() })
+      .from(multiTrades)
+      .where(
+        and(
+          eq(multiTrades.senderId, senderId),
+          eq(multiTrades.receiverId, receiverId),
+          outstanding
+        )
+      ),
+  ]);
+
+  return { total: total?.value ?? 0, toReceiver: toReceiver?.value ?? 0 };
 }
 
 export async function createTradeWithCards(
