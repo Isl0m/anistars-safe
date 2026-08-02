@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  gte,
   inArray,
   or,
   sql,
@@ -160,22 +161,30 @@ export function removeTrade(id: number) {
 }
 
 /**
- * Outstanding trades a sender has open, in total and against one receiver.
+ * Trades a sender has created recently, in total and against one receiver.
  *
- * "Outstanding" is `pending` or `fulfilled`: both still occupy the receiver's
- * attention and can still be confirmed, so both count toward the caps.
+ * Deliberately a rate, not a standing total. Counting everything still open
+ * punishes long-running relationships instead of bursts: one real pair in the
+ * data has 17 open trades between them (12 pending, 5 fulfilled) accumulated
+ * over months, and a standing cap would have locked them out permanently,
+ * because nothing ever expires a `pending` trade.
+ *
+ * Every status counts. Cancelling a trade must not buy room to send another,
+ * or the limit is trivially defeated.
  */
-export async function countOutstandingTrades(
+export async function countRecentTrades(
   senderId: string,
-  receiverId: string
+  receiverId: string,
+  windowMinutes: number
 ) {
-  const outstanding = inArray(multiTrades.status, ["pending", "fulfilled"]);
+  const since = new Date(Date.now() - windowMinutes * 60_000);
+  const recent = gte(multiTrades.createdAt, since);
 
   const [[total], [toReceiver]] = await Promise.all([
     db
       .select({ value: count() })
       .from(multiTrades)
-      .where(and(eq(multiTrades.senderId, senderId), outstanding)),
+      .where(and(eq(multiTrades.senderId, senderId), recent)),
     db
       .select({ value: count() })
       .from(multiTrades)
@@ -183,7 +192,7 @@ export async function countOutstandingTrades(
         and(
           eq(multiTrades.senderId, senderId),
           eq(multiTrades.receiverId, receiverId),
-          outstanding
+          recent
         )
       ),
   ]);

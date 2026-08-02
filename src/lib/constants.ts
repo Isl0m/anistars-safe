@@ -9,14 +9,20 @@ export const MAX_ACTIVE_OFFERS = { premium: 5, basic: 3 } as const;
 export const MAX_CARDS_PER_TRADE = { premium: 10, basic: 5 } as const;
 
 /**
- * Caps on trades a sender may have outstanding (pending or fulfilled).
+ * Rate limit on trade creation. Each trade sends the receiver a Telegram
+ * notification, so the thing worth stopping is a burst, not a long-standing
+ * pile of open trades between two people who genuinely trade a lot.
  *
- * Each created trade sends the receiver a Telegram notification, so without a
- * per-pair cap one account can flood any user it knows the id of. `perReceiver`
- * is the anti-spam limit; `total` bounds how much one account can put on the
- * table across everyone.
+ * `perReceiver` stops flooding one person; `total` stops spraying many
+ * different people, which a per-pair limit alone would allow.
+ *
+ * Thresholds picked against 51k historical trades — share of trades that would
+ * have been refused:
+ *   perReceiver 3 -> 6.7%   5 -> 3.1%
+ *   total       5 -> 3.9%  10 -> 0.7%
  */
-export const MAX_OUTSTANDING_TRADES = { perReceiver: 3, total: 15 } as const;
+export const TRADE_RATE_WINDOW_MINUTES = 10;
+export const MAX_TRADES_PER_WINDOW = { perReceiver: 5, total: 10 } as const;
 
 export const CARDS_PER_PAGE = 16;
 

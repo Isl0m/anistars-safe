@@ -3,10 +3,14 @@ import { InlineKeyboard } from "grammy";
 import { z } from "zod";
 
 import { errorResponse, requireAuth } from "@/lib/api-utils";
-import { MAX_CARDS_PER_TRADE, MAX_OUTSTANDING_TRADES } from "@/lib/constants";
+import {
+  MAX_CARDS_PER_TRADE,
+  MAX_TRADES_PER_WINDOW,
+  TRADE_RATE_WINDOW_MINUTES,
+} from "@/lib/constants";
 import { getApi, getMe, getProfileLink } from "@/lib/bot";
 import {
-  countOutstandingTrades,
+  countRecentTrades,
   createTradeWithCards,
   getUser,
   validateCardsForTrade,
@@ -54,19 +58,24 @@ export async function POST(request: Request) {
     return errorResponse(`Максимум ${maxCards} карт в трейде`, 400);
   }
 
-  // Every trade created here fires a Telegram notification at the receiver.
-  // Without a cap one account could open unlimited trades against anyone whose
-  // id it knows and use this route as a notification cannon.
-  const outstanding = await countOutstandingTrades(senderId, receiverId);
-  if (outstanding.toReceiver >= MAX_OUTSTANDING_TRADES.perReceiver) {
+  // Every trade created here fires a Telegram notification at the receiver, so
+  // this route is a notification cannon without a limit. Limited by rate rather
+  // than by standing total: two people who trade constantly accumulate open
+  // trades legitimately, and nothing expires a `pending` one.
+  const recent = await countRecentTrades(
+    senderId,
+    receiverId,
+    TRADE_RATE_WINDOW_MINUTES
+  );
+  if (recent.toReceiver >= MAX_TRADES_PER_WINDOW.perReceiver) {
     return errorResponse(
-      `У вас уже ${MAX_OUTSTANDING_TRADES.perReceiver} активных трейда с этим игроком. Дождитесь ответа или отмените один из них.`,
+      `Слишком много трейдов этому игроку. Подождите ${TRADE_RATE_WINDOW_MINUTES} минут и попробуйте снова.`,
       429
     );
   }
-  if (outstanding.total >= MAX_OUTSTANDING_TRADES.total) {
+  if (recent.total >= MAX_TRADES_PER_WINDOW.total) {
     return errorResponse(
-      `Нельзя иметь больше ${MAX_OUTSTANDING_TRADES.total} активных трейдов одновременно.`,
+      `Слишком много трейдов за короткое время. Подождите ${TRADE_RATE_WINDOW_MINUTES} минут и попробуйте снова.`,
       429
     );
   }
