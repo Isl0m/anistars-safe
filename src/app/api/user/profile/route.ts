@@ -16,7 +16,11 @@ export async function GET(request: Request) {
   if ("error" in result) return result.error;
   const { user } = result;
 
-  const isOwner = userId === id;
+  // Compared against profileId, not the raw `id` param. Viewing your own
+  // profile sends no `id`, so `userId === id` was false for yourself: you were
+  // served the public payload, and getUserProfileStats was called with
+  // full = false, which is why your own trade and sales counts rendered as 0.
+  const isOwner = userId === profileId;
 
   const [stats, banner] = await Promise.all([
     getUserProfileStats(profileId, isOwner),

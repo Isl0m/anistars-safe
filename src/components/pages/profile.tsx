@@ -17,6 +17,9 @@ import { api } from "@/lib/api";
 
 import { FullCard } from "@/db/schema/card";
 import { UserExtended } from "@/db/schema/user";
+// Type-only: @/lib/queries reaches the database, and this is a client
+// component. The `type` keyword guarantees the import is erased.
+import type { PublicUser } from "@/lib/queries";
 import { useCardsFilterState } from "@/hook/use-cards-filter-state";
 import { useFavouriteCards } from "@/hook/use-favourite-cards";
 import { useUserFilterOptions } from "@/hook/use-filter-options";
@@ -36,7 +39,6 @@ import { UserLink } from "../user-link";
 
 export type ProfileCardsData = {
   cards: FullCard[];
-  user: UserExtended;
   total: number;
 };
 
@@ -126,9 +128,10 @@ export function Profile() {
 }
 
 type SearchProfileProps = {
-  user:
-    | UserExtended
-    | (Omit<UserExtended, "isPremium"> & { isPremium: boolean | null });
+  // Deliberately the public projection, not UserExtended: this is another
+  // player, and whatever is typed here is what gets serialised into the RSC
+  // payload and shipped to the browser.
+  user: PublicUser;
 };
 
 export function SearchProfile({ user }: SearchProfileProps) {
