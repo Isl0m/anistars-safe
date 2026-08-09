@@ -1,39 +1,71 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import {
   init,
   on,
   postEvent,
   retrieveLaunchParams,
+  retrieveRawInitData,
   swipeBehavior,
   User as TelegramUser,
   viewport,
 } from "@telegram-apps/sdk-react";
 
-import LoadingScreen from "./loading-screen";
+import { setAuthToken } from "@/lib/api";
 
 export interface ITelegramContext {
+  isTelegram: boolean;
   tgUser?: TelegramUser;
+  initDataRaw?: string;
+  userId?: string;
 }
 
-export const TelegramContext = createContext<ITelegramContext>({});
+export const TelegramContext = createContext<ITelegramContext>({
+  isTelegram: false,
+});
+
+function initTelegram(): ITelegramContext {
+  if (typeof window === "undefined") return { isTelegram: false };
+
+  try {
+    init();
+    const lp = retrieveLaunchParams();
+    const rawInitData = retrieveRawInitData();
+
+    setAuthToken(rawInitData);
+
+    return {
+      tgUser: lp.tgWebAppData?.user,
+      userId: lp.tgWebAppData?.user
+        ? String(lp.tgWebAppData?.user.id)
+        : undefined,
+      initDataRaw: rawInitData,
+      isTelegram: true,
+    };
+  } catch (e) {
+    console.warn("Not running inside Telegram:", e);
+    setAuthToken();
+    return { isTelegram: false };
+  }
+}
 
 export const TelegramProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  const [tgUser, setTgUser] = useState<ITelegramContext["tgUser"]>();
-  const [isLoading, setLoading] = useState(true);
+  const [ctx] = useState<ITelegramContext>(initTelegram);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        init();
-        const lp = retrieveLaunchParams();
-        const isMobile = ["android", "android_x", "ios"].includes(lp.platform);
+    if (!ctx.isTelegram) return;
 
+    void (async () => {
+      try {
+        const lp = retrieveLaunchParams();
+        const isMobile = ["android", "android_x", "ios"].includes(
+          lp.tgWebAppPlatform
+        );
         await viewport.mount();
         if (isMobile && !viewport.isFullscreen()) {
           await viewport.requestFullscreen();
@@ -56,27 +88,14 @@ export const TelegramProvider = ({
         swipeBehavior.mount();
         swipeBehavior.disableVertical();
         postEvent("web_app_set_header_color", { color: "#020817" });
-
-        if (lp.initData && lp.initData.user) {
-          setTgUser(lp.initData.user);
-        }
       } catch (e) {
-        console.error("Error initializing Telegram SDK:", e);
-        setTgUser(undefined);
-      } finally {
-        setLoading(false);
+        console.error("Telegram chrome setup failed:", e);
       }
-    };
-
-    fetchData();
-  }, []);
-
-  const value = useMemo(() => ({ tgUser }), [tgUser]);
+    })();
+  }, [ctx.isTelegram]);
 
   return (
-    <TelegramContext.Provider value={value}>
-      {isLoading ? <LoadingScreen /> : children}
-    </TelegramContext.Provider>
+    <TelegramContext.Provider value={ctx}>{children}</TelegramContext.Provider>
   );
 };
 

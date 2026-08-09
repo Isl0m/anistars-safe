@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 
+import { requireAuth } from "@/lib/api-utils";
 import { getUniverseData } from "@/lib/queries";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
   const { id } = await params;
-  if (!userId || !id)
+  if (!id)
     return NextResponse.json(
-      { error: "userId and universeId params required" },
+      { error: "universeId params required" },
       {
         status: 400,
       }

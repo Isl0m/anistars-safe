@@ -1,28 +1,32 @@
 import { NextResponse } from "next/server";
 
-import { getUser, getUserCardsWithFilter } from "@/lib/queries";
+import { requireAuth, requireUser } from "@/lib/api-utils";
+import { getUserCardsPaginated } from "@/lib/queries";
+import { parseFilter } from "@/lib/utils";
 
-import { Filter, getUserFilterOptions } from "@/components/get-filte-options";
+export async function GET(request: Request) {
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
-export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
+
+  const filter = parseFilter(searchParams);
+  const page = Math.max(Number(searchParams.get("page")) || 1, 1);
   const id = searchParams.get("id");
-  if (!id)
-    return NextResponse.json(
-      { eror: "id param required" },
-      {
-        status: 400,
-      }
-    );
-  const user = await getUser(id);
-  if (!user)
-    return NextResponse.json({ error: "user not found" }, { status: 404 });
-  const body = (await request.json()) as Filter | undefined;
-  const cards = await getUserCardsWithFilter(id, body ?? undefined);
-  const filterOptions = await getUserFilterOptions(id);
-  return NextResponse.json({
-    user,
-    cards,
-    filterOptions,
-  });
+  const cardsUserId = id || userId;
+
+  // Kept for the 404 when the id does not exist. The row itself is deliberately
+  // not returned: `id` is caller-supplied, so echoing the full user row handed
+  // any authenticated user another player's coins, astrals, moderation flags
+  // and admin status. No caller ever read it.
+  const result = await requireUser(cardsUserId);
+  if ("error" in result) return result.error;
+
+  const { cards, total } = await getUserCardsPaginated(
+    cardsUserId,
+    filter,
+    page
+  );
+  return NextResponse.json({ cards, total });
 }

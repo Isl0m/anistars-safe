@@ -57,6 +57,7 @@ export const cardToTgUser = pgTable("CardToTgUser", {
     .notNull()
     .references(() => tgUsers.id, { onDelete: "cascade" }),
   isLocked: boolean("isLocked").notNull().default(false),
+  favouritePosition: integer("favouritePosition"),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
@@ -77,10 +78,12 @@ export const cardUpgradePaths = pgTable("CardUpgradePath", {
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
+type UniverseTypes = "basic" | "chromo" | "event" | "limited";
 export const tUniverses = pgTable("Universe", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  type: text("type").$type<UniverseTypes>().default("basic").notNull(),
 });
 
 export const tClasses = pgTable("Class", {

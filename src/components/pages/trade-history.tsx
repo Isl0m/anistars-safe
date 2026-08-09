@@ -1,14 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { ArrowDown, X } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { ArrowRightLeft, Clock, History, Search, X } from "lucide-react";
 
-import { TradeHistory as TradeHistoryType } from "@/lib/queries";
-import { getImageProxyUrl } from "@/lib/utils";
+import { api } from "@/lib/api";
+import {
+  TradeHistory as TradeHistoryType,
+  TradeType,
+} from "@/lib/queries";
+import { cn, getImageProxyUrl, timeAgo } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
-import { User } from "@/db/schema/user";
+import { useClientPagination } from "@/hook/use-client-pagination";
+import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
+import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import {
   Drawer,
@@ -23,134 +30,262 @@ import { Skeleton } from "@/ui/skeleton";
 import { Header } from "../header";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
+import { UserLink } from "../user-link";
+
+const TRADE_TYPE_META: Record<
+  TradeType,
+  { label: string; variant: "default" | "secondary" | "outline" }
+> = {
+  single: { label: "Обмен", variant: "secondary" },
+  multi: { label: "Мульти", variant: "default" },
+  market: { label: "Маркет", variant: "outline" },
+};
+
+const TYPE_FILTERS: { value: TradeType | "all"; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "single", label: "Обмен" },
+  { value: "multi", label: "Мульти" },
+  { value: "market", label: "Маркет" },
+];
+
+function getCounterparty(trade: TradeHistoryType, userId?: string) {
+  return trade.sender.id === userId ? trade.receiver : trade.sender;
+}
 
 export function TradeHistory() {
-  const { tgUser } = useTelegram();
-  const [tradeHistory, setTradeHistory] = useState<TradeHistoryType[]>([]);
-  const [page, setPage] = useState(1);
-  let cardsPerPage = 3;
-  const cardsLeft = tradeHistory.length - page * cardsPerPage;
+  const { userId } = useTelegram();
+  const [typeFilter, setTypeFilter] = useState<TradeType | "all">("all");
+  const [userSearch, setUserSearch] = useState("");
 
-  const skip = (page - 1) * cardsPerPage;
-  const pageTradeHistory = tradeHistory.slice(skip, skip + cardsPerPage);
+  useTelegramBackButton("/trade");
 
-  const handleChangePage = (page: number) => {
-    setPage(page);
-  };
+  const query = useQuery({
+    queryKey: ["tradeHistroy", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data } = await api.get<TradeHistoryType[]>(`/api/trade/history`, {
+        params: { id: userId },
+      });
+      return data;
+    },
+    enabled: !!userId,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    if (tgUser) {
-      fetch(`${process.env.NEXT_PUBLIC_URL}/api/trade/history?id=${tgUser.id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setTradeHistory(data.tradeHistory);
-        });
-    }
-  }, [tgUser]);
+  const filteredTrades = useMemo(() => {
+    const trades = query.data ?? [];
+    const search = userSearch.trim().toLowerCase();
+    return trades.filter((trade) => {
+      if (typeFilter !== "all" && trade.type !== typeFilter) return false;
+      if (search) {
+        const counterparty = getCounterparty(trade, userId);
+        const matchesName = counterparty.name?.toLowerCase().includes(search);
+        const matchesId = counterparty.id.toLowerCase().includes(search);
+        if (!matchesName && !matchesId) return false;
+      }
+      return true;
+    });
+  }, [query.data, typeFilter, userSearch, userId]);
+
+  const totalTrades = filteredTrades.length;
+
+  const {
+    page,
+    setPage,
+    pageItems: pageTradeHistory,
+    cardsLeft,
+  } = useClientPagination(filteredTrades, 5);
 
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
-      <Header title="История Трейдов" />
-      {!tradeHistory || !tradeHistory.length ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-44 rounded" />
-          <Skeleton className="h-44 rounded" />
-          <Skeleton className="h-44 rounded" />
-        </div>
-      ) : (
-        <>
-          <div className="space-y-1 p-2">
-            {pageTradeHistory.map((trade) => (
-              <div
-                key={trade.id}
-                className="border-b border-border bg-card px-2 py-2"
-              >
-                <div className="flex items-start justify-between">
-                  {/* Users */}
-                  <div className="flex flex-col items-start gap-1">
-                    <UserDisplay user={trade.sender} role="Отправитель" />
-                    <ArrowDown className="mx-auto h-3 w-3 text-muted-foreground" />
-                    <UserDisplay user={trade.receiver} role="Получатель" />
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{dateFormat(trade.createdAt)}</span>
-                    </div>
-                  </div>
+    <main className="flex h-full flex-col">
+      <Header title="История трейдов" />
 
-                  {/* Cards */}
-                  <div className="flex flex-col items-end gap-1">
-                    <CardPreview cards={trade.senderCards} />
-                    <CardPreview cards={trade.receiverCards} />
-                  </div>
-                </div>
-              </div>
-            ))}
+      <div className="flex-1 overflow-y-auto px-3 py-4 md:container">
+        {!query.data ? (
+          <>
+            <Skeleton className="mb-2 h-4 w-12" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-[146px] w-full rounded-xl" />
+              ))}
+            </div>
+          </>
+        ) : query.data.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16">
+            <div className="rounded-full bg-muted p-4">
+              <History className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted-foreground">
+                Нет трейдов
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground/70">
+                Ваша история обменов пока пуста
+              </p>
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="relative mb-2">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Поиск по пользователю"
+                className="h-9 w-full rounded-lg border border-border bg-card pl-8 pr-8 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              {userSearch && (
+                <button
+                  onClick={() => setUserSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
 
-          <CardsPagination
-            page={page}
-            cardsLeft={cardsLeft}
-            handleChangePage={handleChangePage}
-          />
-        </>
-      )}
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              {TYPE_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => setTypeFilter(filter.value)}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    typeFilter === filter.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground"
+                  )}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            {filteredTrades.length === 0 ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                Ничего не найдено
+              </p>
+            ) : (
+              <>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Всего: {totalTrades}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {pageTradeHistory.map((trade) => (
+                    <TradeHistoryCard
+                      key={`${trade.type}-${trade.id}`}
+                      trade={trade}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <CardsPagination
+                    page={page}
+                    cardsLeft={cardsLeft}
+                    handleChangePage={setPage}
+                  />
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
     </main>
   );
 }
 
-function dateFormat(date: Date) {
-  return Intl.DateTimeFormat("ru-RU", {
-    timeZone: "Asia/Tashkent",
-    year: "2-digit",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-  }).format(new Date(date));
-}
-
-function UserDisplay({ user, role }: { user: User; role: string }) {
+function TradeHistoryCard({ trade }: { trade: TradeHistoryType }) {
   return (
-    <div className="flex flex-col">
-      <span className="max-w-[100px] truncate text-xs font-medium">
-        {user.name}
-      </span>
-      <span className="text-[10px] text-muted-foreground">{role}</span>
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          {timeAgo(trade.createdAt)}
+        </div>
+        <Badge
+          variant={TRADE_TYPE_META[trade.type].variant}
+          className="h-5 px-1.5 py-0 text-[10px]"
+        >
+          {TRADE_TYPE_META[trade.type].label}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 p-3">
+        <div>
+          <UserLink
+            userId={trade.sender.id}
+            name={trade.sender.name}
+            photoUrl={trade.sender.photoUrl}
+            size={24}
+            className="mb-2 gap-1.5"
+          >
+            <span className="truncate text-[11px] font-semibold">
+              {trade.sender.name}
+            </span>
+          </UserLink>
+          <CardPreview cards={trade.senderCards} />
+        </div>
+
+        <div className="flex items-center self-center pt-5">
+          <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+
+        <div>
+          <UserLink
+            userId={trade.receiver.id}
+            name={trade.receiver.name}
+            photoUrl={trade.receiver.photoUrl}
+            size={24}
+            className="mb-2 flex-row-reverse justify-end gap-1.5"
+            avatarClassName="bg-secondary text-secondary-foreground"
+          >
+            <span className="truncate text-[11px] font-semibold">
+              {trade.receiver.name}
+            </span>
+          </UserLink>
+          <CardPreview cards={trade.receiverCards} />
+        </div>
+      </div>
     </div>
   );
 }
 
 function CardPreview({ cards }: { cards: Card[] }) {
-  const visibleCards = cards.slice(0, 5);
+  const visibleCards = cards.slice(0, 4);
   const remainingCards = cards.length - visibleCards.length;
 
   return (
     <Drawer>
       <DrawerTrigger asChild>
-        <div className="flex items-center">
-          <div className="flex -space-x-3">
+        <button className={`flex items-center gap-1.5`}>
+          <div className={`flex -space-x-2`}>
             {visibleCards.map((card) => (
               <div
                 key={card.id}
-                className="relative overflow-hidden rounded-sm border-2 border-background"
+                className="relative h-14 w-10 overflow-hidden rounded-md border-2 border-card shadow-sm"
               >
                 <Image
                   src={getImageProxyUrl(card.image)}
                   alt={card.name}
-                  width={40}
-                  height={52}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="300px"
+                  className="object-cover"
                 />
               </div>
             ))}
           </div>
           {remainingCards > 0 && (
-            <span className="ml-1 text-xs font-medium">+{remainingCards}</span>
+            <Badge variant="secondary" className="h-5 px-1.5 py-0 text-[10px]">
+              +{remainingCards}
+            </Badge>
           )}
-        </div>
+        </button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Карты</DrawerTitle>
+          <DrawerTitle>Карты ({cards.length})</DrawerTitle>
           <DrawerClose asChild>
             <Button
               variant="ghost"
@@ -165,7 +300,7 @@ function CardPreview({ cards }: { cards: Card[] }) {
           {cards.map((card, index) => (
             <div
               key={index}
-              className="relative overflow-hidden rounded-md border border-border"
+              className="relative mb-4 overflow-hidden rounded-lg border border-border shadow-sm"
             >
               <Image
                 src={getImageProxyUrl(card.image)}

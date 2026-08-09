@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 
-import { getUser } from "@/lib/queries";
+import { getRequiredParam, requireUser } from "@/lib/api-utils";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id)
-    return NextResponse.json({ error: "id param required" }, { status: 400 });
-  const user = await getUser(id);
-  if (!user)
-    return NextResponse.json({ error: "user not found" }, { status: 404 });
+  const param = getRequiredParam(request, "id");
+  if ("error" in param) return param.error;
+
+  const result = await requireUser(param.value);
+  if ("error" in result) return result.error;
+
+  const { user } = result;
   return NextResponse.json({
-    user,
-    isCanTrade: !(user.isBlocked && user.isTradeBanned),
+    id: user.id,
+    name: user.name,
+    photoUrl: user.photoUrl,
+    isCanTrade: !(user.isBlocked || user.isTradeBanned),
   });
 }

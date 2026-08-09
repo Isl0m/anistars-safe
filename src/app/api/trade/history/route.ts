@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
 
+import { requireAuth } from "@/lib/api-utils";
 import { userTradeHistory } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id)
-    return NextResponse.json({ error: "id param required" }, { status: 400 });
-  const tradeHistory = await userTradeHistory(id);
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
+
+  const tradeHistory = await userTradeHistory(userId);
   if (!tradeHistory)
     return NextResponse.json(
       { error: "trade history not found" },
       { status: 404 }
     );
-  return NextResponse.json({
-    tradeHistory,
-  });
+  return NextResponse.json(tradeHistory);
 }

@@ -64,7 +64,9 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Muted instead of shadcn's near-white: focus rings on a forced-dark,
+       touch-first app should be subtle, not a white halo on every tap. */
+    --ring: 217.2 32.6% 40%;
   }
 }
 
@@ -72,10 +74,31 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply fixed h-screen w-full overflow-hidden bg-background text-foreground md:static md:overflow-auto;
   }
-  :focus {
-    @apply outline-none ring-0 ring-offset-0;
+  /* Touch-first app: no focus rings anywhere. Radix focuses elements
+     programmatically (tabs, dialog auto-focus), which the webview counts as
+     :focus-visible, so per-component focus-visible:ring-* utilities still
+     fire — overriding the ring variables with !important is the only rule
+     that beats them without also killing regular box shadows. */
+  *:focus,
+  *:focus-visible {
+    outline: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

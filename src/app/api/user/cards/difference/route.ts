@@ -1,33 +1,26 @@
 import { NextResponse } from "next/server";
 
-import { getUser, getUserCardsDifferenceWithFilter } from "@/lib/queries";
+import { getRequiredParam, requireAuth } from "@/lib/api-utils";
+import { getUserCardsDifferencePaginated } from "@/lib/queries";
+import { parseFilter } from "@/lib/utils";
 
-import { Filter, getUserFilterOptions } from "@/components/get-filte-options";
+export async function GET(request: Request) {
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
-export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  const secondId = searchParams.get("secondId");
-  if (!id || !secondId)
-    return NextResponse.json(
-      { error: "id and secondId param required" },
-      {
-        status: 400,
-      }
-    );
-  const user = await getUser(id);
-  if (!user)
-    return NextResponse.json({ error: "user not found" }, { status: 404 });
-  const body = (await request.json()) as Filter | undefined;
-  const cards = await getUserCardsDifferenceWithFilter(
-    id,
-    secondId,
-    body ?? undefined
+  const filter = parseFilter(searchParams);
+  const page = Math.max(Number(searchParams.get("page")) || 1, 1);
+  const paramSecond = getRequiredParam(request, "secondId");
+  if ("error" in paramSecond) return paramSecond.error;
+
+  const { cards, total } = await getUserCardsDifferencePaginated(
+    userId,
+    paramSecond.value,
+    filter,
+    page
   );
-  const filterOptions = await getUserFilterOptions(id);
-  return NextResponse.json({
-    user,
-    cards,
-    filterOptions,
-  });
+
+  return NextResponse.json({ cards, total });
 }

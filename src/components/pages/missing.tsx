@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 import { FullCard } from "@/db/schema/card";
 import { User } from "@/db/schema/user";
+import { useCardsFilterState } from "@/hook/use-cards-filter-state";
+import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 
 import CardsFilter from "../cards-filter";
 import { CardsList } from "../cards-list";
 import { CardsListSkeleton } from "../cards-list-skeleton";
-import { Filter, FilterOption } from "../get-filte-options";
+import { Filter, FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 
@@ -17,52 +18,59 @@ type MissingProps = {
   filterOptions: FilterOption[];
 };
 
-export function Missing({ filterOptions }: MissingProps) {
-  const { tgUser } = useTelegram();
-  const [filter, setFilter] = useState<Filter>();
+type MissingCardsData = {
+  cards: FullCard[];
+  user: User;
+  total: number;
+};
 
-  const query = useQuery({
-    queryKey: ["profile-missing-cards", filter],
-    queryFn: async () => {
-      if (!tgUser) return;
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/user/missing?id=${tgUser.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(filter ?? {}),
-        }
-      );
-      return (await response.json()) as Promise<{
-        cards: FullCard[];
-        user: User;
-      }>;
-    },
-    placeholderData: keepPreviousData,
+export async function fetchMissingCards(filter: Filter, page: number) {
+  const params = new URLSearchParams({
+    page: String(page),
+    filter: JSON.stringify(filter),
+  });
+  const { data } = await api.get<MissingCardsData | undefined>(
+    `/api/user/missing?${params.toString()}`
+  );
+  return data;
+}
+
+export function Missing({ filterOptions }: MissingProps) {
+  const { userId } = useTelegram();
+  const { page, filter, handleChangePage, handleFilterChange } =
+    useCardsFilterState();
+
+  const query = usePaginatedCardsQuery<MissingCardsData>({
+    queryKey: ["profile-missing-cards", userId],
+    filter,
+    page,
+    fetchFn: fetchMissingCards,
   });
 
-  const handleFilterChange = (data: Filter) => {
-    setFilter(data);
-  };
-
   return (
-    <main className="flex min-h-screen flex-col gap-4">
+    <>
       <Header
-        title={"Отсуствующие карты"}
+        title={"Отсутствующие карты"}
         element={
           <CardsFilter
+            defaultSort={filter.sort}
             filterOptions={filterOptions}
             setFilters={handleFilterChange}
           />
         }
       />
-      {query.data ? (
-        <CardsList cards={query.data.cards} />
-      ) : (
-        <CardsListSkeleton />
-      )}
-    </main>
+      <section className="flex-1 overflow-y-auto py-4">
+        {query.data ? (
+          <CardsList
+            cards={query.data.cards}
+            total={query.data.total}
+            page={page}
+            onPageChange={handleChangePage}
+          />
+        ) : (
+          <CardsListSkeleton />
+        )}
+      </section>
+    </>
   );
 }

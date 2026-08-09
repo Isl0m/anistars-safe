@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { getCardsFullWithFilter } from "@/lib/queries";
+import { parseFilter } from "@/lib/utils";
 
-import { Filter } from "@/components/get-filte-options";
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const filter = parseFilter(searchParams);
+  const page = Math.max(Number(searchParams.get("page")) || 1, 1);
 
-export async function POST(request: Request) {
-  const body = (await request.json()) as Filter | undefined;
-  const cards = await getCardsFullWithFilter(body ?? undefined);
-  return NextResponse.json({
-    cards,
-  });
+  const { cards, total } = await getCardsFullWithFilter(filter, page);
+
+  return NextResponse.json({ cards, total });
 }

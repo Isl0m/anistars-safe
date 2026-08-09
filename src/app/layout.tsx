@@ -4,11 +4,14 @@ import { GeistSans } from "geist/font/sans";
 
 import "./globals.css";
 
+import Script from "next/script";
+
 import { cn } from "@/lib/utils";
 
 import { QueryProvider } from "@/components/query-client-provider";
+import { RouteGuard } from "@/components/route-guard";
 import { TelegramProvider } from "@/components/telegram-provider";
-import { Toaster } from "@/ui/toaster";
+import { Toaster } from "@/ui/sonner";
 
 export const metadata: Metadata = {
   title: "⭐️AniStars | Cards List",
@@ -33,11 +36,22 @@ export default function RootLayout({
         <QueryProvider>
           <TelegramProvider>
             <div className="relative h-screen pb-[var(--safe-area-bottom)] pt-[var(--safe-area-top)]">
-              {children}
+              <RouteGuard>{children}</RouteGuard>
             </div>
-            <Toaster />
+            <Toaster position="top-center" richColors />
           </TelegramProvider>
         </QueryProvider>
+        {process.env.NODE_ENV === "development" && (
+          <>
+            <Script
+              src="https://cdn.jsdelivr.net/npm/eruda"
+              strategy="beforeInteractive"
+            />
+            <Script id="eruda-init" strategy="afterInteractive">
+              {`eruda.init();`}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );

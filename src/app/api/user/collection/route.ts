@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { requireAuth } from "@/lib/api-utils";
 import { getUserCollection } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-  if (!id)
-    return NextResponse.json(
-      { error: "id param required" },
-      {
-        status: 400,
-      }
-    );
+  const authResult = await requireAuth(request);
+  if ("error" in authResult) return authResult.error;
+  const userId = authResult.auth.id;
 
-  const collection = await getUserCollection(id);
+  const collection = await getUserCollection(userId);
   return NextResponse.json({ collection });
 }
