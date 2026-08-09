@@ -22,6 +22,7 @@ import {
 } from "@/lib/queries";
 
 import { listingFiltersToCardFilter } from "@/lib/listing-filter";
+import { scheduleOfferNotification } from "@/lib/trade-queue";
 
 export async function POST(request: Request) {
   const authResult = await requireAuth(request);
@@ -127,6 +128,12 @@ export async function POST(request: Request) {
   });
 
   await addMarketOfferCards(offer.id, validation.cardIds);
+
+  try {
+    await scheduleOfferNotification(offer.id);
+  } catch (e) {
+    console.error("offer notification scheduling failed:", e);
+  }
 
   revalidateMarketPages(listingId);
   return NextResponse.json({ offer });

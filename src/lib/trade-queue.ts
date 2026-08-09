@@ -4,7 +4,8 @@ export type MarketJob =
   | { type: "market-accept"; offerId: number; sellerId: string }
   | { type: "market-cancel-offer"; offerId: number; buyerId: string }
   | { type: "market-reject-offer"; offerId: number; sellerId: string }
-  | { type: "market-cancel-listing"; listingId: number; sellerId: string };
+  | { type: "market-cancel-listing"; listingId: number; sellerId: string }
+  | { type: "market-offer-notify"; offerId: number };
 
 /**
  * What the bot worker resolves with. Mirrors `MarketJobResult` in
@@ -46,6 +47,21 @@ const queueEvents = new QueueEvents(QUEUE_KEY, { connection });
  * still going to succeed.
  */
 const JOB_WAIT_MS = 12_000;
+
+/**
+ * The seller is told about a new offer only after this delay, so a buyer who
+ * offered by mistake has a window to cancel before anyone is pinged. The job
+ * re-checks the offer is still pending before sending.
+ */
+const OFFER_NOTIFY_DELAY_MS = 30_000;
+
+export async function scheduleOfferNotification(offerId: number) {
+  await queue.add(
+    QUEUE_KEY,
+    { type: "market-offer-notify", offerId },
+    { delay: OFFER_NOTIFY_DELAY_MS }
+  );
+}
 
 export async function addMarketJob(job: MarketJob): Promise<MarketJobOutcome> {
   let added;

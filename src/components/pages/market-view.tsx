@@ -155,7 +155,7 @@ export default function MarketViewPage({
 
   return (
     <div className="flex h-full flex-col">
-      <Header title="Лот" />
+      <Header title={`Лот #${listing.id}`} />
       <section className="flex-1 space-y-4 overflow-y-auto px-3 py-4 pb-24 md:container">
         <div className="flex items-center justify-between">
           <UserLink

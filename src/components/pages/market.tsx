@@ -228,6 +228,7 @@ function ListingCard({
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 {timeAgo(listing.createdAt)}
+                <span>· Лот #{listing.id}</span>
               </div>
             </div>
           </div>
@@ -483,6 +484,7 @@ function OffersList({
                       <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {timeAgo(offer.createdAt)}
+                        <span>· Лот #{offer.listingId}</span>
                       </div>
                     </div>
                   </div>

@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight,
-  Clock,
   Loader2,
   Repeat2,
   Search,
@@ -16,7 +14,7 @@ import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/ui/input";
 
 import { Header } from "../header";
@@ -70,18 +68,7 @@ export default function TradeReceiverPage() {
 
   return (
     <main>
-      <Header
-        title="Трейд"
-        element={
-          <Link
-            href="/trade/history"
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            <Clock className="mr-1.5 h-3.5 w-3.5" />
-            История
-          </Link>
-        }
-      />
+      <Header title="Трейд" />
 
       <div className="flex flex-col items-center px-4 pt-12">
         <div className="mb-6 rounded-full bg-primary/10 p-4">

@@ -4,6 +4,7 @@ import type { JSX } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Clock,
   Grid3X3,
   Heart,
   ImageIcon,
@@ -54,6 +55,7 @@ const navGroups = [
     items: [
       { name: "Трейд", href: "/trade", Icon: Repeat2 },
       { name: "Маркетплейс", href: "/market", Icon: Store },
+      { name: "История трейдов", href: "/trade/history", Icon: Clock },
     ],
   },
   {
