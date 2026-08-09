@@ -59,3 +59,24 @@ export const createOfferSchema = z.object({
 export const offerIdSchema = z.object({
   offerId: z.number().int().positive(),
 });
+
+export const marketPromoSettingsSchema = z.object({
+  enabled: z.boolean(),
+  chatId: z
+    .string()
+    .trim()
+    .max(64)
+    .regex(
+      /^$|^(-?\d{5,}|@[A-Za-z][A-Za-z0-9_]{3,})$/,
+      "Укажите ID чата (-100…) или @username"
+    ),
+  threadId: z.number().int().positive().nullable(),
+});
+
+export type MarketPromoSettings = z.infer<typeof marketPromoSettingsSchema>;
+
+export const DEFAULT_MARKET_PROMO_SETTINGS: MarketPromoSettings = {
+  enabled: false,
+  chatId: "",
+  threadId: null,
+};
