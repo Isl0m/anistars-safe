@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { CardTypes, cn, statMapper, typeMapper } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +18,16 @@ interface Props {
 
 const chipBase = "h-5 shrink-0 whitespace-nowrap px-1.5 py-0 text-[10px]";
 
+const MAX_VISIBLE_CHIPS = 8;
+
 export function ListingFilterDisplay({
   filters,
   filterOptions,
   className,
   inline,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!filters) {
     return (
       <div className={className}>
@@ -143,8 +149,24 @@ export function ListingFilterDisplay({
     ) : null,
   ].filter(Boolean);
 
+  const hiddenCount = attributeChips.length - MAX_VISIBLE_CHIPS;
+
   if (inline) {
-    const allChips = [...attributeChips, ...constraintChips];
+    const allChips = [
+      ...(hiddenCount > 0
+        ? [
+            ...attributeChips.slice(0, MAX_VISIBLE_CHIPS),
+            <Badge
+              key="more"
+              variant="outline"
+              className={cn(chipBase, "text-muted-foreground")}
+            >
+              +{hiddenCount}
+            </Badge>,
+          ]
+        : attributeChips),
+      ...constraintChips,
+    ];
     if (allChips.length === 0) {
       return (
         <div className={className}>
@@ -168,7 +190,21 @@ export function ListingFilterDisplay({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex flex-wrap gap-2">{attributeChips}</div>
+      <div className="flex flex-wrap gap-2">
+        {expanded || hiddenCount <= 0
+          ? attributeChips
+          : attributeChips.slice(0, MAX_VISIBLE_CHIPS)}
+        {hiddenCount > 0 && (
+          <button type="button" onClick={() => setExpanded((e) => !e)}>
+            <Badge
+              variant="outline"
+              className={cn(chipBase, "cursor-pointer text-muted-foreground")}
+            >
+              {expanded ? "Свернуть" : `+${hiddenCount} ещё`}
+            </Badge>
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">{constraintChips}</div>
     </div>
   );

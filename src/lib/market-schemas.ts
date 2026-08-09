@@ -13,9 +13,11 @@ const cardId = z.string().min(1).max(64);
  */
 export const listingFiltersSchema = z
   .object({
-    classIds: z.number().int().positive().array().max(50).default([]),
-    rarityIds: z.number().int().positive().array().max(50).default([]),
-    universeIds: z.number().int().positive().array().max(50).default([]),
+    // The game already has 60+ universes and a user may select all of them;
+    // the cap only guards against absurd payloads, not real selections.
+    classIds: z.number().int().positive().array().max(200).default([]),
+    rarityIds: z.number().int().positive().array().max(200).default([]),
+    universeIds: z.number().int().positive().array().max(200).default([]),
     type: z
       .enum(["upgrade", "upgradable", "limited", "basic"])
       .array()
