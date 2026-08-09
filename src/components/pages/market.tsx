@@ -332,7 +332,7 @@ function ListingsList({
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-muted-foreground">
-            Нет объявлений
+            Нет лотов
           </p>
           <p className="mt-1 text-xs text-muted-foreground/70">
             Будьте первым кто выставит карты на обмен
@@ -435,7 +435,7 @@ function OffersList({
           href="/market"
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
-          Перейти к объявлениям
+          Перейти к лотам
         </Link>
       </div>
     );

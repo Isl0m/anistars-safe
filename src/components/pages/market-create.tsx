@@ -59,7 +59,7 @@ export default function MarketCreatePage() {
 
   return (
     <main className="flex h-full flex-col md:container">
-      <Header title="Новое объявление" />
+      <Header title="Новый лот" />
       <div className="flex items-center justify-between p-3">
         <Skeleton className="h-7 w-44 rounded-full" />
         <Skeleton className="h-5 w-12 rounded-full" />
@@ -114,7 +114,7 @@ function MarketCreateContent({
     const isSelected = selectedCards.some((c) => c.id === card.id);
     if (!isSelected && selectedCards.length >= MAX_LISTING_CARDS) {
       toast.warning(
-        `В одном объявлении можно выставить не более ${MAX_LISTING_CARDS} карт.`
+        `В одном лоте можно выставить не более ${MAX_LISTING_CARDS} карт.`
       );
       return;
     }
@@ -125,7 +125,7 @@ function MarketCreateContent({
     setIsLoading(true);
     if (limitReached && listingLimit) {
       toast.warning(
-        `Достигнут лимит активных объявлений (${listingLimit.active}/${listingLimit.limit}).`
+        `Достигнут лимит активных лотов (${listingLimit.active}/${listingLimit.limit}).`
       );
       setIsLoading(false);
       return;
@@ -169,7 +169,7 @@ function MarketCreateContent({
       queryClient.invalidateQueries({ queryKey: marketKeys.limits });
       router.push("/market");
     } catch (e) {
-      showApiError(e, "Не удалось создать объявление");
+      showApiError(e, "Не удалось создать лот");
     } finally {
       setIsLoading(false);
     }
@@ -178,7 +178,7 @@ function MarketCreateContent({
   return (
     <>
       <Header
-        title="Новое объявление"
+        title="Новый лот"
         element={
           step === "select" ? (
             <div className="flex items-center gap-2">
@@ -213,13 +213,13 @@ function MarketCreateContent({
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
           <div className="text-[11px] text-amber-600">
             <p className="font-semibold">
-              Достигнут лимит активных объявлений ({listingLimit.active}/
+              Достигнут лимит активных лотов ({listingLimit.active}/
               {listingLimit.limit})
             </p>
             <p className="text-amber-600/80">
               {limits?.isPremium
-                ? "Дождитесь завершения или отмените одно из объявлений."
-                : "Оформите премиум, чтобы выставлять больше объявлений."}
+                ? "Дождитесь завершения или снимите один из лотов."
+                : "Оформите премиум, чтобы выставлять больше лотов."}
             </p>
           </div>
         </div>

@@ -32,9 +32,9 @@ export const listingStatusMap: Record<
   string,
   { label: string; variant: "default" | "secondary" | "destructive" }
 > = {
-  active: { label: "Активно", variant: "default" },
-  completed: { label: "Завершено", variant: "secondary" },
-  cancelled: { label: "Отменено", variant: "destructive" },
+  active: { label: "Активен", variant: "default" },
+  completed: { label: "Завершён", variant: "secondary" },
+  cancelled: { label: "Отменён", variant: "destructive" },
 };
 
 export const offerStatusMap: Record<

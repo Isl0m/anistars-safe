@@ -142,11 +142,11 @@ export default function MarketViewPage({
         `/api/market/listings/${listing.id}/cancel`
       );
 
-      const settled = showMarketResult(data, "Объявление отменено");
+      const settled = showMarketResult(data, "Лот снят");
       refreshListingViews();
       if (settled) router.push("/market");
     } catch (e) {
-      showApiError(e, "Не удалось отменить объявление");
+      showApiError(e, "Не удалось снять лот");
       refreshListingViews();
     } finally {
       setIsCancelling(false);
@@ -155,7 +155,7 @@ export default function MarketViewPage({
 
   return (
     <div className="flex h-full flex-col">
-      <Header title="Объявление" />
+      <Header title="Лот" />
       <section className="flex-1 space-y-4 overflow-y-auto px-3 py-4 pb-24 md:container">
         <div className="flex items-center justify-between">
           <UserLink
@@ -243,7 +243,7 @@ export default function MarketViewPage({
                 Отмена...
               </>
             ) : (
-              "Отменить объявление"
+              "Снять лот"
             )}
           </Button>
         )}
@@ -324,7 +324,7 @@ export default function MarketViewPage({
               <p className="text-sm text-muted-foreground">
                 {isSeller
                   ? "Ожидайте предложения от других пользователей"
-                  : "Пока нет предложений по этому объявлению"}
+                  : "Пока нет предложений по этому лоту"}
               </p>
             </div>
           ) : (

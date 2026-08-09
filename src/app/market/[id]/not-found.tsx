@@ -18,7 +18,7 @@ export default function MarketListingNotFound() {
           <ShieldAlert className="h-10 w-10 text-muted-foreground/50" />
         </div>
         <p className="text-center text-sm text-muted-foreground">
-          Объявление не найдено или было удалено
+          Лот не найден или был удалён
         </p>
         <Link href="/market" className={buttonVariants()}>
           К маркетплейсу
