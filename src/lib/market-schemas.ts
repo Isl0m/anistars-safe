@@ -60,16 +60,34 @@ export const offerIdSchema = z.object({
   offerId: z.number().int().positive(),
 });
 
+const CHAT_ID_RE = /^$|^(-?\d{5,}|@[A-Za-z][A-Za-z0-9_]{3,})$/;
+
+export function normalizeChatId(raw: string): string {
+  const value = raw.trim();
+  const link = value.match(/^(?:https?:\/\/)?t\.me\/(.+)$/i);
+  if (!link) return value;
+
+  const privateChat = link[1].match(/^c\/(\d+)/);
+  if (privateChat) return `-100${privateChat[1]}`;
+
+  const username = link[1].match(/^([A-Za-z][A-Za-z0-9_]{3,})/);
+  return username ? `@${username[1]}` : value;
+}
+
+export function withChannelPrefix(chatId: string): string | null {
+  return /^\d+$/.test(chatId) ? `-100${chatId}` : null;
+}
+
 export const marketPromoSettingsSchema = z.object({
   enabled: z.boolean(),
   chatId: z
     .string()
     .trim()
-    .max(64)
-    .regex(
-      /^$|^(-?\d{5,}|@[A-Za-z][A-Za-z0-9_]{3,})$/,
-      "Укажите ID чата (-100…) или @username"
-    ),
+    .max(128)
+    .transform(normalizeChatId)
+    .refine((value) => CHAT_ID_RE.test(value), {
+      message: "Укажите ID чата (-100…), @username или ссылку t.me",
+    }),
   threadId: z.number().int().positive().nullable(),
 });
 

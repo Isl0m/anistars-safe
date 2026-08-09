@@ -176,9 +176,20 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
 
   const test = useMutation({
     mutationFn: async (settings: MarketPromoSettings) => {
-      await api.post("/api/settings/market-promo/test", settings);
+      const { data } = await api.post<{ chatId: string }>(
+        "/api/settings/market-promo/test",
+        settings
+      );
+      return data.chatId;
     },
-    onSuccess: () => toast.success("Тестовое сообщение отправлено"),
+    onSuccess: (chatId) => {
+      setForm((f) => (f.chatId === chatId ? f : { ...f, chatId }));
+      toast.success(
+        chatId === form.chatId
+          ? "Тестовое сообщение отправлено"
+          : `Сообщение дошло по ID ${chatId} — нажмите «Сохранить»`
+      );
+    },
     onError: (e) => showApiError(e, "Не удалось отправить сообщение"),
   });
 
@@ -229,7 +240,9 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
           }
         />
         <p className="text-xs text-muted-foreground">
-          ID супергруппы или канала начинается с -100.
+          ID канала или супергруппы начинается с -100. Можно вставить ссылку
+          вида t.me/channel или t.me/c/1234567890/1 — она развернётся сама.
+          Проверьте кнопкой «Тест» перед сохранением.
         </p>
       </div>
 
