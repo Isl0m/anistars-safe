@@ -44,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { FilterOption } from "../get-filter-options";
 import { Header } from "../header";
 import { ListingFilterDisplay } from "../listing-filter-display";
+import { MarketHelp } from "./market-help";
 import CardsPagination from "../pagination";
 import { useTelegram } from "../telegram-provider";
 import { UserAvatar } from "../user-avatar";
@@ -107,12 +108,15 @@ export default function MarketPage({
       <Header
         title="Маркетплейс"
         element={
-          <Link
-            href="/market/create"
-            className={buttonVariants({ variant: "default", size: "sm" })}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Выставить
-          </Link>
+          <>
+            <MarketHelp />
+            <Link
+              href="/market/create"
+              className={buttonVariants({ variant: "default", size: "sm" })}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Выставить
+            </Link>
+          </>
         }
       />
 
