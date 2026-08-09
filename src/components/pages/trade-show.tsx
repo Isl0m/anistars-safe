@@ -24,9 +24,9 @@ export default function TradeShowPage({
   };
 }) {
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <>
       <Header title="Детали трейда" />
-      <div className="space-y-3 px-2">
+      <div className="flex-1 space-y-3 overflow-y-auto px-2 py-4">
         <div className="rounded-xl border bg-card p-3">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
@@ -74,7 +74,7 @@ export default function TradeShowPage({
           <SuggestedCardsList cards={trade.receiverCards} />
         </div>
       </div>
-    </main>
+    </>
   );
 }
 

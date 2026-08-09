@@ -67,10 +67,10 @@ export default function TradeReceiverPage() {
   const profile = lookupQuery.data;
 
   return (
-    <main>
+    <main className="flex h-full flex-col">
       <Header title="Трейд" />
 
-      <div className="flex flex-col items-center px-4 pt-12">
+      <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 pb-8 pt-12 md:container">
         <div className="mb-6 rounded-full bg-primary/10 p-4">
           <Repeat2 className="h-10 w-10 text-primary" />
         </div>
