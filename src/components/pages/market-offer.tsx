@@ -51,7 +51,6 @@ export function restrictOptionsToLocked(
   filterOptions: FilterOption[],
   locked: Partial<Filter>
 ): FilterOption[] {
-  console.log(locked);
   return filterOptions.map((option) => {
     const lockedValues = locked[option.key];
     if (!Array.isArray(lockedValues) || lockedValues?.length === 0) {

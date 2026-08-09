@@ -14,6 +14,7 @@ import {
   createMarketListing,
   getMarketListings,
   getUser,
+  isTradeBanned,
   validateCardsForTrade,
 } from "@/lib/queries";
 
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
   const body = await parseBody(request, createListingSchema);
   if ("error" in body) return body.error;
   const { cardIds, filters } = body.data;
+
+  if (await isTradeBanned(sellerId)) {
+    return errorResponse("Вы заблокированы в трейдах", 403);
+  }
 
   const seller = await getUser(sellerId);
   if (!seller) return errorResponse("user not found", 404);

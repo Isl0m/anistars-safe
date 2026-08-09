@@ -26,7 +26,7 @@ import {
   SelectMultiTrade,
   tradeLogs,
 } from "@/db/schema/trade";
-import { tgUsers, User } from "@/db/schema/user";
+import { tgUsers, tradingStatus, User } from "@/db/schema/user";
 
 import { cardBaseColumns } from "./shared";
 
@@ -137,6 +137,31 @@ export async function getTradeSenderRarityIds(tradeId: number) {
     )
     .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
     .then((rows) => rows.map((r) => r.rarityId));
+}
+
+export async function getTradeSenderCardIds(tradeId: number) {
+  return db
+    .select({ cardId: multiTradeCards.cardId })
+    .from(multiTradeCards)
+    .where(
+      and(
+        eq(multiTradeCards.tradeId, tradeId),
+        eq(multiTradeCards.isSenderCard, true)
+      )
+    )
+    .then((rows) => rows.map((r) => r.cardId));
+}
+
+export async function isTradeBanned(userId: string) {
+  const [status] = await db
+    .select({
+      isBanned: tradingStatus.isBanned,
+      banExpiresAt: tradingStatus.banExpiresAt,
+    })
+    .from(tradingStatus)
+    .where(eq(tradingStatus.userId, userId));
+  if (!status?.isBanned) return false;
+  return !status.banExpiresAt || status.banExpiresAt > new Date();
 }
 
 export async function getCardRarityIds(cardIds: string[]) {

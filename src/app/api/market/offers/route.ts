@@ -13,9 +13,11 @@ import {
   countActiveOffers,
   createMarketOffer,
   getCardIdsMatchingFilter,
+  getMarketListingCardIds,
   getMarketListingMeta,
   getUser,
   hasPendingOfferFromBuyer,
+  isTradeBanned,
   validateCardsForTrade,
 } from "@/lib/queries";
 
@@ -29,6 +31,10 @@ export async function POST(request: Request) {
   const body = await parseBody(request, createOfferSchema);
   if ("error" in body) return body.error;
   const { listingId, cardIds } = body.data;
+
+  if (await isTradeBanned(buyerId)) {
+    return errorResponse("Вы заблокированы в трейдах", 403);
+  }
 
   const listing = await getMarketListingMeta(listingId);
   if (!listing) {
@@ -46,6 +52,16 @@ export async function POST(request: Request) {
   const validation = await validateCardsForTrade(cardIds, buyerId);
   if (!validation.ok) {
     return errorResponse(validation.error, validation.status);
+  }
+
+  // Settlement treats a card present on both sides as a mutual duplicate and
+  // converts both copies instead of transferring them — never allow overlap.
+  const listingCardIds = new Set(await getMarketListingCardIds(listingId));
+  if (validation.cardIds.some((id) => listingCardIds.has(id))) {
+    return errorResponse(
+      "В предложении есть карты, которые уже есть в самом лоте",
+      400
+    );
   }
 
   // The hard cap applies whether or not the seller set filters — a listing

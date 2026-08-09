@@ -8,6 +8,7 @@ import {
   fulfillTradeWithCards,
   getCardRarityIds,
   getTrade,
+  getTradeSenderCardIds,
   getTradeSenderRarityIds,
   getUser,
   validateCardsForTrade,
@@ -45,6 +46,16 @@ export async function POST(request: Request) {
   const validation = await validateCardsForTrade(cardIds, userId);
   if (!validation.ok) {
     return errorResponse(validation.error, validation.status);
+  }
+
+  // Settlement treats a card present on both sides as a mutual duplicate and
+  // converts both copies instead of transferring them — never allow overlap.
+  const senderCardIds = new Set(await getTradeSenderCardIds(tradeId));
+  if (validation.cardIds.some((id) => senderCardIds.has(id))) {
+    return errorResponse(
+      "Нельзя предлагать карту, которая уже участвует в этом трейде",
+      400
+    );
   }
 
   // The cost is never taken from the request: it is what the receiver pays and

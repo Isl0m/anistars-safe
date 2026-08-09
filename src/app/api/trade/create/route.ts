@@ -13,6 +13,7 @@ import {
   countRecentTrades,
   createTradeWithCards,
   getUser,
+  isTradeBanned,
   validateCardsForTrade,
 } from "@/lib/queries";
 
@@ -38,6 +39,17 @@ export async function POST(request: Request) {
   }
   if (receiverId === senderId) {
     return errorResponse("Нельзя обменяться с самим собой", 400);
+  }
+
+  const [senderBanned, receiverBanned] = await Promise.all([
+    isTradeBanned(senderId),
+    isTradeBanned(receiverId),
+  ]);
+  if (senderBanned) {
+    return errorResponse("Вы заблокированы в трейдах", 403);
+  }
+  if (receiverBanned) {
+    return errorResponse("Пользователь заблокирован в трейдах", 403);
   }
 
   const [receiver, sender, me] = await Promise.all([

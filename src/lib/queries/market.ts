@@ -14,10 +14,8 @@ import { cardToTgUser, tCards } from "@/db/schema/card";
 import {
   marketListingCards,
   marketListings,
-  MarketListingStatus,
   marketOfferCards,
   marketOffers,
-  MarketOfferStatus,
 } from "@/db/schema/market";
 import { tgUsers } from "@/db/schema/user";
 
@@ -373,24 +371,12 @@ export async function validateCardsForTrade(
   return { ok: true, cardIds: uniqueCardIds };
 }
 
-export function updateMarketOfferStatus(
-  offerId: number,
-  status: MarketOfferStatus
-) {
+export async function getMarketListingCardIds(listingId: number) {
   return db
-    .update(marketOffers)
-    .set({ status })
-    .where(eq(marketOffers.id, offerId));
-}
-
-export function updateMarketListingStatus(
-  listingId: number,
-  status: MarketListingStatus
-) {
-  return db
-    .update(marketListings)
-    .set({ status })
-    .where(eq(marketListings.id, listingId));
+    .select({ cardId: marketListingCards.cardId })
+    .from(marketListingCards)
+    .where(eq(marketListingCards.listingId, listingId))
+    .then((rows) => rows.map((r) => r.cardId));
 }
 
 export type ReservedCardIds = { listed: string[]; offered: string[] };
@@ -430,14 +416,3 @@ export async function getUserReservedCardIds(
   };
 }
 
-export async function cancelPendingOffersForListing(listingId: number) {
-  return db
-    .update(marketOffers)
-    .set({ status: "cancelled" as MarketOfferStatus })
-    .where(
-      and(
-        eq(marketOffers.listingId, listingId),
-        eq(marketOffers.status, "pending")
-      )
-    );
-}
