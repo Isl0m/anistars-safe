@@ -2,6 +2,7 @@ import {
   errorResponse,
   marketJobResponse,
   requireAuth,
+  revalidateMarketPages,
 } from "@/lib/api-utils";
 import { getMarketListingMeta } from "@/lib/queries";
 import { addMarketJob } from "@/lib/trade-queue";
@@ -40,6 +41,7 @@ export async function POST(
     sellerId,
   });
 
+  revalidateMarketPages(listingId);
   return marketJobResponse(
     outcome,
     "Снятие лота обрабатывается — бот пришлёт результат в Telegram",

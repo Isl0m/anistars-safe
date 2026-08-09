@@ -5,6 +5,7 @@ import {
   parseBody,
   requireListingOwner,
   requireAuth,
+  revalidateMarketPages,
 } from "@/lib/api-utils";
 import { offerIdSchema } from "@/lib/market-schemas";
 import { addMarketJob } from "@/lib/trade-queue";
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     sellerId,
   });
 
+  revalidateMarketPages(offer.listingId);
   return marketJobResponse(
     outcome,
     "Обмен обрабатывается — бот пришлёт результат в Telegram",

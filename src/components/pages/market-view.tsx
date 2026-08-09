@@ -56,16 +56,18 @@ import { UserLink } from "../user-link";
 export default function MarketViewPage({
   id,
   listing: initialListing,
+  generatedAt,
   filterOptions,
 }: {
   id: string;
   listing: MarketListingDetail;
+  generatedAt: number;
   filterOptions: FilterOption[];
 }) {
   // Server-rendered with `revalidate = 30`, so the page can arrive showing a
   // listing that has since been cancelled or completed. Re-reading it here
   // also lets an accept or reject refresh the view in place.
-  const { data: listing } = useMarketListing(id, initialListing);
+  const { data: listing } = useMarketListing(id, initialListing, generatedAt);
 
   const { userId } = useTelegram();
   const router = useRouter();

@@ -6,6 +6,7 @@ import { ListingFilters } from "@/components/get-filter-options";
 import { Card } from "@/db/schema/card";
 
 const STALE_TIME = 10 * 1000;
+const REFETCH_INTERVAL = 20 * 1000;
 
 export type MarketUser = {
   id: string;
@@ -94,7 +95,10 @@ export function useMarketLimits(enabled = true) {
   });
 }
 
-export function useMarketListings(initialData?: MarketListingSummary[]) {
+export function useMarketListings(
+  initialData?: MarketListingSummary[],
+  initialDataUpdatedAt?: number
+) {
   return useQuery({
     queryKey: marketKeys.listings,
     queryFn: async () => {
@@ -104,7 +108,9 @@ export function useMarketListings(initialData?: MarketListingSummary[]) {
       return data.listings;
     },
     staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
     initialData,
+    initialDataUpdatedAt,
   });
 }
 
@@ -144,7 +150,8 @@ export function useUserMarketOffers(userId?: string) {
 
 export function useMarketListing(
   id: string,
-  initialData: MarketListingDetail
+  initialData: MarketListingDetail,
+  initialDataUpdatedAt?: number
 ) {
   return useQuery({
     queryKey: marketKeys.listing(id),
@@ -155,7 +162,9 @@ export function useMarketListing(
       return data.listing;
     },
     staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
     initialData,
+    initialDataUpdatedAt,
   });
 }
 
@@ -169,5 +178,6 @@ export function useMarketOffers(id: string) {
       return data.offers;
     },
     staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
   });
 }

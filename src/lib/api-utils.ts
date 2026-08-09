@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z, ZodType } from "zod";
 
@@ -12,6 +13,11 @@ import { MarketJobOutcome } from "@/lib/trade-queue";
 
 export function errorResponse(error: string, status: number) {
   return NextResponse.json({ error }, { status });
+}
+
+export function revalidateMarketPages(listingId?: number) {
+  revalidatePath("/market");
+  if (listingId !== undefined) revalidatePath(`/market/${listingId}`);
 }
 
 /**

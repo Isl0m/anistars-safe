@@ -51,9 +51,11 @@ import { UserLink } from "../user-link";
 
 export default function MarketPage({
   initialListings,
+  generatedAt,
   filterOptions,
 }: {
   initialListings: MarketListingSummary[];
+  generatedAt: number;
   filterOptions: FilterOption[];
 }) {
   const { userId } = useTelegram();
@@ -62,7 +64,7 @@ export default function MarketPage({
   const [activeTab, setActiveTab] = useState("all");
 
   const { data: listings = [], isLoading: listingsLoading } =
-    useMarketListings(initialListings);
+    useMarketListings(initialListings, generatedAt);
   const { data: userOffers = [], isLoading: userOffersLoading } =
     useUserMarketOffers(userId);
   const { data: inactiveListings = [], isLoading: inactiveLoading } =

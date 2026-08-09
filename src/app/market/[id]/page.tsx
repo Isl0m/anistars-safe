@@ -26,6 +26,7 @@ export default async function MarketView(props: {
     <MarketViewPage
       id={params.id}
       listing={listing as unknown as MarketListingDetail}
+      generatedAt={Date.now()}
       filterOptions={filterOptions}
     />
   );

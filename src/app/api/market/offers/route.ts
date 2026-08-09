@@ -4,6 +4,7 @@ import {
   errorResponse,
   parseBody,
   requireAuth,
+  revalidateMarketPages,
 } from "@/lib/api-utils";
 import { MAX_ACTIVE_OFFERS, MAX_LISTING_CARDS } from "@/lib/constants";
 import { createOfferSchema } from "@/lib/market-schemas";
@@ -111,5 +112,6 @@ export async function POST(request: Request) {
 
   await addMarketOfferCards(offer.id, validation.cardIds);
 
+  revalidateMarketPages(listingId);
   return NextResponse.json({ offer });
 }

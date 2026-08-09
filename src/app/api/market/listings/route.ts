@@ -4,6 +4,7 @@ import {
   errorResponse,
   parseBody,
   requireAuth,
+  revalidateMarketPages,
 } from "@/lib/api-utils";
 import { MAX_ACTIVE_LISTINGS, MAX_LISTING_CARDS } from "@/lib/constants";
 import { createListingSchema } from "@/lib/market-schemas";
@@ -72,5 +73,6 @@ export async function POST(request: Request) {
 
   await addMarketListingCards(listing.id, validation.cardIds);
 
+  revalidateMarketPages();
   return NextResponse.json({ listing });
 }

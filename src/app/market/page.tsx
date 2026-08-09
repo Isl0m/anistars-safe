@@ -15,6 +15,7 @@ export default async function Market() {
   return (
     <MarketPage
       initialListings={listings as unknown as MarketListingSummary[]}
+      generatedAt={Date.now()}
       filterOptions={initialFilterOptions}
     />
   );
