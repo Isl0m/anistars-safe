@@ -9,6 +9,7 @@ import {
   inArray,
   isNotNull,
   notExists,
+  or,
   Param,
   sql,
   SQL,
@@ -289,6 +290,21 @@ export async function getCardIdsMatchingFilter(
 }
 
 
+/**
+ * A card has exactly one type, resolved in this order: upgradable, then
+ * upgrade, then limited (not droppable), else basic. Selecting several types
+ * matches any of them.
+ */
+function cardTypeCondition(type: string): SQL | undefined {
+  const plain = [eq(tCards.upgradeable, false), eq(tCards.upgrade, false)];
+  if (type === "upgradable") return eq(tCards.upgradeable, true);
+  if (type === "upgrade")
+    return and(eq(tCards.upgradeable, false), eq(tCards.upgrade, true));
+  if (type === "limited") return and(...plain, eq(tCards.droppable, false));
+  if (type === "basic") return and(...plain, eq(tCards.droppable, true));
+  return undefined;
+}
+
 function buildCardFilters(filter?: Filter): (SQL | undefined)[] {
   const filters: (SQL | undefined)[] = [];
   if (filter?.rarityIds && filter.rarityIds.length > 0)
@@ -307,20 +323,12 @@ function buildCardFilters(filter?: Filter): (SQL | undefined)[] {
   }
 
   if (filter?.droppable && filter.droppable.length > 0) {
-    filter.droppable.forEach((f) => {
-      if (f === "limited") {
-        filters.push(eq(tCards.droppable, false));
-      }
-      if (f === "basic") {
-        filters.push(eq(tCards.droppable, true));
-      }
-      if (f === "upgradable") {
-        filters.push(eq(tCards.upgradeable, true));
-      }
-      if (f === "upgrade") {
-        filters.push(eq(tCards.upgrade, true));
-      }
-    });
+    const typeConditions = filter.droppable
+      .map((f) => cardTypeCondition(f))
+      .filter((c): c is SQL => !!c);
+    if (typeConditions.length > 0) {
+      filters.push(or(...typeConditions)!);
+    }
   }
 
   if (filter?.techniques && filter.techniques.length > 0) {
