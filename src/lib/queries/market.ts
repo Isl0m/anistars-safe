@@ -19,7 +19,7 @@ import {
 } from "@/db/schema/market";
 import { tgUsers } from "@/db/schema/user";
 
-import { cardPreviewColumns, userPublicColumns } from "./shared";
+import { cardPreviewColumns, groupBy, userPublicColumns } from "./shared";
 
 const MARKET_LISTINGS_TAG = "market-listings";
 
@@ -60,7 +60,7 @@ async function attachCardsAndOffers<T extends { id: number }>(listings: T[]) {
       .groupBy(marketOffers.listingId),
   ]);
 
-  const cardsByListing = Map.groupBy(allCards, (c) => c.listingId);
+  const cardsByListing = groupBy(allCards, (c) => c.listingId);
   const offersMap = new Map(
     offerCounts.map((o) => [
       o.listingId,
@@ -176,7 +176,7 @@ export async function getMarketOffersForListing(
     ownedCardIds = new Set(owned.map((o) => o.cardId));
   }
 
-  const cardsByOffer = Map.groupBy(allCards, (c) => c.offerId);
+  const cardsByOffer = groupBy(allCards, (c) => c.offerId);
 
   return offers.map((offer) => ({
     ...offer,
@@ -245,9 +245,9 @@ export async function getUserMarketOffers(userId: string) {
       .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId)),
   ]);
 
-  const offerCardsByOffer = Map.groupBy(allOfferCards, (c) => c.offerId);
+  const offerCardsByOffer = groupBy(allOfferCards, (c) => c.offerId);
   const listingsById = new Map(allListings.map((l) => [l.id, l]));
-  const listingCardsByListing = Map.groupBy(
+  const listingCardsByListing = groupBy(
     allListingCards,
     (c) => c.listingId
   );

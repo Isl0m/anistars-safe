@@ -28,7 +28,7 @@ import {
 } from "@/db/schema/trade";
 import { tgUsers, tradingStatus, User } from "@/db/schema/user";
 
-import { cardBaseColumns } from "./shared";
+import { cardBaseColumns, groupBy } from "./shared";
 
 export async function getTradeWithSenderCards(id: number) {
   const multiTradeColumns = getTableColumns(multiTrades);
@@ -436,8 +436,8 @@ async function getMarketTradeUserHistory(id: string) {
       .innerJoin(tCards, eq(tCards.id, marketOfferCards.cardId)),
   ]);
 
-  const listingCardsMap = Map.groupBy(listingCards, (c) => c.listingId);
-  const offerCardsMap = Map.groupBy(offerCards, (c) => c.offerId);
+  const listingCardsMap = groupBy(listingCards, (c) => c.listingId);
+  const offerCardsMap = groupBy(offerCards, (c) => c.offerId);
 
   const tradesHistory: TradeHistory[] = trades.map((trade) => ({
     id: trade.listingId,
