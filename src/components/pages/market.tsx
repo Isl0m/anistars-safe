@@ -531,35 +531,21 @@ function OffersList({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {isPending && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 flex-1 text-xs"
-                      disabled={cancellingId === offer.id}
-                      onClick={() => handleCancel(offer.id)}
-                    >
-                      {cancellingId === offer.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        "Отменить"
-                      )}
-                    </Button>
-                  )}
-                  {offer.listing && (
-                    <Link
-                      href={`/market/${offer.listingId}`}
-                      className={buttonVariants({
-                        size: "sm",
-                        variant: isPending ? "outline" : "default",
-                        className: "h-8 flex-1 text-xs",
-                      })}
-                    >
-                      Посмотреть
-                    </Link>
-                  )}
-                </div>
+                {isPending && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-8 w-full text-xs"
+                    disabled={cancellingId === offer.id}
+                    onClick={() => handleCancel(offer.id)}
+                  >
+                    {cancellingId === offer.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      "Отменить"
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           );
