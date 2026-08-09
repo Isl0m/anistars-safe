@@ -3,11 +3,14 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
+import { MAX_FAVOURITE_CARDS } from "@/lib/constants";
 
 export function useFavouriteCards(userId?: string) {
   const queryClient = useQueryClient();
+  const idsKey = ["favourite-card-ids", userId];
+
   const favouritesQuery = useQuery({
-    queryKey: ["favourite-card-ids", userId],
+    queryKey: idsKey,
     queryFn: async () => {
       if (!userId) return [];
       const { data } = await api.get<{ cardIds: string[] }>(
@@ -15,41 +18,54 @@ export function useFavouriteCards(userId?: string) {
       );
       return data.cardIds;
     },
+    staleTime: 60_000,
   });
 
   const toggleFavourite = useMutation({
-    mutationFn: async (cardId: string) => {
-      const isFav = favouritesQuery.data?.includes(cardId);
+    mutationFn: async ({
+      cardId,
+      isFav,
+    }: {
+      cardId: string;
+      isFav: boolean;
+    }) => {
       if (isFav) {
-        const { data } = await api.delete<{ favouriteCardIds: string[] }>(
-          "/api/user/favourites",
-          {
-            data: { cardId },
-          }
-        );
-        return data.favouriteCardIds;
+        await api.delete("/api/user/favourites", { data: { cardId } });
+        return;
       }
-      const { data } = await api.post<{ favouriteCardIds: string[] }>(
-        "/api/user/favourites",
-        {
-          cardId,
-        }
+      await api.post("/api/user/favourites", { cardId });
+    },
+    onMutate: async ({ cardId, isFav }) => {
+      await queryClient.cancelQueries({ queryKey: idsKey });
+      const previous = queryClient.getQueryData<string[]>(idsKey) ?? [];
+      queryClient.setQueryData<string[]>(
+        idsKey,
+        isFav ? previous.filter((id) => id !== cardId) : [...previous, cardId]
       );
-      return data.favouriteCardIds;
+      return { previous };
     },
-    onSuccess: (newIds) => {
-      queryClient.setQueryData(["favourite-card-ids", userId], newIds);
-      queryClient.invalidateQueries({ queryKey: ["favourite-cards", userId] });
-    },
-    onError: (error: AxiosError) => {
-      const response = error.response?.data as { error: string };
+    onError: (error: AxiosError, _vars, context) => {
+      if (context) queryClient.setQueryData(idsKey, context.previous);
+      const response = error.response?.data as { error?: string } | undefined;
       const messages: Record<string, string> = {
-        max_reached: "Достигнут лимит избранных карт (8)",
+        max_reached: `Достигнут лимит избранных карт (${MAX_FAVOURITE_CARDS})`,
+        already_exists: "Карта уже в избранном",
         not_owned: "Вы не владеете этой картой",
       };
-      toast.error(messages[response.error] ?? "Не удалось обновить избранное");
+      const message = response?.error ? messages[response.error] : undefined;
+      toast.error(message ?? "Не удалось обновить избранное");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: idsKey });
+      queryClient.invalidateQueries({ queryKey: ["favourite-cards", userId] });
     },
   });
 
-  return { favouritesQuery, toggleFavourite };
+  const toggle = (cardId: string) =>
+    toggleFavourite.mutate({
+      cardId,
+      isFav: (favouritesQuery.data ?? []).includes(cardId),
+    });
+
+  return { favouritesQuery, toggleFavourite, toggle };
 }

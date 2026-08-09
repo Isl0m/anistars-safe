@@ -93,7 +93,7 @@ export function Profile() {
     placeholderData: keepPreviousData,
   });
 
-  const { favouritesQuery, toggleFavourite } = useFavouriteCards(userId);
+  const { favouritesQuery, toggle } = useFavouriteCards(userId);
 
   return (
     <main className="flex h-full flex-col">
@@ -117,7 +117,7 @@ export function Profile() {
             page={page}
             onPageChange={handleChangePage}
             favouriteCardIds={favouritesQuery.data}
-            onToggleFavourite={(cardId) => toggleFavourite.mutate(cardId)}
+            onToggleFavourite={toggle}
           />
         ) : (
           <CardsListSkeleton />

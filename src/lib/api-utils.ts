@@ -131,7 +131,9 @@ export async function requireAuth(
   if (!auth) {
     return { error: errorResponse("Unauthorized", 401) };
   }
-  await updateUserPhotoUrl(auth.id, auth.photoUrl);
+  void Promise.resolve(updateUserPhotoUrl(auth.id, auth.photoUrl)).catch((e) =>
+    console.error("photo url update failed:", e)
+  );
   return { auth };
 }
 
