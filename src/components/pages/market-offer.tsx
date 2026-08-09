@@ -28,6 +28,13 @@ import { marketKeys, useMarketLimits } from "@/hook/use-market";
 import { usePaginatedCardsQuery } from "@/hook/use-paginated-cards-query";
 import { useTelegramBackButton } from "@/hook/use-telegram-back-button";
 import { Badge } from "@/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/ui/dialog";
 import { Skeleton } from "@/ui/skeleton";
 
 import CardsFilter from "../cards-filter";
@@ -156,43 +163,42 @@ function MarketOfferContent({
   const offerLimit = limits?.offers;
   const limitReached = offerLimit ? !offerLimit.canCreate : false;
   const [step, setStep] = useState<Steps>("select");
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { selectedCards, resetSelected, onCardSelect } = useCardSelect();
   const { page, filter, handleChangePage, handleFilterChange } =
     useCardsFilterState(initialFilter);
-  const handleCreateOffer = async () => {
-    setIsLoading(true);
-
+  const getSelectionWarning = () => {
     if (limitReached && offerLimit) {
-      toast.warning(
-        `Достигнут лимит активных предложений (${offerLimit.active}/${offerLimit.limit}).`
-      );
-      setIsLoading(false);
-      return;
+      return `Достигнут лимит активных предложений (${offerLimit.active}/${offerLimit.limit}).`;
     }
 
     if (
       listing.filters?.minCardCount &&
       selectedCards.length < listing.filters.minCardCount
     ) {
-      toast.warning(
-        `Минимальное количество карт: ${listing.filters.minCardCount}`
-      );
-      setIsLoading(false);
-      return;
+      return `Минимальное количество карт: ${listing.filters.minCardCount}`;
     }
 
     if (
       listing.filters?.maxCardCount &&
       selectedCards.length > listing.filters.maxCardCount
     ) {
-      toast.warning(
-        `Максимальное количество карт: ${listing.filters.maxCardCount}`
-      );
-      setIsLoading(false);
+      return `Максимальное количество карт: ${listing.filters.maxCardCount}`;
+    }
+
+    return null;
+  };
+
+  const handleCreateOffer = async () => {
+    const warning = getSelectionWarning();
+    if (warning) {
+      toast.warning(warning);
+      setIsConfirmOpen(false);
       return;
     }
 
+    setIsLoading(true);
     try {
       await api.post("/api/market/offers", {
         listingId: listing.id,
@@ -205,6 +211,7 @@ function MarketOfferContent({
       router.push("/market");
     } catch (e) {
       showApiError(e, "Не удалось отправить предложение");
+      setIsConfirmOpen(false);
     } finally {
       setIsLoading(false);
     }
@@ -402,24 +409,88 @@ function MarketOfferContent({
             >
               Назад
             </Button>
-            <Button
-              className="w-full"
-              disabled={isLoading || limitReached}
-              onClick={handleCreateOffer}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Загрузка...
-                </>
-              ) : (
-                "Отправить"
-              )}
-            </Button>
+            <ConfirmOfferDialog
+              open={isConfirmOpen}
+              onOpenChange={setIsConfirmOpen}
+              sellerCardCount={listing.cards.length}
+              selectedCardCount={selectedCards.length}
+              onConfirm={handleCreateOffer}
+              disabled={limitReached}
+              isLoading={isLoading}
+            />
           </>
         )}
       </div>
     </>
+  );
+}
+
+function ConfirmOfferDialog({
+  open,
+  onOpenChange,
+  sellerCardCount,
+  selectedCardCount,
+  onConfirm,
+  disabled,
+  isLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sellerCardCount: number;
+  selectedCardCount: number;
+  onConfirm: () => void;
+  disabled: boolean;
+  isLoading: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <Button className="w-full" disabled={disabled}>
+          Отправить
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Подтверждение</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-600">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p className="text-sm leading-snug">
+              Если продавец примет предложение, ваши карты сразу перейдут к нему
+              — отменить обмен после этого нельзя.
+            </p>
+          </div>
+
+          <p className="text-center text-sm font-semibold">
+            Отправить {selectedCardCount} карт в обмен на {sellerCardCount} карт
+            продавца?
+          </p>
+
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+              onClick={() => onOpenChange(false)}
+            >
+              Отмена
+            </Button>
+            <Button className="w-full" disabled={isLoading} onClick={onConfirm}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Отправка...
+                </>
+              ) : (
+                "Подтвердить"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
