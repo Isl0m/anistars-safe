@@ -74,11 +74,22 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply fixed h-screen w-full overflow-hidden bg-background text-foreground md:static md:overflow-auto;
   }
-  :focus {
-    @apply outline-none ring-0 ring-offset-0;
+  /* Touch-first app: no focus rings anywhere. Radix focuses elements
+     programmatically (tabs, dialog auto-focus), which the webview counts as
+     :focus-visible, so per-component focus-visible:ring-* utilities still
+     fire — overriding the ring variables with !important is the only rule
+     that beats them without also killing regular box shadows. */
+  *:focus,
+  *:focus-visible {
+    outline: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
   }
 }
 

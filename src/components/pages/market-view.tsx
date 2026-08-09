@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ArrowRightLeft,
   Check,
   Clock,
@@ -39,7 +40,6 @@ import { Badge } from "@/ui/badge";
 import { Button, buttonVariants } from "@/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -493,8 +493,10 @@ function AcceptOfferDialog({
   onAccept: () => void;
   isLoading: boolean;
 }) {
+  const [step, setStep] = useState(1);
+
   return (
-    <Dialog>
+    <Dialog onOpenChange={(open) => !open && setStep(1)}>
       <DialogTrigger asChild>
         <Button className="h-8 w-full text-xs font-bold shadow-lg shadow-primary/20">
           Принять
@@ -502,85 +504,108 @@ function AcceptOfferDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Подтверждение обмена</DialogTitle>
+          <DialogTitle>
+            {step === 1 ? "Обзор обмена" : "Подтверждение"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
-          <div className="rounded-xl border bg-card p-3">
-            <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <ArrowRightLeft className="h-4 w-4" />
-              Вы отдаёте ({listingCards.length})
-            </h4>
-            <div className="grid grid-cols-5 gap-2">
-              {listingCards.map((card) => (
-                <div
-                  key={card.id}
-                  className="relative aspect-[3/4] overflow-hidden rounded border"
-                >
-                  <Image
-                    src={getImageProxyUrl(card.image)}
-                    alt={card.name}
-                    fill
-                    sizes="300px"
-                    className="object-cover"
-                  />
-                </div>
-              ))}
+        {step === 1 ? (
+          <div className="space-y-3 py-2">
+            <div className="rounded-xl border bg-card p-3">
+              <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                <ArrowRightLeft className="h-4 w-4" />
+                Вы отдаёте ({listingCards.length})
+              </h4>
+              <div className="grid grid-cols-5 gap-2">
+                {listingCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="relative aspect-[3/4] overflow-hidden rounded border"
+                  >
+                    <Image
+                      src={getImageProxyUrl(card.image)}
+                      alt={card.name}
+                      fill
+                      sizes="300px"
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="flex justify-center">
-            <div className="rounded-full bg-muted p-2">
-              <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
+            <div className="flex justify-center">
+              <div className="rounded-full bg-muted p-2">
+                <ArrowRightLeft className="h-5 w-5 text-muted-foreground" />
+              </div>
             </div>
-          </div>
 
-          <div className="rounded-xl border bg-card p-3">
-            <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-green-600">
-              <UserIcon className="h-4 w-4" />
-              Вы получите от {offer.buyer.name} ({offer.cards.length})
-            </h4>
-            <div className="grid grid-cols-5 gap-2">
-              {offer.cards.map((card) => (
-                <div
-                  key={card.id}
-                  className="relative aspect-[3/4] overflow-hidden rounded border"
-                >
-                  <Image
-                    src={getImageProxyUrl(card.image)}
-                    alt={card.name}
-                    fill
-                    sizes="300px"
-                    className="object-cover"
-                  />
-                </div>
-              ))}
+            <div className="rounded-xl border bg-card p-3">
+              <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-green-600">
+                <UserIcon className="h-4 w-4" />
+                Вы получите от {offer.buyer.name} ({offer.cards.length})
+              </h4>
+              <div className="grid grid-cols-5 gap-2">
+                {offer.cards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="relative aspect-[3/4] overflow-hidden rounded border"
+                  >
+                    <Image
+                      src={getImageProxyUrl(card.image)}
+                      alt={card.name}
+                      fill
+                      sizes="300px"
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <p className="text-center text-xs text-muted-foreground">
-            Это действие необратимо — карты будут сразу перенесены между
-            аккаунтами.
-          </p>
-
-          <div className="flex gap-3">
-            <DialogClose asChild>
-              <Button variant="outline" className="w-full">
-                Отмена
-              </Button>
-            </DialogClose>
-            <Button onClick={onAccept} disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Обработка...
-                </>
-              ) : (
-                "Подтвердить"
-              )}
+            <Button onClick={() => setStep(2)} className="w-full">
+              Продолжить
             </Button>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-600">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p className="text-sm leading-snug">
+                Это действие необратимо. Карты будут сразу перенесены между
+                аккаунтами, остальные офферы лота будут отменены.
+              </p>
+            </div>
+
+            <p className="text-center text-sm font-semibold">
+              Принять предложение от {offer.buyer.name}?
+            </p>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="w-full"
+              >
+                Назад
+              </Button>
+              <Button
+                onClick={onAccept}
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Обработка...
+                  </>
+                ) : (
+                  "Подтвердить"
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
