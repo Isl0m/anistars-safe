@@ -8,7 +8,11 @@ import {
   RotateCcw,
 } from "lucide-react";
 
-import { getRarityChipStyle, stripRarityEmoji } from "@/lib/constants";
+import {
+  getRarityChipStyle,
+  MAX_LISTING_FILTER_UNIVERSES,
+  stripRarityEmoji,
+} from "@/lib/constants";
 
 import { CardStats } from "@/db/schema/card";
 
@@ -166,7 +170,11 @@ export default function ListingFilter({
                     <span className="text-[13px] font-semibold text-foreground">
                       {universeOption.name}
                     </span>
-                    <SelectedCount fieldName="universeIds" form={form} />
+                    <SelectedCount
+                      fieldName="universeIds"
+                      form={form}
+                      max={MAX_LISTING_FILTER_UNIVERSES}
+                    />
                     <ChevronDown
                       className={`ml-auto h-4 w-4 text-muted-foreground transition-transform duration-200 ${universeExpanded ? "rotate-180" : ""}`}
                     />
@@ -181,20 +189,28 @@ export default function ListingFilter({
                             const isSelected = field.state.value.includes(
                               id as number
                             );
+                            const atLimit =
+                              !isSelected &&
+                              field.state.value.length >=
+                                MAX_LISTING_FILTER_UNIVERSES;
                             return (
                               <Label
                                 htmlFor={`listing-uni-${id}`}
-                                className={`flex cursor-pointer items-center rounded-lg px-3 py-2.5 transition-colors ${
+                                className={`flex items-center rounded-lg px-3 py-2.5 transition-colors ${
                                   isSelected
-                                    ? "bg-primary/10 text-primary"
-                                    : "text-foreground hover:bg-muted"
+                                    ? "cursor-pointer bg-primary/10 text-primary"
+                                    : atLimit
+                                      ? "cursor-not-allowed text-foreground opacity-40"
+                                      : "cursor-pointer text-foreground hover:bg-muted"
                                 }`}
                               >
                                 <Checkbox
                                   id={`listing-uni-${id}`}
                                   checked={isSelected}
+                                  disabled={atLimit}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
+                                      if (atLimit) return;
                                       field.pushValue(id as number);
                                     } else {
                                       const idx = field.state.value.findIndex(
@@ -241,7 +257,15 @@ export default function ListingFilter({
   );
 }
 
-function SelectedCount({ fieldName, form }: { fieldName: string; form: any }) {
+function SelectedCount({
+  fieldName,
+  form,
+  max,
+}: {
+  fieldName: string;
+  form: any;
+  max?: number;
+}) {
   return (
     <form.Field
       name={fieldName}
@@ -252,7 +276,7 @@ function SelectedCount({ fieldName, form }: { fieldName: string; form: any }) {
         if (count === 0) return null;
         return (
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/15 px-1.5 text-[11px] font-semibold text-primary">
-            {count}
+            {max ? `${count}/${max}` : count}
           </span>
         );
       }}

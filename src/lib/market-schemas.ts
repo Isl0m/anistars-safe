@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { MAX_LISTING_CARDS } from "@/lib/constants";
+import {
+  MAX_LISTING_CARDS,
+  MAX_LISTING_FILTER_UNIVERSES,
+} from "@/lib/constants";
 
 const cardId = z.string().min(1).max(64);
 
@@ -13,11 +16,15 @@ const cardId = z.string().min(1).max(64);
  */
 export const listingFiltersSchema = z
   .object({
-    // The game already has 60+ universes and a user may select all of them;
-    // the cap only guards against absurd payloads, not real selections.
-    classIds: z.number().int().positive().array().max(200).default([]),
-    rarityIds: z.number().int().positive().array().max(200).default([]),
-    universeIds: z.number().int().positive().array().max(200).default([]),
+    classIds: z.number().int().positive().array().max(50).default([]),
+    rarityIds: z.number().int().positive().array().max(50).default([]),
+    universeIds: z
+      .number()
+      .int()
+      .positive()
+      .array()
+      .max(MAX_LISTING_FILTER_UNIVERSES)
+      .default([]),
     type: z
       .enum(["upgrade", "upgradable", "limited", "basic"])
       .array()

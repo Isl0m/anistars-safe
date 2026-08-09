@@ -1,5 +1,9 @@
 export const MAX_LISTING_CARDS = 12;
 
+// A listing's universe requirement is a signal to buyers, not a browsing
+// filter — past a handful of universes it carries no information.
+export const MAX_LISTING_FILTER_UNIVERSES = 10;
+
 // Max simultaneously active market entries, by account tier.
 // Listings are "active"; offers are "pending".
 export const MAX_ACTIVE_LISTINGS = { premium: 3, basic: 1 } as const;
