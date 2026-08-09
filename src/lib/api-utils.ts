@@ -80,11 +80,13 @@ export async function requireUser(id: string) {
 }
 
 export async function loadPendingOffer(offerId: number | undefined) {
-  if (!offerId) return { error: errorResponse("Missing required fields", 400) };
+  if (!offerId)
+    return { error: errorResponse("Некорректный запрос", 400) };
   const offer = await getMarketOffer(offerId);
-  if (!offer) return { error: errorResponse("Offer not found", 404) };
+  if (!offer)
+    return { error: errorResponse("Предложение не найдено", 404) };
   if (offer.status !== "pending")
-    return { error: errorResponse("Offer is not pending", 400) };
+    return { error: errorResponse("Это предложение уже недоступно", 400) };
   return { offer };
 }
 
