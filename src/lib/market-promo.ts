@@ -1,8 +1,8 @@
-import { InlineKeyboard } from "grammy";
+import { GrammyError, InlineKeyboard } from "grammy";
 import type { InputMediaPhoto } from "grammy/types";
 
 import { getApi, getMe } from "@/lib/bot";
-import { MarketPromoSettings } from "@/lib/market-schemas";
+import { MarketPromoSettings, withChannelPrefix } from "@/lib/market-schemas";
 import {
   getClasses,
   getListingForPromo,
@@ -10,6 +10,7 @@ import {
   getRarities,
   getUniverses,
   ListingPromoData,
+  setMarketPromoSettings,
 } from "@/lib/queries";
 import { CardTypes, prettyNumbers, statMapper, typeMapper } from "@/lib/utils";
 
@@ -165,6 +166,64 @@ async function sendPromo(
   });
 }
 
+export function isChatNotFound(e: unknown) {
+  return e instanceof GrammyError && /chat not found/i.test(e.description);
+}
+
+export function chatErrorMessage(e: unknown) {
+  if (!(e instanceof GrammyError)) return "Не удалось отправить сообщение";
+  if (isChatNotFound(e)) {
+    return "Чат не найден. Для канала или супергруппы ID должен начинаться с -100, а бот должен быть добавлен туда участником";
+  }
+  if (
+    /not enough rights|CHAT_WRITE_FORBIDDEN|bot was kicked|bot is not a member/i.test(
+      e.description
+    )
+  ) {
+    return "Бот не может писать в этот чат — дайте ему право отправлять сообщения";
+  }
+  if (/message thread not found/i.test(e.description)) {
+    return "Тема с таким ID не найдена в этом чате";
+  }
+  return `Telegram отклонил отправку: ${e.description}`;
+}
+
+export async function resolveChatId(chatId: string) {
+  const candidates = [chatId, withChannelPrefix(chatId)].filter(
+    (value): value is string => !!value
+  );
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      await getApi().getChat(candidate);
+      return { chatId: candidate };
+    } catch (e) {
+      lastError = e;
+      if (!isChatNotFound(e)) break;
+    }
+  }
+  return { chatId: null, error: lastError };
+}
+
+async function withResolvedChat<T>(
+  settings: MarketPromoSettings,
+  send: (settings: MarketPromoSettings) => Promise<T>
+) {
+  try {
+    return await send(settings);
+  } catch (e) {
+    const prefixed = isChatNotFound(e)
+      ? withChannelPrefix(settings.chatId)
+      : null;
+    if (!prefixed) throw e;
+
+    const result = await send({ ...settings, chatId: prefixed });
+    await setMarketPromoSettings({ ...settings, chatId: prefixed });
+    return result;
+  }
+}
+
 export async function promoteListing(listingId: number) {
   const settings = await getMarketPromoSettings();
   if (!settings.enabled || !settings.chatId) return { ok: false as const };
@@ -172,18 +231,17 @@ export async function promoteListing(listingId: number) {
   const listing = await getListingForPromo(listingId);
   if (!listing || listing.status !== "active") return { ok: false as const };
 
-  await sendPromo(settings, listing);
+  await withResolvedChat(settings, (s) => sendPromo(s, listing));
   return { ok: true as const };
 }
 
 export async function sendPromoTestPost(settings: MarketPromoSettings) {
-  const api = getApi();
-  const threadOptions = settings.threadId
-    ? { message_thread_id: settings.threadId }
-    : {};
-  await api.sendMessage(
-    settings.chatId,
-    "✅ Канал подключён: сюда будут публиковаться новые лоты маркета",
-    { ...threadOptions }
-  );
+  return withResolvedChat(settings, async (s) => {
+    await getApi().sendMessage(
+      s.chatId,
+      "✅ Канал подключён: сюда будут публиковаться новые лоты маркета",
+      s.threadId ? { message_thread_id: s.threadId } : {}
+    );
+    return s.chatId;
+  });
 }

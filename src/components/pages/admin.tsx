@@ -161,15 +161,17 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
 
   const save = useMutation({
     mutationFn: async (settings: MarketPromoSettings) => {
-      const { data } = await api.post<{ settings: MarketPromoSettings }>(
-        "/api/settings/market-promo",
-        settings
-      );
-      return data.settings;
+      const { data } = await api.post<{
+        settings: MarketPromoSettings;
+        warning?: string;
+      }>("/api/settings/market-promo", settings);
+      return data;
     },
-    onSuccess: (settings) => {
+    onSuccess: ({ settings, warning }) => {
       queryClient.setQueryData(marketPromoKey, settings);
-      toast.success("Настройки публикаций сохранены");
+      setForm(settings);
+      if (warning) toast.warning(warning);
+      else toast.success("Настройки публикаций сохранены");
     },
     onError: (e) => showApiError(e, "Не удалось сохранить настройки"),
   });
