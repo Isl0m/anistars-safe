@@ -4,12 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowRightLeft, Coins, Loader2, UserIcon } from "lucide-react";
+import { ArrowRightLeft, Loader2, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { showApiError } from "@/lib/api-feedback";
-import { calcTradeCost } from "@/lib/trade-cost";
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -180,13 +179,6 @@ export function AcceptTradePageContent({
     }
   }
 
-  // Preview only — /api/trade/update recomputes this from the same helper and
-  // persists its own result.
-  const previewCost = calcTradeCost(
-    trade.senderCards.map((c) => c.rarityId),
-    selectedCards.map((c) => c.rarityId)
-  );
-
   return (
     <>
       <Header
@@ -280,15 +272,6 @@ export function AcceptTradePageContent({
                     <ArrowRightLeft className="h-4 w-4" />
                     Вы отдаёте ({selectedCards.length})
                   </h4>
-                  {previewCost > 0 && (
-                    <Badge
-                      variant="outline"
-                      className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
-                    >
-                      <Coins className="mr-1 h-3 w-3" />
-                      {previewCost}
-                    </Badge>
-                  )}
                 </div>
                 <SelectedCardsList
                   selectedCards={selectedCards}

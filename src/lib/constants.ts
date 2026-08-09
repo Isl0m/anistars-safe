@@ -10,7 +10,9 @@ export const MAX_ACTIVE_LISTINGS = { premium: 3, basic: 1 } as const;
 export const MAX_ACTIVE_OFFERS = { premium: 5, basic: 3 } as const;
 
 // Cards one side may put into a single multi-trade, by account tier.
-export const MAX_CARDS_PER_TRADE = { premium: 10, basic: 5 } as const;
+export const MAX_CARDS_PER_TRADE = { premium: 24, basic: 12 } as const;
+
+export const MAX_FAVOURITE_CARDS = 8;
 
 /**
  * Rate limit on trade creation. Each trade sends the receiver a Telegram

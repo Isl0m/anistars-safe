@@ -1,13 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowRightLeft, Coins, UserIcon } from "lucide-react";
+import { ArrowRightLeft, UserIcon } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
-import { Badge } from "@/ui/badge";
 
 import { Header } from "../header";
 import { UserLink } from "../user-link";
@@ -34,15 +33,6 @@ export default function TradeShowPage({
               <ArrowRightLeft className="h-4 w-4" />
               Отправлено ({trade.senderCards.length})
             </h4>
-            {trade.cost > 0 && (
-              <Badge
-                variant="outline"
-                className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
-              >
-                <Coins className="mr-1 h-3 w-3" />
-                {trade.cost}
-              </Badge>
-            )}
           </div>
           <UserLink
             userId={trade.senderId}

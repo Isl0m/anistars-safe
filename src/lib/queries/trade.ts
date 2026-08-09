@@ -124,21 +124,6 @@ export async function getTrade(id: number) {
   return trade ?? null;
 }
 
-/** Rarities of the cards the sender put up, in no particular order. */
-export async function getTradeSenderRarityIds(tradeId: number) {
-  return db
-    .select({ rarityId: tCards.rarityId })
-    .from(multiTradeCards)
-    .where(
-      and(
-        eq(multiTradeCards.tradeId, tradeId),
-        eq(multiTradeCards.isSenderCard, true)
-      )
-    )
-    .innerJoin(tCards, eq(tCards.id, multiTradeCards.cardId))
-    .then((rows) => rows.map((r) => r.rarityId));
-}
-
 export async function getTradeSenderCardIds(tradeId: number) {
   return db
     .select({ cardId: multiTradeCards.cardId })
@@ -162,15 +147,6 @@ export async function isTradeBanned(userId: string) {
     .where(eq(tradingStatus.userId, userId));
   if (!status?.isBanned) return false;
   return !status.banExpiresAt || status.banExpiresAt > new Date();
-}
-
-export async function getCardRarityIds(cardIds: string[]) {
-  if (cardIds.length === 0) return new Map<string, number>();
-  const rows = await db
-    .select({ id: tCards.id, rarityId: tCards.rarityId })
-    .from(tCards)
-    .where(inArray(tCards.id, cardIds));
-  return new Map(rows.map((r) => [r.id, r.rarityId]));
 }
 
 export function updateTrade(id: number, data: Partial<SelectMultiTrade>) {
@@ -244,15 +220,11 @@ export async function createTradeWithCards(
   });
 }
 
-export async function fulfillTradeWithCards(
-  id: number,
-  cost: number,
-  cardIds: string[]
-) {
+export async function fulfillTradeWithCards(id: number, cardIds: string[]) {
   return db.transaction(async (tx) => {
     const [trade] = await tx
       .update(multiTrades)
-      .set({ cost, status: "fulfilled" })
+      .set({ cost: 0, status: "fulfilled" })
       .where(eq(multiTrades.id, id))
       .returning();
     await tx
