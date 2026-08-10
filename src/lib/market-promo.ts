@@ -77,9 +77,10 @@ async function buildFilterRows(filters: ListingPromoData["filters"]) {
   return ["🎯 Взамен:", ...rows];
 }
 
-export function getListingUrl(listingId: number) {
-  const host = process.env.HOST_URL ?? "https://anistars.xyz";
-  return `${host.replace(/\/$/, "")}/market/${listingId}`;
+export function getListingUrl(botUsername: string, listingId: number) {
+  const app = process.env.TG_MINI_APP_NAME;
+  const base = `https://t.me/${botUsername}${app ? `/${app}` : ""}`;
+  return `${base}?startapp=market_${listingId}`;
 }
 
 export async function buildPromoCaption(
@@ -118,7 +119,7 @@ async function sendPromo(
   const caption = await buildPromoCaption(listing, me.username);
   const reply_markup = new InlineKeyboard().url(
     "🏪 Открыть лот",
-    getListingUrl(listing.id)
+    getListingUrl(me.username, listing.id)
   );
   const options = {
     caption,

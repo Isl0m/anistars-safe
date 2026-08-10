@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { QueryProvider } from "@/components/query-client-provider";
 import { RouteGuard } from "@/components/route-guard";
+import { StartParamRouter } from "@/components/start-param-router";
 import { TelegramProvider } from "@/components/telegram-provider";
 import { Toaster } from "@/ui/sonner";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className={cn("bg-background font-sans text-white antialiased")}>
         <QueryProvider>
           <TelegramProvider>
+            <StartParamRouter />
             <div className="relative h-screen pb-[var(--safe-area-bottom)] pt-[var(--safe-area-top)]">
               <RouteGuard>{children}</RouteGuard>
             </div>
