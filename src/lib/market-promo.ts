@@ -1,7 +1,7 @@
-import { GrammyError, InlineKeyboard } from "grammy";
-import type { InputMediaPhoto } from "grammy/types";
+import { GrammyError, InlineKeyboard, InputFile } from "grammy";
 
 import { getApi, getMe } from "@/lib/bot";
+import { buildListingCollage } from "@/lib/listing-collage";
 import { MarketPromoSettings, withChannelPrefix } from "@/lib/market-schemas";
 import {
   getClasses,
@@ -14,7 +14,6 @@ import {
 } from "@/lib/queries";
 import { CardTypes, prettyNumbers, statMapper, typeMapper } from "@/lib/utils";
 
-const MAX_PROMO_PHOTOS = 10;
 const MAX_CAPTION_LENGTH = 1024;
 
 function escapeHtml(text: string) {
@@ -40,8 +39,8 @@ function cardCountLine(min?: number, max?: number) {
   return null;
 }
 
-async function buildFilterLines(filters: ListingPromoData["filters"]) {
-  if (!filters) return ["🎯 <b>Хочет взамен:</b> любые карты"];
+async function buildFilterRows(filters: ListingPromoData["filters"]) {
+  if (!filters) return ["🎯 Взамен: любые карты"];
 
   const [rarities, classes, universes] = await Promise.all([
     getRarities(),
@@ -74,8 +73,13 @@ async function buildFilterLines(filters: ListingPromoData["filters"]) {
   const count = cardCountLine(filters.minCardCount, filters.maxCardCount);
   if (count) rows.push(`🔢 Карт в предложении: ${count}`);
 
-  if (rows.length === 0) return ["🎯 <b>Хочет взамен:</b> любые карты"];
-  return ["🎯 <b>Хочет взамен:</b>", ...rows.map((row) => escapeHtml(row))];
+  if (rows.length === 0) return ["🎯 Взамен: любые карты"];
+  return ["🎯 Взамен:", ...rows];
+}
+
+export function getListingUrl(listingId: number) {
+  const host = process.env.HOST_URL ?? "https://anistars.xyz";
+  return `${host.replace(/\/$/, "")}/market/${listingId}`;
 }
 
 export async function buildPromoCaption(
@@ -83,46 +87,26 @@ export async function buildPromoCaption(
   botUsername: string
 ) {
   const sellerUrl = `https://t.me/${botUsername}?start=profile-${listing.seller.id}`;
-  const listingUrl = `https://t.me/${botUsername}?start=market-${listing.id}`;
+  const rarities = [...new Set(listing.cards.map((card) => card.rarity))];
 
-  const cardLines = listing.cards
-    .slice(0, MAX_PROMO_PHOTOS)
-    .map(
-      (card, idx) =>
-        `${idx + 1}. ${escapeHtml(card.name)} — ${escapeHtml(card.rarity)} · ${escapeHtml(
-          card.class
-        )} · ⚔️${card.power} ♥️${card.stamina}`
-    );
-  const hidden = listing.cards.length - cardLines.length;
-  if (hidden > 0) cardLines.push(`… и ещё ${hidden}`);
-
-  const filterLines = await buildFilterLines(listing.filters);
-
-  const header = [
-    `🏪 <b>Новый лот на маркете</b> #${listing.id}`,
-    "",
+  const quoted = [
     `👤 Продавец: <a href="${sellerUrl}">${escapeHtml(listing.seller.name)}</a>`,
+    `🎴 Карт в лоте: ${listing.cards.length}`,
+    `💎 Редкости: ${escapeHtml(rarities.join(", "))}`,
     "",
-    `🎴 <b>Отдаёт (${listing.cards.length}):</b>`,
+    ...(await buildFilterRows(listing.filters)).map(escapeHtml),
   ];
-  const footer = ["", `<a href="${listingUrl}">Открыть лот</a>`];
 
+  const title = `🏪 <b>Новый лот на маркете</b> #${listing.id}`;
   const assemble = () =>
-    [...header, ...cardLines, "", ...filterLines, ...footer].join("\n");
+    `${title}\n\n<blockquote>${quoted.join("\n")}</blockquote>`;
 
-  while (
-    assemble().length > MAX_CAPTION_LENGTH &&
-    (cardLines.length > 1 || filterLines.length > 1)
-  ) {
-    const from =
-      cardLines.length >= filterLines.length ? cardLines : filterLines;
-    from.pop();
+  while (assemble().length > MAX_CAPTION_LENGTH && quoted.length > 1) {
+    quoted.pop();
   }
 
   const caption = assemble();
-  if (caption.length <= MAX_CAPTION_LENGTH) return { caption, listingUrl };
-
-  return { caption: [...header.slice(0, 1), ...footer].join("\n"), listingUrl };
+  return caption.length <= MAX_CAPTION_LENGTH ? caption : title;
 }
 
 async function sendPromo(
@@ -131,39 +115,38 @@ async function sendPromo(
 ) {
   const api = getApi();
   const me = await getMe();
-  const { caption, listingUrl } = await buildPromoCaption(listing, me.username);
-  const photos = listing.cards.slice(0, MAX_PROMO_PHOTOS);
-  const threadOptions = settings.threadId
-    ? { message_thread_id: settings.threadId }
-    : {};
+  const caption = await buildPromoCaption(listing, me.username);
+  const reply_markup = new InlineKeyboard().url(
+    "🏪 Открыть лот",
+    getListingUrl(listing.id)
+  );
+  const options = {
+    caption,
+    parse_mode: "HTML" as const,
+    reply_markup,
+    ...(settings.threadId ? { message_thread_id: settings.threadId } : {}),
+  };
 
-  if (photos.length > 1) {
-    const media: InputMediaPhoto[] = photos.map((card, idx) => ({
-      type: "photo",
-      media: card.image,
-      ...(idx === 0 ? { caption, parse_mode: "HTML" as const } : {}),
-    }));
-    await api.sendMediaGroup(settings.chatId, media, threadOptions);
-    return;
-  }
+  const collage = await buildListingCollage(
+    listing.cards.map((card) => card.image)
+  ).catch((e) => {
+    console.error("listing collage failed:", e);
+    return null;
+  });
 
-  const reply_markup = new InlineKeyboard().url("Открыть лот", listingUrl);
-  if (photos.length === 1) {
-    await api.sendPhoto(settings.chatId, photos[0].image, {
-      caption,
-      parse_mode: "HTML",
-      reply_markup,
-      ...threadOptions,
+  if (!collage) {
+    await api.sendMessage(settings.chatId, caption, {
+      ...options,
+      link_preview_options: { is_disabled: true },
     });
     return;
   }
 
-  await api.sendMessage(settings.chatId, caption, {
-    parse_mode: "HTML",
-    reply_markup,
-    link_preview_options: { is_disabled: true },
-    ...threadOptions,
-  });
+  await api.sendPhoto(
+    settings.chatId,
+    new InputFile(collage, `listing-${listing.id}.jpg`),
+    options
+  );
 }
 
 export function isChatNotFound(e: unknown) {
