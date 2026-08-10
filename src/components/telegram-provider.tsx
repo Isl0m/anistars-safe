@@ -19,7 +19,6 @@ export interface ITelegramContext {
   tgUser?: TelegramUser;
   initDataRaw?: string;
   userId?: string;
-  startParam?: string;
 }
 
 export const TelegramContext = createContext<ITelegramContext>({
@@ -42,7 +41,6 @@ function initTelegram(): ITelegramContext {
         ? String(lp.tgWebAppData?.user.id)
         : undefined,
       initDataRaw: rawInitData,
-      startParam: lp.tgWebAppStartParam,
       isTelegram: true,
     };
   } catch (e) {
