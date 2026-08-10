@@ -40,7 +40,7 @@ function cardCountLine(min?: number, max?: number) {
 }
 
 async function buildFilterRows(filters: ListingPromoData["filters"]) {
-  if (!filters) return ["🎯 Взамен: любые карты"];
+  if (!filters) return ["Любые карты"];
 
   const [rarities, classes, universes] = await Promise.all([
     getRarities(),
@@ -73,8 +73,7 @@ async function buildFilterRows(filters: ListingPromoData["filters"]) {
   const count = cardCountLine(filters.minCardCount, filters.maxCardCount);
   if (count) rows.push(`🔢 Карт в предложении: ${count}`);
 
-  if (rows.length === 0) return ["🎯 Взамен: любые карты"];
-  return ["🎯 Взамен:", ...rows];
+  return rows.length ? rows : ["Любые карты"];
 }
 
 export function getListingUrl(botUsername: string, listingId: number) {
@@ -88,19 +87,13 @@ export async function buildPromoCaption(
   botUsername: string
 ) {
   const sellerUrl = `https://t.me/${botUsername}?start=profile-${listing.seller.id}`;
-  const rarities = [...new Set(listing.cards.map((card) => card.rarity))];
+  const seller = `<a href="${sellerUrl}">${escapeHtml(listing.seller.name)}</a>`;
 
-  const quoted = [
-    `👤 Продавец: <a href="${sellerUrl}">${escapeHtml(listing.seller.name)}</a>`,
-    `🎴 Карт в лоте: ${listing.cards.length}`,
-    `💎 Редкости: ${escapeHtml(rarities.join(", "))}`,
-    "",
-    ...(await buildFilterRows(listing.filters)).map(escapeHtml),
-  ];
+  const quoted = (await buildFilterRows(listing.filters)).map(escapeHtml);
 
-  const title = `🏪 <b>Новый лот на маркете</b> #${listing.id}`;
+  const title = `🏪 <b>Новый лот на маркете</b> #${listing.id} от ${seller}`;
   const assemble = () =>
-    `${title}\n\n<blockquote>${quoted.join("\n")}</blockquote>`;
+    `${title}\n\n\n📄 <b>Условия:</b>\n<blockquote expandable>${quoted.join("\n")}</blockquote>`;
 
   while (assemble().length > MAX_CAPTION_LENGTH && quoted.length > 1) {
     quoted.pop();
