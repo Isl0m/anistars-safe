@@ -89,6 +89,15 @@ export const marketPromoSettingsSchema = z.object({
       message: "Укажите ID чата (-100…), @username или ссылку t.me",
     }),
   threadId: z.number().int().positive().nullable(),
+  appName: z
+    .string()
+    .trim()
+    .max(64)
+    .regex(
+      /^$|^[A-Za-z][A-Za-z0-9_]{2,}$/,
+      "Короткое имя мини-приложения из BotFather"
+    )
+    .default(""),
 });
 
 export type MarketPromoSettings = z.infer<typeof marketPromoSettingsSchema>;
@@ -97,4 +106,5 @@ export const DEFAULT_MARKET_PROMO_SETTINGS: MarketPromoSettings = {
   enabled: false,
   chatId: "",
   threadId: null,
+  appName: "",
 };

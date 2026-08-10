@@ -39,6 +39,10 @@ function cardCountLine(min?: number, max?: number) {
   return null;
 }
 
+function filterRow(label: string, value: string) {
+  return `<b>${label}:</b> ${escapeHtml(value)}`;
+}
+
 async function buildFilterRows(filters: ListingPromoData["filters"]) {
   if (!filters) return ["Любые карты"];
 
@@ -53,32 +57,48 @@ async function buildFilterRows(filters: ListingPromoData["filters"]) {
   const universeNames = namesOf(universes, filters.universeIds);
   const classNames = namesOf(classes, filters.classIds);
 
-  if (rarityNames.length) rows.push(`💎 Редкость: ${rarityNames.join(", ")}`);
-  if (universeNames.length)
-    rows.push(`🪐 Вселенная: ${universeNames.join(", ")}`);
-  if (classNames.length) rows.push(`⚜️ Класс: ${classNames.join(", ")}`);
+  if (rarityNames.length) {
+    rows.push(filterRow("💎 Редкость", rarityNames.join(", ")));
+  }
+  if (universeNames.length) {
+    rows.push(filterRow("🪐 Вселенная", universeNames.join(", ")));
+  }
+  if (classNames.length) {
+    rows.push(filterRow("⚜️ Класс", classNames.join(", ")));
+  }
   if (filters.stats?.length) {
     rows.push(
-      `📊 Характеристики: ${filters.stats.map((s) => statMapper[s] ?? s).join(", ")}`
+      filterRow(
+        "📊 Характеристики",
+        filters.stats.map((s) => statMapper[s] ?? s).join(", ")
+      )
     );
   }
   if (filters.type?.length) {
     rows.push(
-      `🧩 Тип: ${filters.type.map((t) => typeMapper[t as CardTypes] ?? t).join(", ")}`
+      filterRow(
+        "🧩 Тип",
+        filters.type.map((t) => typeMapper[t as CardTypes] ?? t).join(", ")
+      )
     );
   }
   if (filters.minCardPrice) {
-    rows.push(`💰 Мин. цена карты: ${prettyNumbers(filters.minCardPrice)}✨`);
+    rows.push(
+      filterRow("💰 Мин. цена карты", `${prettyNumbers(filters.minCardPrice)}✨`)
+    );
   }
   const count = cardCountLine(filters.minCardCount, filters.maxCardCount);
-  if (count) rows.push(`🔢 Карт в предложении: ${count}`);
+  if (count) rows.push(filterRow("🔢 Карт в предложении", count));
 
   return rows.length ? rows : ["Любые карты"];
 }
 
-export function getListingUrl(botUsername: string, listingId: number) {
-  const app = process.env.TG_MINI_APP_NAME;
-  const base = `https://t.me/${botUsername}${app ? `/${app}` : ""}`;
+export function getListingUrl(
+  botUsername: string,
+  appName: string,
+  listingId: number
+) {
+  const base = `https://t.me/${botUsername}${appName ? `/${appName}` : ""}`;
   return `${base}?startapp=market_${listingId}`;
 }
 
@@ -89,11 +109,11 @@ export async function buildPromoCaption(
   const sellerUrl = `https://t.me/${botUsername}?start=profile-${listing.seller.id}`;
   const seller = `<a href="${sellerUrl}">${escapeHtml(listing.seller.name)}</a>`;
 
-  const quoted = (await buildFilterRows(listing.filters)).map(escapeHtml);
+  const quoted = await buildFilterRows(listing.filters);
 
   const title = `🏪 <b>Новый лот на маркете</b> #${listing.id} от ${seller}`;
   const assemble = () =>
-    `${title}\n\n\n📄 <b>Условия:</b>\n<blockquote expandable>${quoted.join("\n")}</blockquote>`;
+    `${title}\n\n📄 <b>Условия:</b>\n<blockquote expandable>${quoted.join("\n")}</blockquote>`;
 
   while (assemble().length > MAX_CAPTION_LENGTH && quoted.length > 1) {
     quoted.pop();
@@ -112,7 +132,7 @@ async function sendPromo(
   const caption = await buildPromoCaption(listing, me.username);
   const reply_markup = new InlineKeyboard().url(
     "🏪 Открыть лот",
-    getListingUrl(me.username, listing.id)
+    getListingUrl(me.username, settings.appName, listing.id)
   );
   const options = {
     caption,
@@ -213,11 +233,17 @@ export async function promoteListing(listingId: number) {
 }
 
 export async function sendPromoTestPost(settings: MarketPromoSettings) {
+  const me = await getMe();
+  const appUrl = `https://t.me/${me.username}${settings.appName ? `/${settings.appName}` : ""}`;
+
   return withResolvedChat(settings, async (s) => {
     await getApi().sendMessage(
       s.chatId,
-      "✅ Канал подключён: сюда будут публиковаться новые лоты маркета",
-      s.threadId ? { message_thread_id: s.threadId } : {}
+      "✅ Канал подключён: сюда будут публиковаться новые лоты маркета.\nПроверьте кнопку — она должна открыть мини-приложение.",
+      {
+        reply_markup: new InlineKeyboard().url("🏪 Открыть приложение", appUrl),
+        ...(s.threadId ? { message_thread_id: s.threadId } : {}),
+      }
     );
     return s.chatId;
   });

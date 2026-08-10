@@ -143,7 +143,7 @@ function MarketPromoSection() {
       </div>
       {saved ? (
         <MarketPromoForm
-          key={`${saved.enabled}-${saved.chatId}-${saved.threadId}`}
+          key={`${saved.enabled}-${saved.chatId}-${saved.threadId}-${saved.appName}`}
           initial={saved}
         />
       ) : (
@@ -245,6 +245,25 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
           ID канала или супергруппы начинается с -100. Можно вставить ссылку
           вида t.me/channel или t.me/c/1234567890/1 — она развернётся сама.
           Проверьте кнопкой «Тест» перед сохранением.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium" htmlFor="promo-app">
+          Мини-приложение
+        </label>
+        <Input
+          id="promo-app"
+          value={form.appName}
+          placeholder="allcards"
+          onChange={(e) =>
+            setForm((f) => ({ ...f, appName: e.target.value.trim() }))
+          }
+        />
+        <p className="text-xs text-muted-foreground">
+          Короткое имя из BotFather — часть после имени бота в ссылке
+          t.me/bot/<b>имя</b>. Кнопка «Открыть лот» ведёт туда. Оставьте пустым,
+          только если у бота настроено главное мини-приложение.
         </p>
       </div>
 
