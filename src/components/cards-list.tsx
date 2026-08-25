@@ -12,7 +12,7 @@ import {
   prettyNumbers,
 } from "@/lib/utils";
 
-import { FullCard } from "@/db/schema/card";
+import { CardMedia, FullCard } from "@/db/schema/card";
 
 import {
   ReservedBadges,
@@ -82,6 +82,7 @@ export function CardsList({
         <DrawerContent aria-describedby="card-details">
           {selectedCard !== null ? (
             <CardDetailsContent
+              key={selectedCard.id}
               card={selectedCard}
               closeDrawer={closeDrawer}
               favouriteCardIds={favouriteCardIds}
@@ -98,6 +99,88 @@ export function CardsList({
   );
 }
 
+type MediaOption = { key: string; label: string; url: string };
+
+/** Base art first, labelled as in the bot's skin picker, then variants 1..n. */
+function buildMediaOptions(
+  base: string | null,
+  media: CardMedia[],
+  type: "image" | "gif"
+): MediaOption[] {
+  const options: MediaOption[] = [];
+  if (base) options.push({ key: "base", label: "Стандарт", url: base });
+  media
+    .filter((m) => m.type === type)
+    .forEach((m, i) =>
+      options.push({ key: String(m.id), label: String(i + 1), url: m.url })
+    );
+  return options;
+}
+
+function MediaVariants({
+  options,
+  alt,
+  kind,
+}: {
+  options: MediaOption[];
+  alt: string;
+  kind: "image" | "gif";
+}) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const active = options[activeIdx];
+
+  if (!active) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="relative h-64 w-full">
+        {kind === "image" ? (
+          <Image
+            src={getImageProxyUrl(active.url)}
+            alt={alt}
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            loading="lazy"
+            className="object-contain"
+          />
+        ) : (
+          <video
+            key={active.url}
+            src={active.url}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="h-full w-full object-contain"
+          >
+            Your browser does not support the video tag.
+          </video>
+        )}
+      </div>
+
+      {options.length > 1 && (
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {options.map((option, idx) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => setActiveIdx(idx)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs transition-colors",
+                idx === activeIdx
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground hover:border-primary/50"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CardDetailsContent({
   card,
   favouriteCardIds,
@@ -110,6 +193,9 @@ function CardDetailsContent({
   onToggleFavourite?: (id: string) => void;
 }) {
   const isFavourite = favouriteCardIds?.includes(card.id) ?? false;
+  const media = card.media ?? [];
+  const imageOptions = buildMediaOptions(card.image, media, "image");
+  const gifOptions = buildMediaOptions(card.gif, media, "gif");
 
   return (
     <>
@@ -120,40 +206,20 @@ function CardDetailsContent({
       <div id="card-details" className="space-y-4 px-4">
         <Tabs defaultValue="image" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="image">Фото</TabsTrigger>
-            <TabsTrigger disabled={!card.gif} value="video">
-              Гиф
+            <TabsTrigger value="image">
+              Фото{imageOptions.length > 1 && ` (${imageOptions.length})`}
+            </TabsTrigger>
+            <TabsTrigger disabled={gifOptions.length === 0} value="video">
+              Гиф{gifOptions.length > 1 && ` (${gifOptions.length})`}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="image">
-            <div className="relative h-64 w-full">
-              <Image
-                src={getImageProxyUrl(card.image)}
-                alt={card.name}
-                fill
-                sizes="(max-width: 768px) 100vw, 400px"
-                loading="lazy"
-                className="object-contain"
-              />
-            </div>
+            <MediaVariants options={imageOptions} alt={card.name} kind="image" />
           </TabsContent>
 
           <TabsContent value="video">
-            {card.gif && (
-              <div className="relative h-64 w-full">
-                <video
-                  src={card.gif}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className="h-full w-full object-contain"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            )}
+            <MediaVariants options={gifOptions} alt={card.name} kind="gif" />
           </TabsContent>
         </Tabs>
 

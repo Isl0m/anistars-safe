@@ -32,7 +32,7 @@ import {
 } from "@/db/schema/card";
 import { trialTowerRewards } from "@/db/schema/trialTower";
 
-import { cardDetailColumns, techniquesSql } from "./shared";
+import { cardDetailColumns, mediaSql, techniquesSql } from "./shared";
 
 export async function getRarities() {
   return db.select().from(tRarities).orderBy(tRarities.chance);
@@ -128,6 +128,7 @@ function cardDetailSelect() {
     .select({
       ...cardDetailColumns,
       techniques: techniquesSql,
+      media: mediaSql,
     })
     .from(tCards)
     .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
@@ -141,6 +142,7 @@ function userCardDetailSelect() {
     .select({
       ...cardDetailColumns,
       techniques: techniquesSql,
+      media: mediaSql,
     })
     .from(cardToTgUser)
     .innerJoin(tCards, eq(cardToTgUser.cardId, tCards.id))
