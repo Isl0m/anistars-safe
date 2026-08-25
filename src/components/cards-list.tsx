@@ -153,9 +153,16 @@ function MediaGallery({ card }: { card: FullCard }) {
 
   if (!active) return null;
 
+  const hasStrip = items.length > 1;
+
   return (
     <>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 md:p-5">
+      <div
+        className={cn(
+          "relative flex min-h-0 flex-1 items-center justify-center px-4 md:p-5",
+          !hasStrip && "pb-4"
+        )}
+      >
         <div
           className={cn(
             "pointer-events-none absolute h-[280px] w-[280px] max-w-full rounded-full blur-2xl",
@@ -189,7 +196,7 @@ function MediaGallery({ card }: { card: FullCard }) {
         </div>
       </div>
 
-      {items.length > 1 && (
+      {hasStrip && (
         <div className="flex gap-2 overflow-x-auto px-4 pb-3 pt-3.5 md:px-[22px] md:pb-4 md:pt-0">
           {items.map((item) => {
             const isActive = item.key === active.key;
@@ -268,14 +275,9 @@ function CardDetailsContent({
   return (
     <>
       <DrawerHeader className="flex items-start justify-between gap-3 space-y-0 p-4 text-left md:border-b md:px-[22px] md:pb-3.5 md:pt-5">
-        <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-col md:items-start">
-          <DrawerTitle className="select-text truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
-            {card.name}
-          </DrawerTitle>
-          <span className="hidden flex-none font-mono text-[11px] font-medium text-muted-foreground md:inline">
-            {card.class}
-          </span>
-        </div>
+        <DrawerTitle className="min-w-0 flex-1 select-text truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
+          {card.name}
+        </DrawerTitle>
         <DrawerClose
           onClick={closeDrawer}
           aria-label="Закрыть"
