@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { CheckIcon, Package, Star } from "lucide-react";
+import { CheckIcon, Package, Star, X } from "lucide-react";
 
-import { CARDS_PER_PAGE } from "@/lib/constants";
+import {
+  CARDS_PER_PAGE,
+  getRarityChipStyle,
+  stripRarityEmoji,
+} from "@/lib/constants";
 import {
   cn,
   getImageProxyUrl,
@@ -12,7 +16,8 @@ import {
   prettyNumbers,
 } from "@/lib/utils";
 
-import { CardMedia, FullCard } from "@/db/schema/card";
+import { FullCard } from "@/db/schema/card";
+import { useMediaQuery } from "@/hook/use-media-query";
 
 import {
   ReservedBadges,
@@ -30,7 +35,6 @@ import {
   DrawerTitle,
 } from "./ui/drawer";
 import { Skeleton } from "./ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 type CardsListProps = {
   cards: FullCard[];
@@ -54,6 +58,7 @@ export function CardsList({
 
   const cardsLeft = total - page * cardsPerPage;
   const selectedCard = selectedIdx !== null ? cards[selectedIdx] : null;
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const closeDrawer = () => setSelectedIdx(null);
   const handleSelect = (idx: number) => {
@@ -78,8 +83,18 @@ export function CardsList({
           <p className="text-sm text-muted-foreground">Нет подходящих карт</p>
         </div>
       )}
-      <Drawer open={selectedCard !== null} onClose={closeDrawer}>
-        <DrawerContent aria-describedby="card-details">
+      <Drawer
+        open={selectedCard !== null}
+        onClose={closeDrawer}
+        direction={isDesktop ? "right" : "bottom"}
+        shouldScaleBackground={!isDesktop}
+      >
+        <DrawerContent
+          aria-describedby="card-details"
+          direction={isDesktop ? "right" : "bottom"}
+          className="h-[88svh] md:h-full"
+          overlayClassName="md:bg-black/50"
+        >
           {selectedCard !== null ? (
             <CardDetailsContent
               key={selectedCard.id}
@@ -99,84 +114,140 @@ export function CardsList({
   );
 }
 
-type MediaOption = { key: string; label: string; url: string };
+type MediaItem = { key: string; url: string; isGif: boolean };
 
-/** Base art first, labelled as in the bot's skin picker, then variants 1..n. */
-function buildMediaOptions(
-  base: string | null,
-  media: CardMedia[],
-  type: "image" | "gif"
-): MediaOption[] {
-  const options: MediaOption[] = [];
-  if (base) options.push({ key: "base", label: "Стандарт", url: base });
+/** Base art first, then its variants; photos before gifs, as one strip. */
+function buildMediaItems(card: FullCard): MediaItem[] {
+  const media = card.media ?? [];
+  const items: MediaItem[] = [];
+
+  const push = (url: string | null, key: string, isGif: boolean) => {
+    if (url) items.push({ key, url, isGif });
+  };
+
+  push(card.image, "image", false);
   media
-    .filter((m) => m.type === type)
-    .forEach((m, i) =>
-      options.push({ key: String(m.id), label: String(i + 1), url: m.url })
-    );
-  return options;
+    .filter((m) => m.type === "image")
+    .forEach((m) => push(m.url, `image-${m.id}`, false));
+  push(card.gif, "gif", true);
+  media
+    .filter((m) => m.type === "gif")
+    .forEach((m) => push(m.url, `gif-${m.id}`, true));
+
+  return items;
 }
 
-function MediaVariants({
-  options,
-  alt,
-  kind,
-}: {
-  options: MediaOption[];
-  alt: string;
-  kind: "image" | "gif";
-}) {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const active = options[activeIdx];
+function GifBadge() {
+  return (
+    <span className="pointer-events-none absolute bottom-[3px] left-[3px] rounded-[3px] bg-background/85 px-1 py-[2px] font-mono text-[8px] font-semibold text-yellow-300">
+      GIF
+    </span>
+  );
+}
+
+function MediaGallery({ card }: { card: FullCard }) {
+  const items = buildMediaItems(card);
+  const [activeKey, setActiveKey] = useState(items[0]?.key);
+  const active = items.find((i) => i.key === activeKey) ?? items[0];
+  const glow = getRarityChipStyle(card.rarity).glow;
 
   if (!active) return null;
 
   return (
-    <div className="space-y-3">
-      <div className="relative h-64 w-full">
-        {kind === "image" ? (
-          <Image
-            src={getImageProxyUrl(active.url)}
-            alt={alt}
-            fill
-            sizes="(max-width: 768px) 100vw, 400px"
-            loading="lazy"
-            className="object-contain"
-          />
-        ) : (
-          <video
-            key={active.url}
-            src={active.url}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="h-full w-full object-contain"
-          >
-            Your browser does not support the video tag.
-          </video>
-        )}
+    <>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 md:p-5">
+        <div
+          className={cn(
+            "pointer-events-none absolute h-[280px] w-[280px] max-w-full rounded-full blur-2xl",
+            glow
+          )}
+        />
+        <div className="relative flex h-full items-center">
+          {active.isGif ? (
+            <video
+              key={active.url}
+              src={active.url}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="max-h-full max-w-full rounded-[10px] object-contain"
+            >
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <Image
+              src={getImageProxyUrl(active.url)}
+              alt={card.name}
+              width={480}
+              height={640}
+              sizes="(max-width: 768px) 100vw, 400px"
+              loading="lazy"
+              className="max-h-full w-auto rounded-[10px] object-contain"
+            />
+          )}
+        </div>
       </div>
 
-      {options.length > 1 && (
-        <div className="flex flex-wrap justify-center gap-1.5">
-          {options.map((option, idx) => (
-            <button
-              key={option.key}
-              type="button"
-              onClick={() => setActiveIdx(idx)}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
-                idx === activeIdx
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/50"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+      {items.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3 pt-3.5 md:px-[22px] md:pb-4 md:pt-0">
+          {items.map((item) => {
+            const isActive = item.key === active.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setActiveKey(item.key)}
+                aria-label={item.isGif ? "Гиф" : "Арт"}
+                aria-current={isActive}
+                className="relative h-16 w-12 flex-none overflow-hidden rounded-[7px] bg-muted"
+              >
+                {item.isGif ? (
+                  <video
+                    src={item.url}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className={cn(
+                      "h-full w-full object-cover",
+                      isActive ? "opacity-100" : "opacity-[0.72]"
+                    )}
+                  />
+                ) : (
+                  <Image
+                    src={getImageProxyUrl(item.url)}
+                    alt=""
+                    fill
+                    sizes="48px"
+                    loading="lazy"
+                    className={cn(
+                      "object-cover",
+                      isActive ? "opacity-100" : "opacity-[0.72]"
+                    )}
+                  />
+                )}
+                {item.isGif && <GifBadge />}
+                {isActive && (
+                  <span className="pointer-events-none absolute inset-0 rounded-[7px] border-2 border-foreground shadow-[0_0_0_3px_hsl(var(--foreground)/0.14)]" />
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
+    </>
+  );
+}
+
+function StatCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="truncate text-xs text-muted-foreground md:font-mono md:text-[10px] md:font-medium md:uppercase md:tracking-[0.1em]">
+        {label}
+      </span>
+      <span className="truncate text-sm font-semibold md:text-[13.5px]">
+        {value}
+      </span>
     </div>
   );
 }
@@ -193,78 +264,72 @@ function CardDetailsContent({
   onToggleFavourite?: (id: string) => void;
 }) {
   const isFavourite = favouriteCardIds?.includes(card.id) ?? false;
-  const media = card.media ?? [];
-  const imageOptions = buildMediaOptions(card.image, media, "image");
-  const gifOptions = buildMediaOptions(card.gif, media, "gif");
+  const rarity = getRarityChipStyle(card.rarity);
 
   return (
     <>
-      <DrawerHeader>
-        <DrawerTitle className="text-xl font-bold">{card.name}</DrawerTitle>
+      <DrawerHeader className="flex items-start justify-between gap-3 space-y-0 p-4 text-left md:border-b md:px-[22px] md:pb-3.5 md:pt-5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-col md:items-start">
+          <DrawerTitle className="truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
+            {card.name}
+          </DrawerTitle>
+          <div className="flex flex-none items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full border px-2.5 py-[3px] text-[11px] font-semibold",
+                rarity.base
+              )}
+            >
+              {stripRarityEmoji(card.rarity)}
+            </span>
+            <span className="hidden font-mono text-[11px] font-medium text-muted-foreground md:inline">
+              {card.class}
+            </span>
+          </div>
+        </div>
+        <DrawerClose
+          onClick={closeDrawer}
+          aria-label="Закрыть"
+          className="hidden h-[30px] w-[30px] flex-none items-center justify-center rounded-lg border text-muted-foreground md:flex"
+        >
+          <X className="h-4 w-4" />
+        </DrawerClose>
       </DrawerHeader>
 
-      <div id="card-details" className="space-y-4 px-4">
-        <Tabs defaultValue="image" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="image">
-              Фото{imageOptions.length > 1 && ` (${imageOptions.length})`}
-            </TabsTrigger>
-            <TabsTrigger disabled={gifOptions.length === 0} value="video">
-              Гиф{gifOptions.length > 1 && ` (${gifOptions.length})`}
-            </TabsTrigger>
-          </TabsList>
+      <div
+        id="card-details"
+        className="flex min-h-0 flex-1 flex-col md:overflow-y-auto"
+      >
+        <MediaGallery card={card} />
 
-          <TabsContent value="image">
-            <MediaVariants options={imageOptions} alt={card.name} kind="image" />
-          </TabsContent>
-
-          <TabsContent value="video">
-            <MediaVariants options={gifOptions} alt={card.name} kind="gif" />
-          </TabsContent>
-        </Tabs>
-
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <p className="font-semibold">💎 Редкость:</p>
-            <p>{card.rarity}</p>
-          </div>
-          <div>
-            <p className="font-semibold">⚜️ Класс:</p>
-            <p>{card.class}</p>
-          </div>
-          <div>
-            <p className="font-semibold">👤 Автор:</p>
-            <p>{card.author}</p>
-          </div>
-          <div>
-            <p className="font-semibold">🪐 Вселенная:</p>
-            <p>{card.universe}</p>
-          </div>
-          <div>
-            <p className="font-semibold">💰 Цена:</p>
-            <p>{prettyNumbers(card.price)}✨</p>
-          </div>
-          <div>
-            <p className="font-semibold">Количество:</p>
-            <p>{prettyNumbers(card.quantity)}</p>
-          </div>
+        <div className="grid grid-cols-2 gap-x-3.5 gap-y-3 border-t px-4 py-3.5 md:px-[22px] md:py-4">
+          <StatCell label="💎 Редкость" value={stripRarityEmoji(card.rarity)} />
+          <StatCell label="⚜️ Класс" value={card.class} />
+          <StatCell label="👤 Автор" value={card.author} />
+          <StatCell label="🪐 Вселенная" value={card.universe} />
+          <StatCell label="💰 Цена" value={`${prettyNumbers(card.price)}✨`} />
+          <StatCell label="Количество" value={prettyNumbers(card.quantity)} />
 
           {card.techniques && card.techniques.length > 0 && (
-            <div className="col-span-3">
-              <p className="font-semibold">🦾 Техника:</p>
+            <div className="col-span-2 flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground md:font-mono md:text-[10px] md:font-medium md:uppercase md:tracking-[0.1em]">
+                🦾 Техника
+              </span>
               {card.techniques.map((technique) => (
-                <p key={technique.id}>{parseTechnique(technique)}</p>
+                <span key={technique.id} className="text-sm font-semibold">
+                  {parseTechnique(technique)}
+                </span>
               ))}
             </div>
           )}
         </div>
       </div>
 
-      <DrawerFooter className="flex-row gap-2">
+      <DrawerFooter className="flex-row gap-2 px-4 pb-5 pt-0 md:px-[22px]">
         {onToggleFavourite && (
           <Button
             variant={isFavourite ? "default" : "outline"}
-            className="flex-1 gap-2"
+            className="h-11 flex-1 gap-2 md:h-[42px]"
             onClick={() => onToggleFavourite(card.id)}
           >
             <Star className={cn("h-4 w-4", isFavourite && "fill-current")} />
@@ -272,7 +337,7 @@ function CardDetailsContent({
           </Button>
         )}
         <DrawerClose asChild onClick={closeDrawer}>
-          <Button variant="outline" className="flex-1">
+          <Button variant="secondary" className="h-11 flex-1 md:h-[42px]">
             Закрыть
           </Button>
         </DrawerClose>
