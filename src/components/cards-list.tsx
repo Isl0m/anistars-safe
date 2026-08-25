@@ -171,7 +171,7 @@ function MediaGallery({ card }: { card: FullCard }) {
               muted
               loop
               playsInline
-              className="max-h-full max-w-full rounded-[10px] object-contain"
+              className="max-h-full max-w-full rounded-[4px] object-contain"
             >
               Your browser does not support the video tag.
             </video>
@@ -183,7 +183,7 @@ function MediaGallery({ card }: { card: FullCard }) {
               height={640}
               sizes="(max-width: 768px) 100vw, 400px"
               loading="lazy"
-              className="max-h-full w-auto rounded-[10px] object-contain"
+              className="max-h-full w-auto rounded-[4px] object-contain"
             />
           )}
         </div>
@@ -200,7 +200,7 @@ function MediaGallery({ card }: { card: FullCard }) {
                 onClick={() => setActiveKey(item.key)}
                 aria-label={item.isGif ? "Гиф" : "Арт"}
                 aria-current={isActive}
-                className="relative h-16 w-12 flex-none overflow-hidden rounded-[7px] bg-muted"
+                className="relative h-16 w-12 flex-none overflow-hidden rounded-[3px] bg-muted"
               >
                 {item.isGif ? (
                   <video
@@ -228,7 +228,7 @@ function MediaGallery({ card }: { card: FullCard }) {
                 )}
                 {item.isGif && <GifBadge />}
                 {isActive && (
-                  <span className="pointer-events-none absolute inset-0 rounded-[7px] border-2 border-foreground shadow-[0_0_0_3px_hsl(var(--foreground)/0.14)]" />
+                  <span className="pointer-events-none absolute inset-0 rounded-[3px] border-2 border-foreground shadow-[0_0_0_3px_hsl(var(--foreground)/0.14)]" />
                 )}
               </button>
             );
@@ -264,28 +264,17 @@ function CardDetailsContent({
   onToggleFavourite?: (id: string) => void;
 }) {
   const isFavourite = favouriteCardIds?.includes(card.id) ?? false;
-  const rarity = getRarityChipStyle(card.rarity);
 
   return (
     <>
       <DrawerHeader className="flex items-start justify-between gap-3 space-y-0 p-4 text-left md:border-b md:px-[22px] md:pb-3.5 md:pt-5">
         <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-col md:items-start">
-          <DrawerTitle className="truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
+          <DrawerTitle className="select-text truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
             {card.name}
           </DrawerTitle>
-          <div className="flex flex-none items-center gap-2">
-            <span
-              className={cn(
-                "rounded-full border px-2.5 py-[3px] text-[11px] font-semibold",
-                rarity.base
-              )}
-            >
-              {stripRarityEmoji(card.rarity)}
-            </span>
-            <span className="hidden font-mono text-[11px] font-medium text-muted-foreground md:inline">
-              {card.class}
-            </span>
-          </div>
+          <span className="hidden flex-none font-mono text-[11px] font-medium text-muted-foreground md:inline">
+            {card.class}
+          </span>
         </div>
         <DrawerClose
           onClick={closeDrawer}
