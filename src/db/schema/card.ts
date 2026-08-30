@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   pgTable,
   real,
@@ -49,17 +50,48 @@ export const tCards = pgTable("Card", {
     .references(() => tRarities.id, { onDelete: "cascade" }),
 });
 
-export const cardToTgUser = pgTable("CardToTgUser", {
-  cardId: text("cardId")
-    .notNull()
-    .references(() => tCards.id, { onDelete: "cascade" }),
-  tgUserId: text("tgUserId")
-    .notNull()
-    .references(() => tgUsers.id, { onDelete: "cascade" }),
-  isLocked: boolean("isLocked").notNull().default(false),
-  favouritePosition: integer("favouritePosition"),
-  createdAt: timestamp("createdAt").defaultNow(),
-});
+export type CardMediaType = "image" | "gif";
+
+export const cardMedia = pgTable(
+  "CardMedia",
+  {
+    id: serial("id").primaryKey(),
+    cardId: text("cardId")
+      .notNull()
+      .references(() => tCards.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    type: text("type").$type<CardMediaType>().default("image").notNull(),
+    sortOrder: integer("sortOrder").default(0).notNull(),
+    fileId: text("fileId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("card_media_card_idx").on(table.cardId)]
+);
+
+export const cardToTgUser = pgTable(
+  "CardToTgUser",
+  {
+    cardId: text("cardId")
+      .notNull()
+      .references(() => tCards.id, { onDelete: "cascade" }),
+    tgUserId: text("tgUserId")
+      .notNull()
+      .references(() => tgUsers.id, { onDelete: "cascade" }),
+    isLocked: boolean("isLocked").notNull().default(false),
+    favouritePosition: integer("favouritePosition"),
+    selectedImageId: integer("selectedImageId").references(() => cardMedia.id, {
+      onDelete: "set null",
+    }),
+    selectedGifId: integer("selectedGifId").references(() => cardMedia.id, {
+      onDelete: "set null",
+    }),
+    hideGif: boolean("hideGif").notNull().default(false),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => [
+    index("card_to_tg_user_user_card_idx").on(table.tgUserId, table.cardId),
+  ]
+);
 
 export const cardUpgradePaths = pgTable("CardUpgradePath", {
   id: serial("id").primaryKey(),
@@ -126,6 +158,11 @@ export type Technique = typeof tTechniques.$inferSelect;
 
 export type Card = typeof tCards.$inferSelect;
 
+export type CardMedia = typeof cardMedia.$inferSelect;
+
+/** What json_agg actually returns: no createdAt, so no Date that is really a string. */
+export type CardMediaItem = Pick<CardMedia, "id" | "type" | "url">;
+
 export type Rarity = typeof tRarities.$inferSelect;
 
 export type Class = typeof tClasses.$inferSelect;
@@ -140,4 +177,5 @@ export type FullCard = Card & {
   class: string;
   author: string;
   techniques: Technique[];
+  media: CardMediaItem[];
 };
