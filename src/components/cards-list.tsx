@@ -289,7 +289,7 @@ function CardDetailsContent({
 
       <div
         id="card-details"
-        className="flex min-h-0 flex-1 flex-col md:overflow-y-auto"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         <MediaGallery card={card} />
 

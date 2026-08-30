@@ -3,7 +3,7 @@ import { getTableColumns, sql } from "drizzle-orm";
 import { tAuthors } from "@/db/schema/author";
 import {
   cardMedia,
-  CardMedia,
+  CardMediaItem,
   tCards,
   tClasses,
   Technique,
@@ -22,9 +22,12 @@ export const techniquesSql = sql<Technique[]>`COALESCE(
   '[]'::json
 )`;
 
-export const mediaSql = sql<CardMedia[]>`COALESCE(
+export const mediaSql = sql<CardMediaItem[]>`COALESCE(
   (
-    SELECT json_agg(m ORDER BY m."sortOrder", m.id)
+    SELECT json_agg(
+      json_build_object('id', m.id, 'type', m.type, 'url', m.url)
+      ORDER BY m."sortOrder", m.id
+    )
     FROM ${cardMedia} m
     WHERE m."cardId" = ${tCards.id}
   ),
