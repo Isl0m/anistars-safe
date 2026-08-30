@@ -6,14 +6,11 @@ import { errorResponse, requireAuth } from "@/lib/api-utils";
 import { getApi, getMe, getProfileLink } from "@/lib/bot";
 import {
   fulfillTradeWithCards,
-  getCardRarityIds,
   getTrade,
   getTradeSenderCardIds,
-  getTradeSenderRarityIds,
   getUser,
   validateCardsForTrade,
 } from "@/lib/queries";
-import { calcTradeCost } from "@/lib/trade-cost";
 
 const updateTradeSchema = z.object({
   tradeId: z.number().int().positive(),
@@ -50,36 +47,25 @@ export async function POST(request: Request) {
 
   // Settlement treats a card present on both sides as a mutual duplicate and
   // converts both copies instead of transferring them — never allow overlap.
-  const senderCardIds = new Set(await getTradeSenderCardIds(tradeId));
-  if (validation.cardIds.some((id) => senderCardIds.has(id))) {
+  const senderCardIds = await getTradeSenderCardIds(tradeId);
+  const senderCardIdSet = new Set(senderCardIds);
+  if (validation.cardIds.some((id) => senderCardIdSet.has(id))) {
     return errorResponse(
       "Нельзя предлагать карту, которая уже участвует в этом трейде",
       400
     );
   }
 
-  // The cost is never taken from the request: it is what the receiver pays and
-  // the receiver is the one calling here, so a client-supplied value is worth
-  // nothing. Recompute it from the two card sets instead.
-  const senderRarityIds = await getTradeSenderRarityIds(tradeId);
-  if (validation.cardIds.length !== senderRarityIds.length) {
+  if (validation.cardIds.length !== senderCardIds.length) {
     return errorResponse(
-      `You must offer exactly ${senderRarityIds.length} cards`,
+      `You must offer exactly ${senderCardIds.length} cards`,
       400
     );
   }
-  const rarityByCardId = await getCardRarityIds(validation.cardIds);
-  const receiverRarityIds = validation.cardIds.map((id) =>
-    rarityByCardId.get(id)
-  );
-  if (receiverRarityIds.some((rarityId) => rarityId === undefined)) {
-    return errorResponse("Some cards no longer exist", 400);
-  }
-  const cost = calcTradeCost(senderRarityIds, receiverRarityIds as number[]);
 
   let updated;
   try {
-    updated = await fulfillTradeWithCards(tradeId, cost, validation.cardIds);
+    updated = await fulfillTradeWithCards(tradeId, validation.cardIds);
   } catch (e) {
     console.error("trade update failed:", e);
     return errorResponse("Something went wrong", 500);

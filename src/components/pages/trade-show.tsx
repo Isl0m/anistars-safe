@@ -1,13 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowRightLeft, Coins, UserIcon } from "lucide-react";
+import { ArrowRightLeft, UserIcon } from "lucide-react";
 
 import { getImageProxyUrl } from "@/lib/utils";
 
 import { Card } from "@/db/schema/card";
 import { SelectMultiTrade } from "@/db/schema/trade";
-import { Badge } from "@/ui/badge";
 
 import { Header } from "../header";
 import { UserLink } from "../user-link";
@@ -25,24 +24,15 @@ export default function TradeShowPage({
   };
 }) {
   return (
-    <main className="flex min-h-screen flex-col gap-4 md:container">
+    <>
       <Header title="Детали трейда" />
-      <div className="space-y-3 px-2">
+      <div className="flex-1 space-y-3 overflow-y-auto px-2 py-4">
         <div className="rounded-xl border bg-card p-3">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <ArrowRightLeft className="h-4 w-4" />
               Отправлено ({trade.senderCards.length})
             </h4>
-            {trade.cost > 0 && (
-              <Badge
-                variant="outline"
-                className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600"
-              >
-                <Coins className="mr-1 h-3 w-3" />
-                {trade.cost}
-              </Badge>
-            )}
           </div>
           <UserLink
             userId={trade.senderId}
@@ -84,7 +74,7 @@ export default function TradeShowPage({
           <SuggestedCardsList cards={trade.receiverCards} />
         </div>
       </div>
-    </main>
+    </>
   );
 }
 

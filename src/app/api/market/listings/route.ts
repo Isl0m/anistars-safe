@@ -7,6 +7,7 @@ import {
   revalidateMarketPages,
 } from "@/lib/api-utils";
 import { MAX_ACTIVE_LISTINGS, MAX_LISTING_CARDS } from "@/lib/constants";
+import { promoteListing } from "@/lib/market-promo";
 import { createListingSchema } from "@/lib/market-schemas";
 import {
   addMarketListingCards,
@@ -77,6 +78,10 @@ export async function POST(request: Request) {
   });
 
   await addMarketListingCards(listing.id, validation.cardIds);
+
+  void promoteListing(listing.id).catch((e) =>
+    console.error("market promo post failed:", e)
+  );
 
   revalidateMarketPages();
   return NextResponse.json({ listing });

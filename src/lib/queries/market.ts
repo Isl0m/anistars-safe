@@ -10,7 +10,13 @@ import {
 } from "drizzle-orm";
 
 import { db } from "@/db";
-import { cardToTgUser, tCards } from "@/db/schema/card";
+import {
+  cardToTgUser,
+  tCards,
+  tClasses,
+  tRarities,
+  tUniverses,
+} from "@/db/schema/card";
 import {
   marketListingCards,
   marketListings,
@@ -102,6 +108,46 @@ export async function getMarketListing(id: number) {
     cards,
   };
 }
+
+export async function getListingForPromo(id: number) {
+  const [listing] = await db
+    .select({
+      id: marketListings.id,
+      filters: marketListings.filters,
+      status: marketListings.status,
+      seller: userPublicColumns,
+    })
+    .from(marketListings)
+    .innerJoin(tgUsers, eq(marketListings.sellerId, tgUsers.id))
+    .where(eq(marketListings.id, id));
+
+  if (!listing) return null;
+
+  const cards = await db
+    .select({
+      id: tCards.id,
+      name: tCards.name,
+      image: tCards.image,
+      power: tCards.power,
+      stamina: tCards.stamina,
+      price: tCards.price,
+      rarity: tRarities.name,
+      class: tClasses.name,
+      universe: tUniverses.name,
+    })
+    .from(marketListingCards)
+    .innerJoin(tCards, eq(tCards.id, marketListingCards.cardId))
+    .innerJoin(tRarities, eq(tRarities.id, tCards.rarityId))
+    .innerJoin(tClasses, eq(tClasses.id, tCards.classId))
+    .innerJoin(tUniverses, eq(tUniverses.id, tCards.universeId))
+    .where(eq(marketListingCards.listingId, id));
+
+  return { ...listing, cards };
+}
+
+export type ListingPromoData = NonNullable<
+  Awaited<ReturnType<typeof getListingForPromo>>
+>;
 
 export async function getMarketListingMeta(id: number) {
   const [listing] = await db
@@ -247,10 +293,7 @@ export async function getUserMarketOffers(userId: string) {
 
   const offerCardsByOffer = groupBy(allOfferCards, (c) => c.offerId);
   const listingsById = new Map(allListings.map((l) => [l.id, l]));
-  const listingCardsByListing = groupBy(
-    allListingCards,
-    (c) => c.listingId
-  );
+  const listingCardsByListing = groupBy(allListingCards, (c) => c.listingId);
 
   return offers.map((offer) => {
     const listing = listingsById.get(offer.listingId);
@@ -285,10 +328,7 @@ export async function countActiveOffers(buyerId: string) {
     .select({ value: count() })
     .from(marketOffers)
     .where(
-      and(
-        eq(marketOffers.buyerId, buyerId),
-        eq(marketOffers.status, "pending")
-      )
+      and(eq(marketOffers.buyerId, buyerId), eq(marketOffers.status, "pending"))
     );
   return row?.value ?? 0;
 }
@@ -415,4 +455,3 @@ export async function getUserReservedCardIds(
     offered: offered.map((r) => r.cardId),
   };
 }
-

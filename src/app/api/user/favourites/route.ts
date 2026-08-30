@@ -39,8 +39,7 @@ export async function POST(request: Request) {
     return errorResponse(result.error, 400);
   }
 
-  const cardIds = await getUserFavouriteCardIds(authResult.auth.id);
-  return NextResponse.json({ success: true, favouriteCardIds: cardIds });
+  return NextResponse.json({ success: true });
 }
 
 export async function DELETE(request: Request) {
@@ -53,8 +52,7 @@ export async function DELETE(request: Request) {
   }
 
   await removeFavouriteCard(authResult.auth.id, cardId);
-  const cardIds = await getUserFavouriteCardIds(authResult.auth.id);
-  return NextResponse.json({ success: true, favouriteCardIds: cardIds });
+  return NextResponse.json({ success: true });
 }
 
 export async function PUT(request: Request) {

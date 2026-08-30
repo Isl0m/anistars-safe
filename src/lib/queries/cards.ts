@@ -15,6 +15,8 @@ import {
   SQL,
 } from "drizzle-orm";
 
+import { MAX_FAVOURITE_CARDS } from "@/lib/constants";
+
 import { Filter } from "@/components/get-filter-options";
 import { db } from "@/db";
 import { tAuthors } from "@/db/schema/author";
@@ -289,7 +291,6 @@ export async function getCardIdsMatchingFilter(
   return new Set(rows.map((r) => r.id));
 }
 
-
 /**
  * A card has exactly one type, resolved in this order: upgradable, then
  * upgrade, then limited (not droppable), else basic. Selecting several types
@@ -440,8 +441,6 @@ export async function getCardUpgrades() {
     .orderBy(cardUpgradePaths.createdAt);
 }
 
-export const MAX_FAVOURITE_CARDS = 8;
-
 export async function getUserFavouriteCards(
   userId: string
 ): Promise<FullCard[]> {
@@ -470,48 +469,38 @@ export async function getUserFavouriteCardIds(userId: string) {
 }
 
 export async function addFavouriteCard(userId: string, cardId: string) {
-  const row = await db
-    .select({
-      cardId: cardToTgUser.cardId,
-      favouritePosition: cardToTgUser.favouritePosition,
-    })
+  const updated = await db.execute<{ cardId: string }>(sql`
+    UPDATE "CardToTgUser" AS c
+    SET "favouritePosition" = fav.next
+    FROM (
+      SELECT
+        COUNT(*)::int AS used,
+        COALESCE(MAX(f."favouritePosition"), -1) + 1 AS next
+      FROM "CardToTgUser" f
+      WHERE f."tgUserId" = ${userId} AND f."favouritePosition" IS NOT NULL
+    ) AS fav
+    WHERE c."tgUserId" = ${userId}
+      AND c."cardId" = ${cardId}
+      AND c."favouritePosition" IS NULL
+      AND fav.used < ${MAX_FAVOURITE_CARDS}
+    RETURNING c."cardId"
+  `);
+
+  if (updated.length > 0) return { ok: true as const };
+
+  const [row] = await db
+    .select({ favouritePosition: cardToTgUser.favouritePosition })
     .from(cardToTgUser)
     .where(
       and(eq(cardToTgUser.tgUserId, userId), eq(cardToTgUser.cardId, cardId))
     )
-    .then((res) => res[0] ?? null);
+    .limit(1);
 
-  if (!row) {
-    return { ok: false as const, error: "not_owned" as const };
-  }
-
+  if (!row) return { ok: false as const, error: "not_owned" as const };
   if (row.favouritePosition !== null) {
     return { ok: false as const, error: "already_exists" as const };
   }
-
-  const favCount = await db
-    .select({ count: count() })
-    .from(cardToTgUser)
-    .where(
-      and(
-        eq(cardToTgUser.tgUserId, userId),
-        isNotNull(cardToTgUser.favouritePosition)
-      )
-    )
-    .then((res) => res[0]?.count ?? 0);
-
-  if (favCount >= MAX_FAVOURITE_CARDS) {
-    return { ok: false as const, error: "max_reached" as const };
-  }
-
-  await db
-    .update(cardToTgUser)
-    .set({ favouritePosition: favCount })
-    .where(
-      and(eq(cardToTgUser.tgUserId, userId), eq(cardToTgUser.cardId, cardId))
-    );
-
-  return { ok: true as const };
+  return { ok: false as const, error: "max_reached" as const };
 }
 
 export async function removeFavouriteCard(userId: string, cardId: string) {
