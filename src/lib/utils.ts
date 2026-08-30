@@ -66,14 +66,19 @@ export function timeAgo(date: string | Date): string {
   return new Date(date).toLocaleDateString("ru-RU");
 }
 
-export const parseTechnique = (technique: Technique) => {
+export const techniqueParts = (technique: Technique) => {
   const power = technique.power && `⚔️${Math.round(technique.power * 100)}%`;
   const heal = technique.heal && `♥️${Math.round(technique.heal * 100)}%`;
   const dodge = technique.dodge && `💨 Уклон`;
   const reflection = technique.reflection && `🪞 Отражение`;
-  const techniqueText =
+  const effect =
     power && heal ? `${power} ${heal}` : power || heal || dodge || reflection;
-  return `${techniqueText} | ${technique.slug}`;
+  return { effect: effect || "", slug: technique.slug };
+};
+
+export const parseTechnique = (technique: Technique) => {
+  const { effect, slug } = techniqueParts(technique);
+  return `${effect} | ${slug}`;
 };
 
 export function parseFilter(searchParams: URLSearchParams): Filter | undefined {

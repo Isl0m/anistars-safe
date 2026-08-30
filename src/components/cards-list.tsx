@@ -12,7 +12,7 @@ import {
 import {
   cn,
   getImageProxyUrl,
-  parseTechnique,
+  techniqueParts,
   prettyNumbers,
 } from "@/lib/utils";
 
@@ -275,9 +275,22 @@ function CardDetailsContent({
   return (
     <>
       <DrawerHeader className="flex items-start justify-between gap-3 space-y-0 p-4 text-left md:border-b md:px-[22px] md:pb-3.5 md:pt-5">
-        <DrawerTitle className="min-w-0 flex-1 select-text truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
-          {card.name}
-        </DrawerTitle>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <DrawerTitle className="min-w-0 select-text truncate text-[23px] font-bold leading-none tracking-[-0.02em] md:text-[26px] md:font-extrabold md:tracking-[-0.025em]">
+            {card.name}
+          </DrawerTitle>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-flex items-center rounded-full border px-[9px] py-[3px] text-[11px] font-semibold leading-none",
+                getRarityChipStyle(card.rarity).base
+              )}
+            >
+              {stripRarityEmoji(card.rarity)}
+            </span>
+            <CardTypeChip droppable={card.droppable} />
+          </div>
+        </div>
         <DrawerClose
           onClick={closeDrawer}
           aria-label="Закрыть"
@@ -302,15 +315,24 @@ function CardDetailsContent({
           <StatCell label="Количество" value={prettyNumbers(card.quantity)} />
 
           {card.techniques && card.techniques.length > 0 && (
-            <div className="col-span-2 flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground md:font-mono md:text-[10px] md:font-medium md:uppercase md:tracking-[0.1em]">
-                🦾 Техника
-              </span>
-              {card.techniques.map((technique) => (
-                <span key={technique.id} className="text-sm font-semibold">
-                  {parseTechnique(technique)}
-                </span>
-              ))}
+            <div className="col-span-2 flex items-center gap-2">
+              <span className="flex-none text-[12px]">🦾</span>
+              <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+                {card.techniques.map((technique) => {
+                  const { effect, slug } = techniqueParts(technique);
+                  return (
+                    <span
+                      key={technique.id}
+                      className="inline-flex flex-none items-baseline gap-1.5 whitespace-nowrap rounded-[7px] border bg-[#111c31] px-[9px] py-1"
+                    >
+                      <span className="text-[12.5px] font-semibold">{effect}</span>
+                      <span className="font-mono text-[10px] font-medium text-[#64748b]">
+                        {slug}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -341,7 +363,40 @@ type CardBase = {
   id: string | number;
   image: string;
   slug: string;
+  droppable?: boolean;
 };
+
+function LimitedBadge() {
+  return (
+    <div className="pointer-events-none absolute left-[5px] top-[5px] flex items-center gap-1 rounded-[5px] bg-[rgba(2,8,23,.82)] px-1.5 py-0.5 backdrop-blur-[4px]">
+      <span className="h-1 w-1 rounded-full bg-[#ef4444]" />
+      <span className="font-mono text-[8.5px] font-semibold tracking-[.06em] text-[#fca5a5]">
+        ЛИМИТ
+      </span>
+    </div>
+  );
+}
+
+function CardTypeChip({ droppable }: { droppable: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-[5px] rounded-full border px-[9px] py-[3px] text-[11px] font-semibold leading-none",
+        droppable
+          ? "border-[rgba(34,197,94,.3)] bg-[rgba(34,197,94,.1)] text-[#86efac]"
+          : "border-[rgba(239,68,68,.32)] bg-[rgba(239,68,68,.1)] text-[#fca5a5]"
+      )}
+    >
+      <span
+        className={cn(
+          "h-[5px] w-[5px] rounded-full",
+          droppable ? "bg-[#22c55e]" : "bg-[#ef4444]"
+        )}
+      />
+      {droppable ? "Базовая" : "Лимитная"}
+    </span>
+  );
+}
 
 export function CardsListRaw({
   cards,
@@ -365,8 +420,9 @@ export function CardsListRaw({
   );
 }
 
-function CardImage({ image, slug }: CardBase) {
+function CardImage({ image, slug, droppable }: CardBase) {
   const [loaded, setLoaded] = useState(false);
+  const limited = droppable === false;
 
   return (
     <>
@@ -383,9 +439,11 @@ function CardImage({ image, slug }: CardBase) {
         onLoad={() => setLoaded(true)}
         className={cn(
           "rounded transition-opacity duration-300",
+          limited && "shadow-[inset_0_0_0_1.5px_rgba(239,68,68,.55)]",
           loaded ? "opacity-100" : "opacity-0"
         )}
       />
+      {limited && loaded && <LimitedBadge />}
     </>
   );
 }
