@@ -216,7 +216,10 @@ async function withResolvedChat<T>(
     if (!prefixed) throw e;
 
     const result = await send({ ...settings, chatId: prefixed });
-    await setMarketPromoSettings({ ...settings, chatId: prefixed });
+    const stored = await getMarketPromoSettings();
+    if (stored.chatId === settings.chatId) {
+      await setMarketPromoSettings({ ...stored, chatId: prefixed });
+    }
     return result;
   }
 }
