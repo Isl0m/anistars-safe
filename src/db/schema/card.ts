@@ -68,17 +68,30 @@ export const cardMedia = pgTable(
   (table) => [index("card_media_card_idx").on(table.cardId)]
 );
 
-export const cardToTgUser = pgTable("CardToTgUser", {
-  cardId: text("cardId")
-    .notNull()
-    .references(() => tCards.id, { onDelete: "cascade" }),
-  tgUserId: text("tgUserId")
-    .notNull()
-    .references(() => tgUsers.id, { onDelete: "cascade" }),
-  isLocked: boolean("isLocked").notNull().default(false),
-  favouritePosition: integer("favouritePosition"),
-  createdAt: timestamp("createdAt").defaultNow(),
-});
+export const cardToTgUser = pgTable(
+  "CardToTgUser",
+  {
+    cardId: text("cardId")
+      .notNull()
+      .references(() => tCards.id, { onDelete: "cascade" }),
+    tgUserId: text("tgUserId")
+      .notNull()
+      .references(() => tgUsers.id, { onDelete: "cascade" }),
+    isLocked: boolean("isLocked").notNull().default(false),
+    favouritePosition: integer("favouritePosition"),
+    selectedImageId: integer("selectedImageId").references(() => cardMedia.id, {
+      onDelete: "set null",
+    }),
+    selectedGifId: integer("selectedGifId").references(() => cardMedia.id, {
+      onDelete: "set null",
+    }),
+    hideGif: boolean("hideGif").notNull().default(false),
+    createdAt: timestamp("createdAt").defaultNow(),
+  },
+  (table) => [
+    index("card_to_tg_user_user_card_idx").on(table.tgUserId, table.cardId),
+  ]
+);
 
 export const cardUpgradePaths = pgTable("CardUpgradePath", {
   id: serial("id").primaryKey(),
@@ -147,6 +160,9 @@ export type Card = typeof tCards.$inferSelect;
 
 export type CardMedia = typeof cardMedia.$inferSelect;
 
+/** What json_agg actually returns: no createdAt, so no Date that is really a string. */
+export type CardMediaItem = Pick<CardMedia, "id" | "type" | "url">;
+
 export type Rarity = typeof tRarities.$inferSelect;
 
 export type Class = typeof tClasses.$inferSelect;
@@ -161,5 +177,5 @@ export type FullCard = Card & {
   class: string;
   author: string;
   techniques: Technique[];
-  media: CardMedia[];
+  media: CardMediaItem[];
 };
