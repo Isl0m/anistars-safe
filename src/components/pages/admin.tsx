@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/lib/api";
 import { showApiError } from "@/lib/api-feedback";
-import {
-  DEFAULT_MARKET_PROMO_SETTINGS,
-  MarketPromoSettings,
-} from "@/lib/market-schemas";
+import { MarketPromoSettings } from "@/lib/market-schemas";
 import { Access, MANAGED_ROUTES, RouteAccessMap } from "@/lib/route-access";
 import { cn } from "@/lib/utils";
 
