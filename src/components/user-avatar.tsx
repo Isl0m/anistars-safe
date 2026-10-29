@@ -10,7 +10,9 @@ type Props = {
 };
 
 export function UserAvatar({ name, photoUrl, size = 32, className }: Props) {
-  const initial = name.charAt(0).toUpperCase();
+  // By code point: charAt(0) splits an emoji-first name into half a
+  // surrogate pair, which the server and client render differently.
+  const initial = (Array.from(name)[0] ?? "").toUpperCase();
 
   return (
     <div

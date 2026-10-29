@@ -7,6 +7,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
+import { banners } from "./banner";
 import { tCards } from "./card";
 import { tgUsers } from "./user";
 
@@ -55,5 +56,30 @@ export const tradeLogs = pgTable("TradeLog", {
     onDelete: "cascade",
   }),
   cost: integer("cost").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+type TradeBannerStatus = "pending" | "completed" | "cancelled";
+type TradeBannerPayer = "sender" | "receiver";
+
+export const tradeBanners = pgTable("TradeBanner", {
+  id: serial("id").primaryKey(),
+  senderId: text("senderId")
+    .notNull()
+    .references(() => tgUsers.id, { onDelete: "cascade" }),
+  receiverId: text("receiverId")
+    .notNull()
+    .references(() => tgUsers.id, { onDelete: "cascade" }),
+  bannerId: integer("bannerId")
+    .notNull()
+    .references(() => banners.id, {
+      onDelete: "cascade",
+    }),
+  cost: integer("cost").notNull().default(2500),
+  status: text("status")
+    .$type<TradeBannerStatus>()
+    .notNull()
+    .default("pending"),
+  payer: text("payer").notNull().$type<TradeBannerPayer>().default("sender"),
   createdAt: timestamp("createdAt").defaultNow(),
 });
