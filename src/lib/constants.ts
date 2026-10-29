@@ -121,8 +121,4 @@ export function getRarityChipStyle(name: string): RarityChipStyle {
   return rarityChipStyles[stripRarityEmoji(name)] ?? defaultRarityChipStyle;
 }
 
-// Rarity ids as the bot defines them (anistars-bot src/lib/constants.ts).
-export const CHROMATIC_RARITY_ID = 5;
-export const EMERALD_RARITY_ID = 6;
-
 export const TOP_SIZE = 10;

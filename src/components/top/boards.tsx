@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type {
   BoardKey,
   ColosseumField,
@@ -20,11 +18,19 @@ const ruCompact = new Intl.NumberFormat("ru-RU", {
 });
 
 export const fmt = (value: number) => ruNumber.format(value);
-// Tiles hold a few characters; past a million the exact figure stops helping.
+// Past a million the exact figure stops helping and won't fit a card.
 export const fmtCompact = (value: number) =>
   value >= 1_000_000 ? ruCompact.format(value) : ruNumber.format(value);
-export const pct = (part: number, whole: number) =>
+const pct = (part: number, whole: number) =>
   whole > 0 ? `${ruDecimal.format((part / whole) * 100)}%` : "—";
+
+// Signed gaps use a real minus sign so they line up with the digits.
+export const fmtGap = (value: number) =>
+  value > 0
+    ? `+${fmtCompact(value)}`
+    : value < 0
+      ? `−${fmtCompact(-value)}`
+      : "0";
 
 // 1 карта, 2 карты, 5 карт
 export function plural(n: number, forms: [string, string, string]) {
@@ -35,396 +41,144 @@ export function plural(n: number, forms: [string, string, string]) {
   return forms[2];
 }
 
-const MONTHS_GENITIVE = [
-  "января",
-  "февраля",
-  "марта",
-  "апреля",
-  "мая",
-  "июня",
-  "июля",
-  "августа",
-  "сентября",
-  "октября",
-  "ноября",
-  "декабря",
-];
-
-// The bot rolls its daily stats over in Asia/Bangkok, so dates read there too.
-function bangkokParts(date: string) {
-  const d = new Date(new Date(date).getTime() + 7 * 3_600_000);
-  return {
-    day: d.getUTCDate(),
-    month: d.getUTCMonth(),
-    year: d.getUTCFullYear(),
-  };
-}
-
-// «1 апреля 2026»
-export function formatDay(date: string) {
-  const { day, month, year } = bangkokParts(date);
-  return `${day} ${MONTHS_GENITIVE[month]} ${year}`;
-}
-
-// «мая 2024», as in «с мая 2024 года»
-function formatMonth(date: string) {
-  const { month, year } = bangkokParts(date);
-  return `${MONTHS_GENITIVE[month]} ${year}`;
-}
-
-// Counted against the snapshot time, not the viewer's clock, so the server
-// and client render the same number.
-function daysBetween(from: string, to: string) {
-  const dayIndex = (date: string) => {
-    const { day, month, year } = bangkokParts(date);
-    return Date.UTC(year, month, day) / 86_400_000;
-  };
-  return dayIndex(to) - dayIndex(from) + 1;
-}
-
-// Wins, draws and losses as one stacked bar. A fixed categorical order,
-// validated against the card surface: every adjacent pair stays apart under
-// colour-blindness simulation and clears 3:1 contrast.
-export const SPLIT: Record<ColosseumField, { label: string; color: string }> = {
-  wins: { label: "Победы", color: "#199e70" },
-  draws: { label: "Ничьи", color: "#3987e5" },
-  loses: { label: "Поражения", color: "#d95926" },
-};
-
-export const SPLIT_ORDER: ColosseumField[] = ["wins", "draws", "loses"];
-
-export type Stat = { value: string; label: string };
-
 export type BoardRow = {
   userId: string;
   name: string;
   photoUrl: string | null;
   value: number;
-  meta: ReactNode;
-  side: string;
-  sideLabel: string;
-  split?: ColosseumTopRow;
+  // What the value means beside the ranking: share of all cards, winrate,
+  // pulls per day… Short enough to sit on a #2/#3 card.
+  note: string;
 };
 
 export type Board = {
   key: BoardKey;
   tab: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  // One hue per board, used for its marks only — text stays in text tokens.
-  accent: string;
+  // Names the leader's number on the hero card.
+  metric: string;
   unit: [string, string, string];
-  stats: Stat[];
+  // Only the collection has a ceiling: the cards that exist. There the bars
+  // measure against it; elsewhere they measure against the leader.
+  total?: number;
   rows: BoardRow[];
-  // Set on the colosseum boards: the field they rank, drawn first in the split.
-  ranked?: ColosseumField;
-  // What to do to get onto the board, for a player who isn't on it yet.
+  // What gets a player onto the board, for one who isn't on it yet.
   emptyHint: string;
-  footnote: string;
 };
-
-const players = (n: number) => plural(n, ["игрок", "игрока", "игроков"]);
-
-function SplitMeta({ row }: { row: ColosseumTopRow }) {
-  return (
-    <span className="flex items-center gap-2 tabular-nums">
-      {SPLIT_ORDER.map((field) => (
-        <span key={field} className="flex items-center gap-1">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: SPLIT[field].color }}
-          />
-          {fmt(row[field])}
-        </span>
-      ))}
-    </span>
-  );
-}
 
 const colosseumMeta: Record<
   ColosseumField,
   {
-    title: string;
-    description: string;
+    tab: string;
     unit: [string, string, string];
-    share: string;
+    note: (row: ColosseumTopRow, battles: number) => string;
   }
 > = {
   wins: {
-    title: "Победы в колизее",
-    description: "Больше всего побед на арене за всё время.",
+    tab: "Победы",
     unit: ["победа", "победы", "побед"],
-    share: "побед",
+    note: (r, battles) => `винрейт ${pct(r.wins, battles)}`,
   },
   loses: {
-    title: "Поражения в колизее",
-    description:
-      "Много поражений — значит много боёв: эти игроки не боятся выходить на арену.",
+    tab: "Поражения",
     unit: ["поражение", "поражения", "поражений"],
-    share: "поражений",
+    note: (r, battles) => `${pct(r.loses, battles)} всех боёв`,
   },
   draws: {
-    title: "Ничьи в колизее",
-    description: "Бои, в которых ни один игрок не смог взять верх.",
+    tab: "Ничьи",
     unit: ["ничья", "ничьи", "ничьих"],
-    share: "ничьих",
+    note: (r, battles) => `${pct(r.draws, battles)} всех боёв`,
   },
 };
 
-function colosseumBoard(
-  field: ColosseumField,
-  data: ColosseumTop,
-  updatedAt: string
-): Board {
+function colosseumBoard(field: ColosseumField, data: ColosseumTop): Board {
   const meta = colosseumMeta[field];
-  const battles = (r: ColosseumTopRow) => r.wins + r.draws + r.loses;
-  const shares = data.rows.map((r) => r[field] / Math.max(battles(r), 1));
-  const bestShare = shares.length ? Math.max(...shares) : 0;
-  const [first, second] = data.rows;
-  const threshold = data.rows.at(-1)?.[field] ?? 0;
-
-  const stats: Record<ColosseumField, Stat[]> = {
-    wins: [
-      { value: fmtCompact(data.total), label: "побед за всё время" },
-      {
-        value: fmtCompact(data.players),
-        label: `${players(data.players)} сражались`,
-      },
-      { value: fmt(threshold), label: "побед нужно для топ-10" },
-      { value: pct(bestShare, 1), label: "лучший винрейт в топе" },
-    ],
-    loses: [
-      { value: fmtCompact(data.total), label: "поражений за всё время" },
-      { value: fmt(threshold), label: "поражений нужно для топ-10" },
-      { value: pct(bestShare, 1), label: "самая высокая доля в топе" },
-      { value: fmt(first ? battles(first) : 0), label: "боёв у лидера" },
-    ],
-    draws: [
-      { value: fmtCompact(data.total), label: "ничьих за всё время" },
-      { value: fmt(threshold), label: "ничьих нужно для топ-10" },
-      { value: pct(bestShare, 1), label: "самая высокая доля в топе" },
-      {
-        value: fmt(first && second ? first.draws - second.draws : 0),
-        label: "разрыв между 1 и 2 местом",
-      },
-    ],
-  };
-
   return {
     key: field,
-    tab: SPLIT[field].label,
-    eyebrow: "Колизей",
-    title: meta.title,
-    description: meta.description,
-    accent: SPLIT[field].color,
+    tab: meta.tab,
+    metric: meta.tab,
     unit: meta.unit,
-    stats: stats[field],
-    ranked: field,
-    emptyHint: "Сразись в колизее — и место появится здесь",
+    emptyHint: "Сразись в колизее",
     rows: data.rows.map((r) => ({
       userId: r.userId,
       name: r.name,
       photoUrl: r.photoUrl,
       value: r[field],
-      meta: <SplitMeta row={r} />,
-      side: pct(r[field], battles(r)),
-      sideLabel: field === "wins" ? "винрейт" : meta.share,
-      split: r,
+      note: meta.note(r, r.wins + r.draws + r.loses),
     })),
-    footnote: `Полоса — все бои игрока: победы, ничьи и поражения, ${
-      field === "wins" ? "победы" : meta.share
-    } первыми. ${
-      field === "wins" ? "Винрейт — доля побед" : `Доля — процент ${meta.share}`
-    } от всех боёв в колизее. Данные на ${formatDay(updatedAt)}.`,
   };
 }
 
-function spendingBoard(
-  kind: "tries" | "coins",
-  data: SpendingTop,
-  updatedAt: string
-): Board {
-  const since = data.since ? formatDay(data.since) : null;
-  const days = data.since ? daysBetween(data.since, updatedAt) : 0;
-  const threshold = data.rows.at(-1)?.spent ?? 0;
-  const sinceStat: Stat = {
-    value: since ? since.replace(/ \d{4}$/, "") : "—",
-    label: `начало подсчёта, ${fmt(days)} дн.`,
-  };
-  const sinceNote = since
-    ? `с ${since} года — с этого дня бот ведёт ежедневную статистику, более ранние ${
-        kind === "tries" ? "крутки" : "траты"
-      } не учтены`
-    : "";
-  const daysLabel = (n: number) => plural(n, ["день", "дня", "дней"]);
-
+function spendingBoard(kind: "tries" | "coins", data: SpendingTop): Board {
   if (kind === "tries") {
     return {
       key: "tries",
       tab: "Крутки",
-      eyebrow: "Крутки карт",
-      title: "Больше всех крутят",
-      description:
-        "Попытки на получение карт — в меню, мульти-крутках и через /pull в чатах.",
-      accent: "#d55181",
+      metric: "Попытки",
       unit: ["попытка", "попытки", "попыток"],
-      emptyHint: "Покрути карты — и место появится здесь",
-      stats: [
-        { value: fmtCompact(data.total), label: "попыток потрачено всеми" },
-        {
-          value: fmtCompact(data.players),
-          label: `${players(data.players)} крутили карты`,
-        },
-        sinceStat,
-        { value: fmt(threshold), label: "попыток нужно для топ-10" },
-      ],
+      emptyHint: "Покрути карты",
       rows: data.rows.map((r) => ({
         userId: r.userId,
         name: r.name,
         photoUrl: r.photoUrl,
         value: r.spent,
-        meta: `${fmt(r.activeDays)} ${daysLabel(r.activeDays)} с круткой`,
-        side: ruDecimal.format(r.spent / Math.max(r.activeDays, 1)),
-        sideLabel: "в день",
+        note: `${ruDecimal.format(r.spent / Math.max(r.activeDays, 1))} в день`,
       })),
-      footnote: `Попытки считаются ${sinceNote}. «В день» — среднее за дни, когда игрок крутил. Данные на ${formatDay(updatedAt)}.`,
     };
   }
 
   return {
     key: "coins",
     tab: "Монеты",
-    eyebrow: "Экономика",
-    title: "Больше всех тратят",
-    description:
-      "Монеты, потраченные в боте: магазины, улучшения карт, фоны и другие покупки.",
-    accent: "#c98500",
+    metric: "Потрачено монет",
     unit: ["монета", "монеты", "монет"],
-    emptyHint: "Потрать монеты в боте — и место появится здесь",
-    stats: [
-      { value: fmtCompact(data.total), label: "монет потрачено всеми" },
-      {
-        value: fmtCompact(data.players),
-        label: `${players(data.players)} тратили монеты`,
-      },
-      sinceStat,
-      { value: fmtCompact(threshold), label: "монет нужно для топ-10" },
-    ],
+    emptyHint: "Потрать монеты в боте",
     rows: data.rows.map((r) => ({
       userId: r.userId,
       name: r.name,
       photoUrl: r.photoUrl,
       value: r.spent,
-      meta: `${fmt(r.activeDays)} ${daysLabel(r.activeDays)} с тратами`,
-      side: fmtCompact(r.bestDay),
-      sideLabel: "рекорд за день",
+      note: `рекорд ${fmtCompact(r.bestDay)}`,
     })),
-    footnote: `Монеты считаются ${sinceNote}. Это та же цифра «Потрачено монет», что игрок видит в /stats. «Рекорд» — больше всего монет за один день. Данные на ${formatDay(updatedAt)}.`,
   };
 }
 
 export function buildBoards(data: Leaderboards): Board[] {
-  const { collection, traders, updatedAt } = data;
-  const collectionThreshold = collection.rows.at(-1)?.cards ?? 0;
-  const tradesSince = traders.since ? formatMonth(traders.since) : null;
+  const { collection, traders } = data;
 
   return [
     {
       key: "collection",
       tab: "Коллекция",
-      eyebrow: "Коллекция",
-      title: "Лучшие коллекционеры",
-      description:
-        "Разные карты в коллекции прямо сейчас. Повторки не считаются.",
-      accent: "#9085e9",
-      unit: ["разная карта", "разные карты", "разных карт"],
-      emptyHint: "Получи первую карту — и место появится здесь",
-      stats: [
-        {
-          value: fmt(collection.totalCards),
-          label: `${plural(collection.totalCards, ["карта", "карты", "карт"])} в игре`,
-        },
-        {
-          value: fmtCompact(collection.players),
-          label: `${players(collection.players)} с картами`,
-        },
-        {
-          value: fmt(collection.medianCards),
-          label: `${plural(collection.medianCards, ["карта", "карты", "карт"])} у типичного игрока`,
-        },
-        {
-          value: fmt(collectionThreshold),
-          label: "нужно для топ-10",
-        },
-      ],
+      metric: "Уникальные карты",
+      unit: ["карта", "карты", "карт"],
+      total: collection.totalCards,
+      emptyHint: "Получи первую карту",
       rows: collection.rows.map((r) => ({
         userId: r.userId,
         name: r.name,
         photoUrl: r.photoUrl,
         value: r.cards,
-        meta: (
-          <span className="flex items-center gap-2 tabular-nums">
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              {fmt(r.emeralds)} изумр.
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-              {fmt(r.chromatics)} хромат.
-            </span>
-          </span>
-        ),
-        side: pct(r.cards, collection.totalCards),
-        sideLabel: "всех карт",
+        note: `${pct(r.cards, collection.totalCards)} всех карт`,
       })),
-      footnote: `Считаются карты, которые сейчас есть у игрока: обменянные и проданные — нет. Процент — от всех ${fmt(collection.totalCards)} карт в игре, включая ивентовые и улучшенные. Данные на ${formatDay(updatedAt)}.`,
     },
-    colosseumBoard("wins", data.wins, updatedAt),
-    colosseumBoard("loses", data.loses, updatedAt),
-    colosseumBoard("draws", data.draws, updatedAt),
-    spendingBoard("tries", data.tries, updatedAt),
-    spendingBoard("coins", data.coins, updatedAt),
+    colosseumBoard("wins", data.wins),
+    colosseumBoard("loses", data.loses),
+    colosseumBoard("draws", data.draws),
+    spendingBoard("tries", data.tries),
+    spendingBoard("coins", data.coins),
     {
       key: "traders",
       tab: "Трейдеры",
-      eyebrow: "Обмены",
-      title: "Самые общительные",
-      description:
-        "Со сколькими разными игроками был хотя бы один обмен. Сто обменов с одним другом — это один партнёр.",
-      accent: "#3987e5",
+      metric: "Партнёры по обменам",
       unit: ["партнёр", "партнёра", "партнёров"],
-      emptyHint: "Соверши первый обмен — и место появится здесь",
-      stats: [
-        {
-          value: fmtCompact(traders.trades),
-          label: `${plural(traders.trades, ["обмен", "обмена", "обменов"])} завершено`,
-        },
-        {
-          value: fmtCompact(traders.players),
-          label: `${players(traders.players)} обменивались`,
-        },
-        {
-          value: fmtCompact(traders.pairs),
-          label: `${plural(traders.pairs, ["пара", "пары", "пар"])} игроков`,
-        },
-        {
-          value: fmt(traders.medianPartners),
-          label: `${plural(traders.medianPartners, ["партнёр", "партнёра", "партнёров"])} у типичного игрока`,
-        },
-      ],
+      emptyHint: "Соверши первый обмен",
       rows: traders.rows.map((r) => ({
         userId: r.userId,
         name: r.name,
         photoUrl: r.photoUrl,
         value: r.partners,
-        meta: `${fmt(r.trades)} ${plural(r.trades, ["обмен", "обмена", "обменов"])}`,
-        side: fmt(r.recentPartners),
-        sideLabel: "за 30 дней",
+        note: `${fmt(r.recentPartners)} за 30 дней`,
       })),
-      footnote: `Учитываются завершённые обмены картами, мульти-обмены и обмены фонами${
-        tradesSince ? ` с ${tradesSince} года` : ""
-      }. «За 30 дней» — сколько разных партнёров было за последний месяц. Данные на ${formatDay(updatedAt)}.`,
     },
   ];
 }

@@ -1,10 +1,6 @@
 import { and, count, desc, eq, gt, sql, sum } from "drizzle-orm";
 
-import {
-  CHROMATIC_RARITY_ID,
-  EMERALD_RARITY_ID,
-  TOP_SIZE,
-} from "@/lib/constants";
+import { TOP_SIZE } from "@/lib/constants";
 
 import { db } from "@/db";
 import { battles } from "@/db/schema/battle";
@@ -27,8 +23,8 @@ type TopUser = {
 // is all the standing endpoint needs to place anyone without rescanning.
 type Histogram = [number, number][];
 
-// Postgres hands back counts as bigint strings and medians as doubles; every
-// number on the page goes through here so the client only ever sees numbers.
+// Postgres hands back counts as bigint strings; every number on the page
+// goes through here so the client only ever sees numbers.
 const num = (value: unknown) => Number(value ?? 0);
 
 const toHistogram = (value: unknown): Histogram =>
@@ -39,15 +35,11 @@ const toHistogram = (value: unknown): Histogram =>
 
 export type CollectionTopRow = TopUser & {
   cards: number;
-  emeralds: number;
-  chromatics: number;
 };
 
 export type CollectionTop = {
   rows: CollectionTopRow[];
   totalCards: number;
-  players: number;
-  medianCards: number;
 };
 
 // A card counts once per player however many copies they hold.
@@ -59,19 +51,10 @@ async function getCollectionTop() {
         FROM ${cardToTgUser}
       ),
       per_user AS (
-        SELECT
-          o.user_id,
-          count(*) AS cards,
-          count(*) FILTER (WHERE c."rarityId" = ${EMERALD_RARITY_ID}) AS emeralds,
-          count(*) FILTER (WHERE c."rarityId" = ${CHROMATIC_RARITY_ID}) AS chromatics
-        FROM owned o
-        JOIN ${tCards} c ON c.id = o.card_id
-        GROUP BY o.user_id
+        SELECT user_id, count(*) AS cards FROM owned GROUP BY user_id
       )
       SELECT
-        p.user_id, u.name, u."photoUrl", p.cards, p.emeralds, p.chromatics,
-        (SELECT count(*) FROM per_user) AS players,
-        (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY cards) FROM per_user) AS median,
+        p.user_id, u.name, u."photoUrl", p.cards,
         CASE WHEN row_number() OVER (ORDER BY p.cards DESC, p.user_id) = 1 THEN (
           SELECT json_agg(json_build_array(cards, n) ORDER BY cards DESC)
           FROM (SELECT cards, count(*) AS n FROM per_user GROUP BY cards) h
@@ -93,12 +76,8 @@ async function getCollectionTop() {
       name: String(r.name),
       photoUrl: (r.photoUrl as string | null) ?? null,
       cards: num(r.cards),
-      emeralds: num(r.emeralds),
-      chromatics: num(r.chromatics),
     })),
     totalCards,
-    players: num(rows[0]?.players),
-    medianCards: Math.round(num(rows[0]?.median)),
   };
   return { board, histogram: toHistogram(rows[0]?.histogram) };
 }
@@ -113,8 +92,6 @@ export type ColosseumTopRow = TopUser & {
 
 export type ColosseumTop = {
   rows: ColosseumTopRow[];
-  total: number;
-  players: number;
 };
 
 const hasFought = gt(
@@ -134,8 +111,6 @@ async function getColosseumTop(field: ColosseumField) {
         wins: battles.wins,
         draws: battles.draws,
         loses: battles.loses,
-        total: sql<string>`sum(${column}) over ()`,
-        players: sql<string>`count(*) over ()`,
       })
       .from(battles)
       .innerJoin(tgUsers, eq(tgUsers.id, battles.id))
@@ -152,18 +127,7 @@ async function getColosseumTop(field: ColosseumField) {
       .then((res) => res.map((r): [number, number] => [r.value, r.players])),
   ]);
 
-  const board: ColosseumTop = {
-    rows: rows.map((r) => ({
-      userId: r.userId,
-      name: r.name,
-      photoUrl: r.photoUrl,
-      wins: r.wins,
-      draws: r.draws,
-      loses: r.loses,
-    })),
-    total: num(rows[0]?.total),
-    players: num(rows[0]?.players),
-  };
+  const board: ColosseumTop = { rows };
   return { board, histogram };
 }
 
@@ -177,10 +141,6 @@ export type SpendingTopRow = TopUser & {
 
 export type SpendingTop = {
   rows: SpendingTopRow[];
-  total: number;
-  players: number;
-  // First day the bot kept daily stats; nothing before it is counted.
-  since: string | null;
 };
 
 async function getSpendingTop(field: SpendingField) {
@@ -194,7 +154,7 @@ async function getSpendingTop(field: SpendingField) {
     .having(gt(sum(column), 0))
     .as("per_user");
 
-  const [rows, histogram, since] = await Promise.all([
+  const [rows, histogram] = await Promise.all([
     db
       .select({
         userId: tgUsers.id,
@@ -205,8 +165,6 @@ async function getSpendingTop(field: SpendingField) {
           Number
         ),
         bestDay: sql<number>`max(${column})`.mapWith(Number),
-        total: sql<string>`sum(sum(${column})) over ()`,
-        players: sql<string>`count(*) over ()`,
       })
       .from(userDailyStats)
       .innerJoin(tgUsers, eq(tgUsers.id, userDailyStats.userId))
@@ -222,41 +180,19 @@ async function getSpendingTop(field: SpendingField) {
       .then((res) =>
         res.map((r): [number, number] => [num(r.value), r.players])
       ),
-    db
-      .select({ since: sql<string | null>`min(${userDailyStats.date})::text` })
-      .from(userDailyStats)
-      .then((res) => res[0]?.since ?? null),
   ]);
 
-  const board: SpendingTop = {
-    rows: rows.map((r) => ({
-      userId: r.userId,
-      name: r.name,
-      photoUrl: r.photoUrl,
-      spent: r.spent,
-      activeDays: r.activeDays,
-      bestDay: r.bestDay,
-    })),
-    total: num(rows[0]?.total),
-    players: num(rows[0]?.players),
-    since,
-  };
+  const board: SpendingTop = { rows };
   return { board, histogram };
 }
 
 export type TradersTopRow = TopUser & {
   partners: number;
-  trades: number;
   recentPartners: number;
 };
 
 export type TradersTop = {
   rows: TradersTopRow[];
-  trades: number;
-  players: number;
-  pairs: number;
-  medianPartners: number;
-  since: string | null;
 };
 
 // Every completed exchange as (a, b, at): single-card trades, completed
@@ -273,7 +209,7 @@ const tradeEvents = sql`
 `;
 
 // Ranked by distinct partners, so a hundred trades with one friend is one
-// partner.
+// partner. Ties go to whoever traded more.
 async function getTradersTop() {
   const rows = await db.execute<Record<string, unknown>>(sql`
     WITH events AS (${tradeEvents}),
@@ -292,12 +228,7 @@ async function getTradersTop() {
       GROUP BY user_id
     )
     SELECT
-      p.user_id, u.name, u."photoUrl", p.partners, p.trades, p.recent_partners,
-      (SELECT count(*) FROM events WHERE a <> b) AS total_trades,
-      (SELECT count(*) FROM per_user) AS players,
-      (SELECT count(DISTINCT (least(a, b), greatest(a, b))) FROM events WHERE a <> b) AS pairs,
-      (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY partners) FROM per_user) AS median,
-      (SELECT min(at)::date::text FROM events) AS since,
+      p.user_id, u.name, u."photoUrl", p.partners, p.recent_partners,
       CASE WHEN row_number() OVER (ORDER BY p.partners DESC, p.trades DESC, p.user_id) = 1 THEN (
         SELECT json_agg(json_build_array(partners, n) ORDER BY partners DESC)
         FROM (SELECT partners, count(*) AS n FROM per_user GROUP BY partners) h
@@ -308,23 +239,16 @@ async function getTradersTop() {
     LIMIT ${TOP_SIZE}
   `);
 
-  const first = rows[0];
   const board: TradersTop = {
     rows: rows.map((r) => ({
       userId: String(r.user_id),
       name: String(r.name),
       photoUrl: (r.photoUrl as string | null) ?? null,
       partners: num(r.partners),
-      trades: num(r.trades),
       recentPartners: num(r.recent_partners),
     })),
-    trades: num(first?.total_trades),
-    players: num(first?.players),
-    pairs: num(first?.pairs),
-    medianPartners: Math.round(num(first?.median)),
-    since: (first?.since as string | null) ?? null,
   };
-  return { board, histogram: toHistogram(first?.histogram) };
+  return { board, histogram: toHistogram(rows[0]?.histogram) };
 }
 
 export type Leaderboards = {
@@ -335,7 +259,6 @@ export type Leaderboards = {
   tries: SpendingTop;
   coins: SpendingTop;
   traders: TradersTop;
-  updatedAt: string;
 };
 
 type Snapshot = {
@@ -364,7 +287,6 @@ async function loadSnapshot(): Promise<Snapshot> {
       tries: tries.board,
       coins: coins.board,
       traders: traders.board,
-      updatedAt: new Date().toISOString(),
     },
     histograms: {
       collection: collection.histogram,

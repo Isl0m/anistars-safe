@@ -3,486 +3,273 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
 
 import { api } from "@/lib/api";
 import type {
-  ColosseumField,
-  ColosseumTopRow,
+  BoardKey,
   Leaderboards,
   Standing,
   Standings,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
+import { getGradient } from "@/components/collection-progress";
 import {
   buildBoards,
   fmt,
-  fmtCompact,
+  fmtGap,
   plural,
-  SPLIT,
-  SPLIT_ORDER,
   type Board,
   type BoardRow,
 } from "@/components/top/boards";
-import {
-  CrownMark,
-  initialsBackground,
-  MedalRing,
-  METALS,
-  StepNumeral,
-  tint,
-} from "@/components/top/medal";
 import { useCurrentUser } from "@/hook/use-current-user";
 import { Skeleton } from "@/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/ui/tabs";
 
 import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 import { UserAvatar } from "../user-avatar";
 
-const battlesOf = (r: ColosseumTopRow) => r.wins + r.draws + r.loses;
-
+// A player without a Telegram photo gets the same name-keyed gradient the
+// collection cards use, so they always wear the same colours.
 function PlayerAvatar({
   name,
   photoUrl,
   size,
+  className,
 }: {
   name: string;
   photoUrl: string | null;
   size: number;
+  className?: string;
 }) {
   return (
     <UserAvatar
       name={name}
       photoUrl={photoUrl}
       size={size}
-      style={
-        photoUrl
-          ? undefined
-          : { background: initialsBackground(name), color: "#fff" }
-      }
+      className={cn(
+        !photoUrl && `bg-gradient-to-br text-white ${getGradient(name)}`,
+        className
+      )}
     />
   );
 }
 
-// One player's wins, draws and losses as a stacked bar. The ranked field
-// goes first so it starts at the same baseline on every row and its length
-// compares down the list; the other two are dimmed. Total length is the
-// player's battles against the busiest player on the board.
-function SplitBar({
-  row,
-  ranked,
-  scale,
+function ProgressBar({
+  ratio,
+  fill,
   className,
 }: {
-  row: ColosseumTopRow;
-  ranked: ColosseumField;
-  scale: number;
+  ratio: number;
+  fill: string;
   className?: string;
 }) {
-  const order = [ranked, ...SPLIT_ORDER.filter((f) => f !== ranked)];
-  const width = scale > 0 ? (battlesOf(row) / scale) * 100 : 0;
-
   return (
-    <div className={cn("h-1.5 w-full rounded-full bg-white/5", className)}>
-      <div className="flex h-full gap-[2px]" style={{ width: `${width}%` }}>
-        {order
-          .filter((field) => row[field] > 0)
-          .map((field) => (
-            <div
-              key={field}
-              className="h-full first:rounded-l-full last:rounded-r-full"
-              style={{
-                flex: `${row[field]} 1 0`,
-                backgroundColor: SPLIT[field].color,
-                opacity: field === ranked ? 1 : 0.35,
-              }}
-            />
-          ))}
-      </div>
-    </div>
-  );
-}
-
-function SplitLegend({ ranked }: { ranked: ColosseumField }) {
-  return (
-    <div className="flex items-center gap-2.5 text-[11px] font-normal normal-case tracking-normal text-muted-foreground">
-      {SPLIT_ORDER.map((field) => (
-        <span key={field} className="flex items-center gap-1">
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{
-              backgroundColor: SPLIT[field].color,
-              opacity: field === ranked ? 1 : 0.35,
-            }}
-          />
-          {SPLIT[field].label}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// Share of the leader's value, in the board's hue on a track of the same hue.
-function Meter({
-  value,
-  max,
-  accent,
-}: {
-  value: number;
-  max: number;
-  accent: string;
-}) {
-  return (
-    <div
-      className="h-1.5 w-full rounded-full"
-      style={{ backgroundColor: tint(accent, 0.15) }}
-    >
+    <div className={cn("overflow-hidden rounded-full bg-white/5", className)}>
       <div
-        className="h-full rounded-full"
-        style={{
-          width: `${max > 0 ? Math.min(value / max, 1) * 100 : 0}%`,
-          backgroundColor: accent,
-        }}
+        className={cn(
+          "h-full rounded-full bg-gradient-to-r transition-all duration-500 ease-out",
+          fill
+        )}
+        style={{ width: `${Math.min(Math.max(ratio, 0), 1) * 100}%` }}
       />
     </div>
   );
 }
 
-function BoardTabs({
-  boards,
-  active,
-  onSelect,
-}: {
-  boards: Board[];
-  active: string;
-  onSelect: (key: Board["key"]) => void;
-}) {
-  return (
-    <nav className="no-scrollbar flex gap-1.5 overflow-x-auto border-b bg-card px-3 py-2">
-      {boards.map(({ key, tab, accent }) => {
-        const isActive = key === active;
-        return (
-          <button
-            key={key}
-            onClick={() => onSelect(key)}
-            className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
-              isActive
-                ? "text-foreground"
-                : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
-            )}
-            style={
-              isActive
-                ? {
-                    borderColor: tint(accent, 0.7),
-                    backgroundImage: `linear-gradient(180deg, ${tint(accent, 0.32)}, ${tint(accent, 0.14)})`,
-                    boxShadow: `0 4px 14px ${tint(accent, 0.25)}, inset 0 1px 0 rgba(255,255,255,0.12)`,
-                  }
-                : undefined
-            }
-          >
-            {tab}
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
+// Bars on the collection board measure against every card in the game; on
+// the others there is no ceiling, so they measure against the leader.
+const barRatio = (board: Board, value: number) =>
+  board.total
+    ? value / board.total
+    : value / Math.max(board.rows[0]?.value ?? 0, 1);
 
-// Per place (1st, 2nd, 3rd): step height, numeral size, avatar size and
-// glow. First stands in the middle and tallest.
-const PODIUM = [
-  {
-    column: "col-start-2",
-    step: 96,
-    numeral: "text-4xl",
-    avatar: 76,
-    glow: 32,
-  },
-  {
-    column: "col-start-1",
-    step: 70,
-    numeral: "text-3xl",
-    avatar: 56,
-    glow: 22,
-  },
-  {
-    column: "col-start-3",
-    step: 54,
-    numeral: "text-2xl",
-    avatar: 56,
-    glow: 22,
-  },
-];
-
-function PodiumSpot({
-  row,
-  place,
-  board,
-  splitScale,
-  isMine,
-}: {
-  row: BoardRow;
-  place: number;
-  board: Board;
-  splitScale: number;
-  isMine: boolean;
-}) {
-  const metal = METALS[place - 1];
-  const spot = PODIUM[place - 1];
-  const isFirst = place === 1;
+function LeaderCard({ board, row }: { board: Board; row: BoardRow }) {
+  const second = board.rows[1];
 
   return (
     <Link
       href={`/profile/${row.userId}`}
-      aria-label={`${place} место: ${row.name}`}
-      className={cn(
-        "row-start-1 flex min-w-0 flex-col items-center",
-        spot.column
-      )}
+      className="relative block overflow-hidden rounded-2xl border border-white/10 p-5 transition-colors hover:border-white/20"
     >
-      {isFirst && <CrownMark className="-mb-2 w-12" />}
-      <MedalRing metal={metal} glow={spot.glow}>
-        <PlayerAvatar
-          name={row.name}
-          photoUrl={row.photoUrl}
-          size={spot.avatar}
-        />
-      </MedalRing>
-
-      <span className="mt-2.5 w-full truncate px-1 text-center text-xs font-semibold">
-        {row.name}
-      </span>
-      {isMine && (
-        <span className="text-[10px] font-medium text-muted-foreground">
-          это ты
-        </span>
-      )}
+      <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-amber-600 opacity-10" />
       <span
-        className={cn(
-          "font-extrabold leading-tight tracking-tight",
-          isFirst ? "text-2xl" : "text-lg"
-        )}
+        aria-hidden
+        className="pointer-events-none absolute -right-1.5 -top-[34px] select-none text-[168px] font-extrabold leading-none tracking-[-0.06em] text-yellow-400/[0.14]"
       >
-        {fmt(row.value)}
-      </span>
-      <span className="text-center text-[10px] leading-tight text-muted-foreground">
-        <span className="font-medium text-foreground/90">{row.side}</span>
-        <br />
-        {row.sideLabel}
+        1
       </span>
 
-      {row.split && board.ranked ? (
-        <SplitBar
-          row={row.split}
-          ranked={board.ranked}
-          scale={splitScale}
-          className="mt-2 w-4/5"
-        />
-      ) : null}
+      <div className="relative flex flex-col gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="shrink-0 rounded-full bg-gradient-to-br from-yellow-300 to-amber-600 p-0.5">
+            <PlayerAvatar
+              name={row.name}
+              photoUrl={row.photoUrl}
+              size={56}
+              className="border-[3px] border-[#0b0f1a]"
+            />
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-yellow-400">
+              1 место
+            </span>
+            <span className="truncate text-xl font-bold tracking-[-0.01em]">
+              {row.name}
+            </span>
+          </div>
+        </div>
 
-      <div
-        className="mt-3 w-full rounded-t-2xl pt-2.5 text-center"
-        style={{
-          height: spot.step,
-          backgroundImage: `linear-gradient(180deg, ${tint(metal.base, 0.26)} 0%, ${tint(metal.base, 0.08)} 60%, ${tint(metal.base, 0)} 100%)`,
-          boxShadow: `inset 0 1px 0 ${tint(metal.light, 0.6)}, inset 1px 0 0 ${tint(metal.base, 0.16)}, inset -1px 0 0 ${tint(metal.base, 0.16)}`,
-        }}
-      >
-        <StepNumeral metal={metal} place={place} className={spot.numeral} />
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-end justify-between gap-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              {board.metric}
+            </span>
+            <span className="shrink-0 tabular-nums">
+              <span className="text-[28px] font-bold leading-none tracking-[-0.02em]">
+                {fmt(row.value)}
+              </span>
+              {board.total ? (
+                <span className="text-[15px] font-semibold text-muted-foreground/60">
+                  {" "}
+                  / {fmt(board.total)}
+                </span>
+              ) : null}
+            </span>
+          </div>
+          {board.total ? (
+            <ProgressBar
+              ratio={barRatio(board, row.value)}
+              fill="from-yellow-500 to-amber-600"
+              className="h-2"
+            />
+          ) : null}
+          <div className="flex justify-between gap-3 text-xs text-muted-foreground">
+            <span className="truncate">{row.note}</span>
+            {second && (
+              <span className="shrink-0 tabular-nums">
+                отрыв {fmtGap(row.value - second.value)}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </Link>
   );
 }
 
-function Stage({
+const RUNNER_STYLES = {
+  2: {
+    overlay: "from-slate-400 to-slate-600",
+    numeral: "text-slate-300/[0.12]",
+    ring: "ring-slate-300",
+    fill: "from-slate-300 to-slate-500",
+  },
+  3: {
+    overlay: "from-orange-500 to-amber-600",
+    numeral: "text-orange-400/[0.14]",
+    ring: "ring-orange-400",
+    fill: "from-orange-500 to-amber-600",
+  },
+};
+
+function RunnerCard({
   board,
-  splitScale,
-  myId,
+  row,
+  place,
 }: {
   board: Board;
-  splitScale: number;
-  myId?: string;
+  row: BoardRow;
+  place: 2 | 3;
 }) {
-  const podium = board.rows.slice(0, 3);
-  const { accent } = board;
+  const style = RUNNER_STYLES[place];
+  const leader = board.rows[0];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border bg-card">
+    <Link
+      href={`/profile/${row.userId}`}
+      className="relative flex min-w-0 flex-col gap-3 overflow-hidden rounded-xl border border-white/10 p-3.5 transition-colors hover:border-white/20"
+    >
       <div
-        className="pointer-events-none absolute -top-28 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-        style={{ backgroundColor: accent }}
+        className={cn(
+          "absolute inset-0 bg-gradient-to-br opacity-10",
+          style.overlay
+        )}
       />
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -right-1 -top-[22px] select-none text-[96px] font-extrabold leading-none tracking-[-0.06em]",
+          style.numeral
+        )}
+      >
+        {place}
+      </span>
 
-      <div className="relative flex flex-col gap-1 px-4 pt-4">
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{
-              backgroundColor: accent,
-              boxShadow: `0 0 8px ${accent}`,
-            }}
-          />
-          {board.eyebrow} · топ-10
-        </span>
-        <h2 className="text-balance text-xl font-extrabold leading-tight tracking-tight">
-          {board.title}
-        </h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {board.description}
-        </p>
+      <PlayerAvatar
+        name={row.name}
+        photoUrl={row.photoUrl}
+        size={36}
+        className={cn("ring-2", style.ring)}
+      />
+      <div className="relative flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-sm font-semibold">{row.name}</span>
+        <span className="text-xl font-bold tabular-nums">{fmt(row.value)}</span>
       </div>
-
-      {podium.length > 0 ? (
-        <div className="relative mt-6 grid grid-cols-3 items-end gap-2 px-3">
-          {podium.map((row, i) => (
-            <PodiumSpot
-              key={row.userId}
-              row={row}
-              place={i + 1}
-              board={board}
-              splitScale={splitScale}
-              isMine={row.userId === myId}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="relative flex flex-col items-center gap-3 px-4 py-12 text-center">
-          <div className="rounded-full bg-muted p-4">
-            <Trophy className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">Рейтинг пока пуст</p>
-            <p className="text-xs text-muted-foreground">
-              Загляните позже — здесь появятся лучшие игроки
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatsGrid({ board }: { board: Board }) {
-  return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
-      {board.stats.map((stat) => (
-        <div key={stat.label} className="flex flex-col gap-0.5 bg-card p-3">
-          <span className="text-base font-bold leading-tight">
-            {stat.value}
-          </span>
-          <span className="text-[11px] leading-snug text-muted-foreground">
-            {stat.label}
-          </span>
-        </div>
-      ))}
-    </div>
+      <ProgressBar
+        ratio={barRatio(board, row.value)}
+        fill={style.fill}
+        className="relative h-1.5"
+      />
+      <span className="relative truncate text-[11px] tabular-nums text-muted-foreground">
+        {row.note} · {fmtGap(row.value - leader.value)}
+      </span>
+    </Link>
   );
 }
 
 function RankRow({
   row,
   place,
-  board,
   leaderValue,
-  splitScale,
   isMine,
 }: {
   row: BoardRow;
   place: number;
-  board: Board;
   leaderValue: number;
-  splitScale: number;
   isMine: boolean;
 }) {
   return (
     <Link
       href={`/profile/${row.userId}`}
-      className="relative flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40"
-      style={isMine ? { backgroundColor: tint(board.accent, 0.1) } : undefined}
-    >
-      {isMine && (
-        <span
-          className="absolute inset-y-2 left-0 w-0.5 rounded-r-full"
-          style={{ backgroundColor: board.accent }}
-        />
+      className={cn(
+        "flex items-center gap-3 border-b py-2.5 transition-colors hover:bg-secondary/30",
+        isMine && "-mx-2 rounded-md bg-secondary/50 px-2"
       )}
-      <span className="w-5 shrink-0 text-center text-sm font-semibold tabular-nums text-muted-foreground">
+    >
+      <span className="w-5 shrink-0 text-[13px] font-semibold tabular-nums text-muted-foreground">
         {place}
       </span>
-      <PlayerAvatar name={row.name} photoUrl={row.photoUrl} size={34} />
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-sm font-medium">
-            {row.name}
-            {isMine && (
-              <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
-                это ты
-              </span>
-            )}
-          </span>
-          <span className="shrink-0 text-sm font-bold tabular-nums">
-            {fmt(row.value)}
-          </span>
-        </div>
-
-        {row.split && board.ranked ? (
-          <SplitBar row={row.split} ranked={board.ranked} scale={splitScale} />
-        ) : (
-          <Meter value={row.value} max={leaderValue} accent={board.accent} />
-        )}
-
-        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-          <span className="min-w-0 truncate">{row.meta}</span>
-          <span className="shrink-0 tabular-nums">
-            <span className="font-medium text-foreground/90">{row.side}</span>{" "}
-            {row.sideLabel}
-          </span>
-        </div>
+      <PlayerAvatar name={row.name} photoUrl={row.photoUrl} size={32} />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        {row.name}
+      </span>
+      <div className="flex shrink-0 flex-col items-end">
+        <span className="text-sm font-semibold tabular-nums">
+          {fmt(row.value)}
+        </span>
+        <span className="text-[11px] tabular-nums text-muted-foreground">
+          {fmtGap(row.value - leaderValue)}
+        </span>
       </div>
     </Link>
   );
 }
 
-function RankList({
-  board,
-  splitScale,
-  myId,
-}: {
-  board: Board;
-  splitScale: number;
-  myId?: string;
-}) {
-  const rest = board.rows.slice(3);
-  const leaderValue = board.rows[0]?.value ?? 0;
-  if (rest.length === 0) return null;
-
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <span>Места 4–{board.rows.length}</span>
-        {board.ranked && <SplitLegend ranked={board.ranked} />}
-      </div>
-      <div className="divide-y overflow-hidden rounded-xl border bg-card">
-        {rest.map((row, i) => (
-          <RankRow
-            key={row.userId}
-            row={row}
-            place={i + 4}
-            board={board}
-            leaderValue={leaderValue}
-            splitScale={splitScale}
-            isMine={row.userId === myId}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StandingCard({
+// The viewer's own place, pinned under the scroll area so it never covers
+// the list.
+function StandingBar({
   board,
   standing,
   isLoading,
@@ -494,66 +281,53 @@ function StandingCard({
   const { data: me } = useCurrentUser();
   const threshold =
     board.rows.length >= 10 ? (board.rows.at(-1)?.value ?? 0) : 0;
+  const isUnranked = !isLoading && !standing;
 
-  if (isLoading) return <Skeleton className="h-[74px] rounded-xl" />;
+  let detail: React.ReactNode = board.emptyHint;
+  let side: React.ReactNode = null;
 
-  const avatar = me ? (
-    <PlayerAvatar name={me.name} photoUrl={me.photoUrl ?? null} size={36} />
-  ) : null;
-
-  if (!standing) {
-    return (
-      <div className="flex items-center gap-3 rounded-xl border bg-card/95 p-3 shadow-lg backdrop-blur">
-        {avatar}
-        <div className="flex min-w-0 flex-col">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Твоё место
+  if (isLoading) {
+    detail = <Skeleton className="mt-0.5 h-4 w-40" />;
+    side = <Skeleton className="h-6 w-12" />;
+  } else if (standing) {
+    const { value, rank, players } = standing;
+    const better = Math.floor(((players - rank) / Math.max(players, 1)) * 100);
+    detail = `${fmt(value)} ${plural(value, board.unit)} · ${
+      rank === 1 ? "лучший результат" : `лучше ${better}%`
+    }`;
+    side = (
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <span className="text-xl font-bold tabular-nums leading-tight">
+          #{fmt(rank)}
+        </span>
+        {rank > 10 && threshold > 0 && (
+          <span className="text-[11px] tabular-nums text-muted-foreground">
+            {fmtGap(-(threshold - value + 1))} до топ-10
           </span>
-          <span className="text-sm font-medium">
-            Тебя пока нет в этом рейтинге
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            {board.emptyHint}
-          </span>
-        </div>
+        )}
       </div>
     );
   }
 
-  const { value, rank, players } = standing;
-  const inTop = rank <= 10;
-  const better = Math.floor(((players - rank) / Math.max(players, 1)) * 100);
-  const need = Math.max(threshold - value + 1, 1);
-
   return (
-    <div
-      className="flex items-center gap-3 rounded-xl border bg-card/95 p-3 shadow-lg backdrop-blur"
-      style={{ borderColor: tint(board.accent, 0.45) }}
-    >
-      {avatar}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {inTop ? "Ты в топ-10" : "Твоё место"}
-        </span>
-        <span className="truncate text-sm font-semibold">
-          {fmt(value)} {plural(value, board.unit)}
-        </span>
-        {!inTop && threshold > 0 && (
-          <div className="flex items-center gap-2">
-            <Meter value={value} max={threshold} accent={board.accent} />
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              ещё {fmtCompact(need)} до топ-10
-            </span>
-          </div>
+    <div className="border-t bg-background">
+      <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 pb-[calc(20px+var(--safe-area-bottom))] pt-3">
+        {me ? (
+          <PlayerAvatar
+            name={me.name}
+            photoUrl={me.photoUrl ?? null}
+            size={40}
+          />
+        ) : (
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
         )}
-      </div>
-      <div className="flex shrink-0 flex-col items-end">
-        <span className="flex items-center gap-1 text-xl font-bold leading-tight">
-          {rank === 1 && <CrownMark className="w-6" />}#{fmt(rank)}
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          {rank === 1 ? "лучший результат" : `лучше ${better}% игроков`}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[11px] text-muted-foreground">
+            {isUnranked ? "Тебя пока нет в рейтинге" : "Твоё место"}
+          </span>
+          <span className="truncate text-sm font-semibold">{detail}</span>
+        </div>
+        {side}
       </div>
     </div>
   );
@@ -574,7 +348,7 @@ function useHydrated() {
 
 export function TopPage({ leaderboards }: { leaderboards: Leaderboards }) {
   const boards = buildBoards(leaderboards);
-  const [active, setActive] = useState<Board["key"]>(boards[0].key);
+  const [active, setActive] = useState<BoardKey>(boards[0].key);
   const scrollRef = useRef<HTMLElement>(null);
   const telegram = useTelegram();
   const userId = useHydrated() ? telegram.userId : undefined;
@@ -594,46 +368,80 @@ export function TopPage({ leaderboards }: { leaderboards: Leaderboards }) {
   });
 
   const board = boards.find((b) => b.key === active) ?? boards[0];
-  const splitScale = Math.max(
-    0,
-    ...board.rows.map((r) => (r.split ? battlesOf(r.split) : 0))
-  );
+  const [leader, second, third] = board.rows;
+  const rest = board.rows.slice(3);
 
-  const selectBoard = (key: Board["key"]) => {
-    setActive(key);
+  const selectBoard = (key: string) => {
+    setActive(key as BoardKey);
     scrollRef.current?.scrollTo({ top: 0 });
   };
 
   return (
     <main className="flex h-full flex-col">
       <Header title="Рейтинги" />
-      <BoardTabs boards={boards} active={active} onSelect={selectBoard} />
 
-      <section ref={scrollRef} className="relative flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 px-3 pb-4 pt-3">
-          <Stage board={board} splitScale={splitScale} myId={userId} />
-          <StatsGrid board={board} />
-          <RankList board={board} splitScale={splitScale} myId={userId} />
-          <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-            {board.footnote}
-          </p>
-        </div>
+      <section ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 px-4 pb-5 pt-3">
+          <Tabs value={board.key} onValueChange={selectBoard}>
+            <TabsList className="no-scrollbar mb-1 flex h-auto w-full justify-start gap-0.5 overflow-x-auto rounded-md bg-muted p-1">
+              {boards.map((b) => (
+                <TabsTrigger
+                  key={b.key}
+                  value={b.key}
+                  className="h-8 flex-[1_0_auto] px-2.5 text-sm font-medium data-[state=active]:shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
+                >
+                  {b.tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-        {/* Without the viewer's standing there is nothing true to say about
-            their place, so a failed request hides the bar rather than
-            reading as «not on this board». */}
-        {userId && !isError && (
-          <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent pb-[calc(var(--safe-area-bottom)+0.75rem)] pt-6">
-            <div className="mx-auto w-full max-w-2xl px-3">
-              <StandingCard
-                board={board}
-                standing={standings?.[board.key]}
-                isLoading={isLoading}
-              />
+          {leader ? (
+            <LeaderCard board={board} row={leader} />
+          ) : (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              Рейтинг пока пуст — загляните позже
+            </p>
+          )}
+
+          {second && (
+            <div className="grid grid-cols-2 gap-3">
+              <RunnerCard board={board} row={second} place={2} />
+              {third && <RunnerCard board={board} row={third} place={3} />}
             </div>
-          </div>
-        )}
+          )}
+
+          {rest.length > 0 && (
+            <>
+              <span className="mt-2 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Места 4–{board.rows.length}
+              </span>
+              <div className="flex flex-col">
+                {rest.map((row, i) => (
+                  <RankRow
+                    key={row.userId}
+                    row={row}
+                    place={i + 4}
+                    leaderValue={leader.value}
+                    isMine={row.userId === userId}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </section>
+
+      {/* Without the viewer's standing there is nothing true to say about
+          their place, so a failed request hides the bar rather than reading
+          as «not on this board». */}
+      {userId && !isError && (
+        <StandingBar
+          board={board}
+          standing={standings?.[board.key]}
+          isLoading={isLoading}
+        />
+      )}
     </main>
   );
 }

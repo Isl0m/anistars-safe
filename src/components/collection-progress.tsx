@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-function getGradient(name: string) {
+export function getGradient(name: string) {
   const gradients = [
     "from-orange-500 to-yellow-500",
     "from-red-600 to-orange-600",
