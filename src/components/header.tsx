@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { canAccess, resolveAccess } from "@/lib/route-access";
 
 import { useCurrentUser } from "@/hook/use-current-user";
+import { useIsOwner } from "@/hook/use-is-owner";
 import { useRouteAccessMap } from "@/hook/use-route-access";
 
 import { Button } from "./ui/button";
@@ -89,12 +90,15 @@ export function Header({ title = "AniStars", element }: Props) {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
   const { data: accessMap } = useRouteAccessMap();
+  const { data: isOwner } = useIsOwner();
 
   const visibleGroups = navGroups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
-        canAccess(resolveAccess(accessMap, item.href), currentUser?.type)
+        item.href === "/admin"
+          ? !!isOwner
+          : canAccess(resolveAccess(accessMap, item.href), currentUser?.type)
       ),
     }))
     .filter((group) => group.items.length > 0);

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, parseBody, requireAdmin } from "@/lib/api-utils";
+import { requireOwner } from "@/lib/admin/api";
+import { errorResponse, parseBody } from "@/lib/api-utils";
 import { chatErrorMessage, sendPromoTestPost } from "@/lib/market-promo";
 import { marketPromoSettingsSchema } from "@/lib/market-schemas";
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin(request);
+  const admin = await requireOwner(request);
   if ("error" in admin) return admin.error;
 
   const body = await parseBody(request, marketPromoSettingsSchema);

@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, parseBody, requireAdmin } from "@/lib/api-utils";
+import { requireOwner } from "@/lib/admin/api";
+import { errorResponse, parseBody } from "@/lib/api-utils";
 import { chatErrorMessage, resolveChatId } from "@/lib/market-promo";
 import { marketPromoSettingsSchema } from "@/lib/market-schemas";
 import { getMarketPromoSettings, setMarketPromoSettings } from "@/lib/queries";
 
 export async function GET(request: Request) {
-  const admin = await requireAdmin(request);
+  const admin = await requireOwner(request);
   if ("error" in admin) return admin.error;
 
   return NextResponse.json({ settings: await getMarketPromoSettings() });
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin(request);
+  const admin = await requireOwner(request);
   if ("error" in admin) return admin.error;
 
   const body = await parseBody(request, marketPromoSettingsSchema);

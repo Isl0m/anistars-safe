@@ -15,7 +15,8 @@ import { routeAccessKey, useRouteAccessMap } from "@/hook/use-route-access";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
-import { Header } from "../header";
+import { Segmented } from "../admin/ui";
+import { useAdminAction } from "../admin/use-admin-action";
 
 const OPTIONS: { value: Access; label: string }[] = [
   { value: "admin", label: "Только админы" },
@@ -24,15 +25,103 @@ const OPTIONS: { value: Access; label: string }[] = [
 
 const marketPromoKey = ["market-promo-settings"] as const;
 
-export default function AdminPage() {
+export default function AdminSettings() {
   return (
-    <div className="flex h-full flex-col">
-      <Header title="Админ" />
-      <div className="mx-auto w-full max-w-lg space-y-8 overflow-y-auto p-4 md:container">
-        <RouteAccessSection />
-        <MarketPromoSection />
+    <>
+      <FeatureSection />
+      <RouteAccessSection />
+      <MarketPromoSection />
+    </>
+  );
+}
+
+const FEATURES: {
+  key: "battle" | "clans" | "testMode";
+  label: string;
+  description: string;
+}[] = [
+  {
+    key: "battle",
+    label: "Битвы (PvP)",
+    description: "Поиск соперника и бои. Как /onBattle и /offBattle.",
+  },
+  {
+    key: "clans",
+    label: "Кланы",
+    description:
+      "Войны, дуэли и приключение. При открытии сроки сдвигаются на время паузы.",
+  },
+  {
+    key: "testMode",
+    label: "Тестовый режим",
+    description: "Как /onTestMode и /offTestMode.",
+  },
+];
+
+const featuresKey = ["admin", "features"] as const;
+
+function FeatureSection() {
+  const { data: flags } = useQuery({
+    queryKey: featuresKey,
+    queryFn: async () => {
+      const { data } = await api.get<{
+        features: Record<(typeof FEATURES)[number]["key"], boolean>;
+      }>("/api/admin/features");
+      return data.features;
+    },
+  });
+  const toggle = useAdminAction<{ feature: string; enabled: boolean }>(
+    "/api/admin/features",
+    { invalidate: [featuresKey] }
+  );
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Функции бота</h2>
+        <p className="text-sm text-muted-foreground">
+          Включаются и выключаются сразу для всех игроков.
+        </p>
       </div>
-    </div>
+      <div className="space-y-2">
+        {FEATURES.map((f) => {
+          const enabled = flags?.[f.key];
+          const pending =
+            toggle.isPending && toggle.variables?.feature === f.key;
+          return (
+            <div
+              key={f.key}
+              className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{f.label}</p>
+                <p className="text-xs text-muted-foreground">{f.description}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {pending && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                {enabled === undefined ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Segmented
+                    value={enabled}
+                    disabled={toggle.isPending}
+                    options={[
+                      { value: true, label: "Вкл" },
+                      { value: false, label: "Выкл" },
+                    ]}
+                    onChange={(v) =>
+                      toggle.mutate({ feature: f.key, enabled: v })
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -258,9 +347,9 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
           }
         />
         <p className="text-xs text-muted-foreground">
-          Короткое имя из BotFather — часть после имени бота в ссылке
-          t.me/bot/<b>имя</b>. Кнопка «Открыть лот» ведёт туда. Оставьте пустым,
-          только если у бота настроено главное мини-приложение.
+          Короткое имя из BotFather — часть после имени бота в ссылке t.me/bot/
+          <b>имя</b>. Кнопка «Открыть лот» ведёт туда. Оставьте пустым, только
+          если у бота настроено главное мини-приложение.
         </p>
       </div>
 
