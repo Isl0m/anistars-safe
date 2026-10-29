@@ -2,8 +2,9 @@ export type Access = "all" | "admin";
 
 export type RouteAccessMap = Record<string, Access>;
 
+// /admin is not here: it is owner-only, checked by the admin layout and every
+// /api/admin route rather than by account type.
 export const ROUTE_ACCESS_DEFAULTS: RouteAccessMap = {
-  "/admin": "admin",
   "/market": "all",
   "/trade": "all",
 };

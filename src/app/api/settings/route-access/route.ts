@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { errorResponse, requireAdmin } from "@/lib/api-utils";
+import { requireOwner } from "@/lib/admin/api";
+import { errorResponse } from "@/lib/api-utils";
 import { getRouteAccessMap, setRouteAccess } from "@/lib/queries";
 import { MANAGED_ROUTES } from "@/lib/route-access";
 
@@ -12,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin(request);
+  const admin = await requireOwner(request);
   if ("error" in admin) return admin.error;
 
   const { path, access } = await request.json().catch(() => ({}));
