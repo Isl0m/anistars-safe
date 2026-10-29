@@ -1,12 +1,16 @@
 import { gt, sql } from "drizzle-orm";
 
-import type { Vital, VitalMetric } from "@/lib/vitals";
+import type { VitalMetric } from "@/lib/vitals";
 
 import { db } from "@/db";
-import { pageLoadMetrics } from "@/db/schema/vitals";
+import { pageLoadMetrics, pageLoads } from "@/db/schema/vitals";
 
-export async function recordVital(vital: Vital) {
-  await db.insert(pageLoadMetrics).values(vital);
+export async function recordVital(row: typeof pageLoadMetrics.$inferInsert) {
+  await db.insert(pageLoadMetrics).values(row);
+}
+
+export async function recordPageLoad(row: typeof pageLoads.$inferInsert) {
+  await db.insert(pageLoads).values(row).onConflictDoNothing();
 }
 
 export type VitalSummaryRow = {
