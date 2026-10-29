@@ -9,7 +9,9 @@ import { api } from "@/lib/api";
 import { showApiError } from "@/lib/api-feedback";
 import { MarketPromoSettings } from "@/lib/market-schemas";
 import { Access, MANAGED_ROUTES, RouteAccessMap } from "@/lib/route-access";
+import type { VitalSummaryRow } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { VITAL_METRICS, VitalMetric } from "@/lib/vitals";
 
 import { routeAccessKey, useRouteAccessMap } from "@/hook/use-route-access";
 import { Button } from "@/ui/button";
@@ -31,6 +33,7 @@ export default function AdminPage() {
       <div className="mx-auto w-full max-w-lg space-y-8 overflow-y-auto p-4 md:container">
         <RouteAccessSection />
         <MarketPromoSection />
+        <PageLoadSection />
       </div>
     </div>
   );
@@ -311,5 +314,122 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+const VITAL_LABELS: Record<VitalMetric, string> = {
+  TTFB: "Сервер",
+  FCP: "Первый кадр",
+  LCP: "Контент",
+};
+
+const VITAL_THRESHOLDS: Record<VitalMetric, [number, number]> = {
+  TTFB: [800, 1800],
+  FCP: [1800, 3000],
+  LCP: [2500, 4000],
+};
+
+const seconds = new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+function vitalTone(metric: VitalMetric, value: number) {
+  const [good, poor] = VITAL_THRESHOLDS[metric];
+  if (value <= good) return "text-green-500";
+  if (value <= poor) return "text-amber-500";
+  return "text-red-500";
+}
+
+function PageLoadSection() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["page-load-summary"],
+    queryFn: async () => {
+      const { data } = await api.get<{
+        days: number;
+        rows: VitalSummaryRow[];
+      }>("/api/vitals");
+      return data;
+    },
+  });
+
+  const pages = new Map<
+    string,
+    Partial<Record<VitalMetric, VitalSummaryRow>>
+  >();
+  for (const row of data?.rows ?? []) {
+    pages.set(row.path, { ...pages.get(row.path), [row.metric]: row });
+  }
+  const sorted = [...pages.entries()].sort(
+    ([, a], [, b]) => (b.TTFB?.count ?? 0) - (a.TTFB?.count ?? 0)
+  );
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Скорость загрузки</h2>
+        <p className="text-sm text-muted-foreground">
+          Открытие приложения в Telegram за {data?.days ?? 7} дней, 75-й
+          перцентиль в секундах. Переходы внутри приложения не учитываются.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center rounded-lg border bg-card p-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : isError ? (
+        <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          Не удалось загрузить данные
+        </p>
+      ) : sorted.length === 0 ? (
+        <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          Данных пока нет
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Страница</th>
+                <th className="px-3 py-2 text-right font-medium">Открытий</th>
+                {VITAL_METRICS.map((metric) => (
+                  <th
+                    key={metric}
+                    className="px-3 py-2 text-right font-medium"
+                  >
+                    {VITAL_LABELS[metric]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(([path, metrics]) => (
+                <tr key={path} className="border-b last:border-0">
+                  <td className="max-w-[140px] truncate px-3 py-2">{path}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                    {metrics.TTFB?.count ?? "—"}
+                  </td>
+                  {VITAL_METRICS.map((metric) => {
+                    const row = metrics[metric];
+                    return (
+                      <td
+                        key={metric}
+                        className={cn(
+                          "px-3 py-2 text-right tabular-nums",
+                          row && vitalTone(metric, row.p75)
+                        )}
+                      >
+                        {row ? seconds.format(row.p75 / 1000) : "—"}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

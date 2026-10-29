@@ -13,6 +13,7 @@ import { startParamRedirectScript } from "@/lib/start-param";
 
 import { RouteGuard } from "@/components/route-guard";
 import { TelegramProvider } from "@/components/telegram-provider";
+import { WebVitals } from "@/components/web-vitals";
 import { Toaster } from "@/ui/sonner";
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className={cn("bg-background font-sans text-white antialiased")}>
         <QueryProvider>
           <TelegramProvider>
+            <WebVitals />
             <div className="relative h-screen pb-[var(--safe-area-bottom)] pt-[var(--safe-area-top)]">
               <RouteGuard>{children}</RouteGuard>
             </div>
