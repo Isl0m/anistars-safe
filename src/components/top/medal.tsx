@@ -51,89 +51,103 @@ export function MedalRing({
   );
 }
 
-// A drawn crown: five points with jewelled tips over a banded base, shaded
-// in the gold ramp. Gradient ids are per instance so several crowns on one
-// page don't share defs.
-export function CrownMark({
-  metal = METALS[0],
-  className,
-}: {
-  metal?: Metal;
-  className?: string;
-}) {
+// A drawn crown for first place: five pearl-tipped points over a curved
+// band set with a ruby between two sapphires. Side shading on the points
+// and band gives it a rounded, metal body. Gradient ids are per instance so
+// several crowns on one page don't share defs.
+const CROWN_POINTS =
+  "M17 62 L9 27 L25 45 L31 19 L41 41 L50 9 L59 41 L69 19 L75 45 L91 27 L83 62 Q50 72 17 62 Z";
+const CROWN_BAND = "M15 60 Q50 71 85 60 L83 75 Q50 86 17 75 Z";
+const CROWN_PEARLS = [
+  [9, 25.5, 4.4],
+  [31, 17, 4.4],
+  [50, 7, 5.2],
+  [69, 17, 4.4],
+  [91, 25.5, 4.4],
+];
+
+export function CrownMark({ className }: { className?: string }) {
   const id = useId().replace(/:/g, "");
-  const body = `crown-body-${id}`;
-  const band = `crown-band-${id}`;
-  const { light, base, dark } = metal;
+  const ref = (name: string) => `url(#${name}-${id})`;
 
   return (
     <svg
-      viewBox="0 0 64 46"
+      viewBox="0 0 100 86"
       className={cn("overflow-visible", className)}
-      style={{ filter: `drop-shadow(0 3px 6px ${tint(base, 0.45)})` }}
+      style={{ filter: "drop-shadow(0 3px 8px rgba(245, 196, 81, 0.45))" }}
       role="img"
       aria-label="Корона"
     >
       <defs>
-        <linearGradient id={body} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={light} />
-          <stop offset="0.45" stopColor={base} />
-          <stop offset="1" stopColor={dark} />
+        <linearGradient id={`gold-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff3c2" />
+          <stop offset="0.3" stopColor="#ffd95a" />
+          <stop offset="0.68" stopColor="#e3a21f" />
+          <stop offset="1" stopColor="#9c5d0b" />
         </linearGradient>
-        <linearGradient id={band} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={base} />
-          <stop offset="1" stopColor={dark} />
+        <linearGradient id={`band-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffe17a" />
+          <stop offset="0.5" stopColor="#e2a024" />
+          <stop offset="1" stopColor="#8a4f08" />
         </linearGradient>
+        <linearGradient id={`curve-${id}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#5a2e00" stopOpacity="0.55" />
+          <stop offset="0.3" stopColor="#5a2e00" stopOpacity="0" />
+          <stop offset="0.7" stopColor="#5a2e00" stopOpacity="0" />
+          <stop offset="1" stopColor="#5a2e00" stopOpacity="0.55" />
+        </linearGradient>
+        <radialGradient id={`pearl-${id}`} cx="0.35" cy="0.3" r="0.75">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.45" stopColor="#fff1c9" />
+          <stop offset="1" stopColor="#c28d2c" />
+        </radialGradient>
+        <radialGradient id={`ruby-${id}`} cx="0.38" cy="0.32" r="0.8">
+          <stop offset="0" stopColor="#ffb3c1" />
+          <stop offset="0.35" stopColor="#f0284f" />
+          <stop offset="1" stopColor="#6e0418" />
+        </radialGradient>
+        <radialGradient id={`sapphire-${id}`} cx="0.38" cy="0.32" r="0.8">
+          <stop offset="0" stopColor="#cfe6ff" />
+          <stop offset="0.35" stopColor="#2f7bf0" />
+          <stop offset="1" stopColor="#0a2463" />
+        </radialGradient>
       </defs>
 
-      <path
-        d="M9 34 6.5 14.5c-.3-2.3 1.9-3.4 3.6-2L20 21 29.6 6.6c1.2-1.8 3.6-1.8 4.8 0L44 21l9.9-8.5c1.7-1.4 3.9-.3 3.6 2L55 34Z"
-        fill={`url(#${body})`}
-        stroke={dark}
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M11 31.5 9 16.5M32 9.5 23 23"
-        stroke={light}
-        strokeOpacity="0.55"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <rect
-        x="7.5"
-        y="33"
-        width="49"
-        height="9"
-        rx="3"
-        fill={`url(#${band})`}
-        stroke={dark}
-        strokeWidth="1.2"
-      />
-      <path
-        d="M32 34.6 35 37.5 32 40.4 29 37.5Z"
-        fill={light}
-        stroke={dark}
-        strokeWidth="0.8"
-      />
-      <circle cx="20" cy="37.5" r="1.6" fill={light} fillOpacity="0.85" />
-      <circle cx="44" cy="37.5" r="1.6" fill={light} fillOpacity="0.85" />
-      {[
-        [8.2, 11.5, 3],
-        [32, 4.2, 3.6],
-        [55.8, 11.5, 3],
-      ].map(([cx, cy, r]) => (
-        <circle
-          key={cx}
-          cx={cx}
-          cy={cy}
-          r={r}
-          fill={light}
-          stroke={dark}
-          strokeWidth="1"
+      <g stroke="#6b3a05" strokeWidth="1.6" strokeLinejoin="round">
+        <path d={CROWN_POINTS} fill={ref("gold")} />
+        <path d={CROWN_POINTS} fill={ref("curve")} stroke="none" />
+        <path d={CROWN_BAND} fill={ref("band")} />
+        <path d={CROWN_BAND} fill={ref("curve")} stroke="none" />
+      </g>
+
+      <g stroke="#fffbe6" strokeLinecap="round" fill="none">
+        <path d="M48 15 L43 38" strokeOpacity="0.75" strokeWidth="2.2" />
+        <path d="M12.5 33 L18 55" strokeOpacity="0.45" strokeWidth="1.8" />
+        <path d="M30 24 L27 40" strokeOpacity="0.5" strokeWidth="1.6" />
+        <path
+          d="M20 64 Q50 73.5 80 64"
+          stroke="#fff3b8"
+          strokeOpacity="0.8"
+          strokeWidth="1.4"
         />
-      ))}
+      </g>
+
+      <g stroke="#5c3204" strokeWidth="1">
+        <ellipse cx="50" cy="74" rx="6" ry="5" fill={ref("ruby")} />
+        <circle cx="31" cy="71.2" r="3.6" fill={ref("sapphire")} />
+        <circle cx="69" cy="71.2" r="3.6" fill={ref("sapphire")} />
+      </g>
+      <g fill="#ffffff">
+        <circle cx="48" cy="72" r="1.5" fillOpacity="0.9" />
+        <circle cx="30" cy="69.8" r="1" fillOpacity="0.85" />
+        <circle cx="68" cy="69.8" r="1" fillOpacity="0.85" />
+      </g>
+
+      <g stroke="#7a4a0c" strokeWidth="1">
+        {CROWN_PEARLS.map(([cx, cy, r]) => (
+          <circle key={cx} cx={cx} cy={cy} r={r} fill={ref("pearl")} />
+        ))}
+      </g>
     </svg>
   );
 }

@@ -242,7 +242,7 @@ function PodiumSpot({
         spot.column
       )}
     >
-      {isFirst && <CrownMark metal={metal} className="-mb-1 h-7 w-10" />}
+      {isFirst && <CrownMark className="-mb-2 w-12" />}
       <MedalRing metal={metal} glow={spot.glow}>
         <PlayerAvatar
           name={row.name}
@@ -549,10 +549,7 @@ function StandingCard({
       </div>
       <div className="flex shrink-0 flex-col items-end">
         <span className="flex items-center gap-1 text-xl font-bold leading-tight">
-          {inTop && rank <= 3 && (
-            <CrownMark metal={METALS[rank - 1]} className="h-4 w-6" />
-          )}
-          #{fmt(rank)}
+          {rank === 1 && <CrownMark className="w-6" />}#{fmt(rank)}
         </span>
         <span className="text-[10px] text-muted-foreground">
           {rank === 1 ? "лучший результат" : `лучше ${better}% игроков`}
