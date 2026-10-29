@@ -3,7 +3,7 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 
 import { api } from "@/lib/api";
 import type {
@@ -19,13 +19,20 @@ import {
   buildBoards,
   fmt,
   fmtCompact,
-  MEDALS,
   plural,
   SPLIT,
   SPLIT_ORDER,
   type Board,
   type BoardRow,
 } from "@/components/top/boards";
+import {
+  CrownMark,
+  initialsBackground,
+  MedalRing,
+  METALS,
+  StepNumeral,
+  tint,
+} from "@/components/top/medal";
 import { useCurrentUser } from "@/hook/use-current-user";
 import { Skeleton } from "@/ui/skeleton";
 
@@ -33,14 +40,30 @@ import { Header } from "../header";
 import { useTelegram } from "../telegram-provider";
 import { UserAvatar } from "../user-avatar";
 
-// Hex accent plus alpha, for tints of a board's hue.
-const tint = (hex: string, alpha: number) =>
-  hex +
-  Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, "0");
-
 const battlesOf = (r: ColosseumTopRow) => r.wins + r.draws + r.loses;
+
+function PlayerAvatar({
+  name,
+  photoUrl,
+  size,
+}: {
+  name: string;
+  photoUrl: string | null;
+  size: number;
+}) {
+  return (
+    <UserAvatar
+      name={name}
+      photoUrl={photoUrl}
+      size={size}
+      style={
+        photoUrl
+          ? undefined
+          : { background: initialsBackground(name), color: "#fff" }
+      }
+    />
+  );
+}
 
 // One player's wins, draws and losses as a stacked bar. The ranked field
 // goes first so it starts at the same baseline on every row and its length
@@ -137,28 +160,28 @@ function BoardTabs({
 }) {
   return (
     <nav className="no-scrollbar flex gap-1.5 overflow-x-auto border-b bg-card px-3 py-2">
-      {boards.map(({ key, tab, Icon, accent }) => {
+      {boards.map(({ key, tab, accent }) => {
         const isActive = key === active;
         return (
           <button
             key={key}
             onClick={() => onSelect(key)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
               isActive
                 ? "text-foreground"
-                : "border-border text-muted-foreground hover:text-foreground"
+                : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
             )}
             style={
               isActive
-                ? { borderColor: accent, backgroundColor: tint(accent, 0.15) }
+                ? {
+                    borderColor: tint(accent, 0.7),
+                    backgroundImage: `linear-gradient(180deg, ${tint(accent, 0.32)}, ${tint(accent, 0.14)})`,
+                    boxShadow: `0 4px 14px ${tint(accent, 0.25)}, inset 0 1px 0 rgba(255,255,255,0.12)`,
+                  }
                 : undefined
             }
           >
-            <Icon
-              className="h-3.5 w-3.5"
-              style={isActive ? { color: accent } : undefined}
-            />
             {tab}
           </button>
         );
@@ -167,9 +190,31 @@ function BoardTabs({
   );
 }
 
-// Step heights for 1st, 2nd and 3rd; 1st stands in the middle.
-const STEPS = ["h-[72px]", "h-12", "h-8"];
-const SPOT_COLUMN = ["col-start-2", "col-start-1", "col-start-3"];
+// Per place (1st, 2nd, 3rd): step height, numeral size, avatar size and
+// glow. First stands in the middle and tallest.
+const PODIUM = [
+  {
+    column: "col-start-2",
+    step: 96,
+    numeral: "text-4xl",
+    avatar: 76,
+    glow: 32,
+  },
+  {
+    column: "col-start-1",
+    step: 70,
+    numeral: "text-3xl",
+    avatar: 56,
+    glow: 22,
+  },
+  {
+    column: "col-start-3",
+    step: 54,
+    numeral: "text-2xl",
+    avatar: 56,
+    glow: 22,
+  },
+];
 
 function PodiumSpot({
   row,
@@ -184,47 +229,29 @@ function PodiumSpot({
   splitScale: number;
   isMine: boolean;
 }) {
-  const medal = MEDALS[place - 1];
+  const metal = METALS[place - 1];
+  const spot = PODIUM[place - 1];
   const isFirst = place === 1;
 
   return (
     <Link
       href={`/profile/${row.userId}`}
+      aria-label={`${place} место: ${row.name}`}
       className={cn(
         "row-start-1 flex min-w-0 flex-col items-center",
-        SPOT_COLUMN[place - 1]
+        spot.column
       )}
     >
-      {isFirst && (
-        <Crown
-          className="mb-1 h-5 w-5"
-          style={{ color: medal.color }}
-          fill="currentColor"
-          aria-label={medal.label}
+      {isFirst && <CrownMark metal={metal} className="-mb-1 h-7 w-10" />}
+      <MedalRing metal={metal} glow={spot.glow}>
+        <PlayerAvatar
+          name={row.name}
+          photoUrl={row.photoUrl}
+          size={spot.avatar}
         />
-      )}
-      <div className="relative">
-        <div
-          className="rounded-full p-[2px]"
-          style={{ backgroundColor: medal.color }}
-        >
-          <div className="rounded-full bg-card p-[2px]">
-            <UserAvatar
-              name={row.name}
-              photoUrl={row.photoUrl}
-              size={isFirst ? 68 : 52}
-            />
-          </div>
-        </div>
-        <span
-          className="absolute -bottom-2 left-1/2 flex h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full px-1 text-[11px] font-bold text-black ring-2 ring-card"
-          style={{ backgroundColor: medal.color }}
-        >
-          {place}
-        </span>
-      </div>
+      </MedalRing>
 
-      <span className="mt-3.5 w-full truncate px-1 text-center text-xs font-semibold">
+      <span className="mt-2.5 w-full truncate px-1 text-center text-xs font-semibold">
         {row.name}
       </span>
       {isMine && (
@@ -234,8 +261,8 @@ function PodiumSpot({
       )}
       <span
         className={cn(
-          "mt-0.5 font-bold leading-tight",
-          isFirst ? "text-xl" : "text-base"
+          "font-extrabold leading-tight tracking-tight",
+          isFirst ? "text-2xl" : "text-lg"
         )}
       >
         {fmt(row.value)}
@@ -256,16 +283,14 @@ function PodiumSpot({
       ) : null}
 
       <div
-        className={cn(
-          "mt-3 flex w-full items-start justify-center rounded-t-xl border-x border-t pt-1.5",
-          STEPS[place - 1]
-        )}
+        className="mt-3 w-full rounded-t-2xl pt-2.5 text-center"
         style={{
-          borderColor: tint(medal.color, 0.35),
-          backgroundImage: `linear-gradient(to bottom, ${tint(medal.color, 0.22)}, ${tint(medal.color, 0)})`,
+          height: spot.step,
+          backgroundImage: `linear-gradient(180deg, ${tint(metal.base, 0.26)} 0%, ${tint(metal.base, 0.08)} 60%, ${tint(metal.base, 0)} 100%)`,
+          boxShadow: `inset 0 1px 0 ${tint(metal.light, 0.6)}, inset 1px 0 0 ${tint(metal.base, 0.16)}, inset -1px 0 0 ${tint(metal.base, 0.16)}`,
         }}
       >
-        <span className="text-sm font-black text-foreground/70">{place}</span>
+        <StepNumeral metal={metal} place={place} className={spot.numeral} />
       </div>
     </Link>
   );
@@ -281,7 +306,7 @@ function Stage({
   myId?: string;
 }) {
   const podium = board.rows.slice(0, 3);
-  const { Icon, accent } = board;
+  const { accent } = board;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border bg-card">
@@ -290,26 +315,27 @@ function Stage({
         style={{ backgroundColor: accent }}
       />
 
-      <div className="relative flex items-start gap-3 px-4 pt-4">
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: tint(accent, 0.18), color: accent }}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {board.eyebrow} · топ-10
-          </span>
-          <h2 className="text-lg font-bold leading-tight">{board.title}</h2>
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            {board.description}
-          </p>
-        </div>
+      <div className="relative flex flex-col gap-1 px-4 pt-4">
+        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              backgroundColor: accent,
+              boxShadow: `0 0 8px ${accent}`,
+            }}
+          />
+          {board.eyebrow} · топ-10
+        </span>
+        <h2 className="text-balance text-xl font-extrabold leading-tight tracking-tight">
+          {board.title}
+        </h2>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {board.description}
+        </p>
       </div>
 
       {podium.length > 0 ? (
-        <div className="relative mt-5 grid grid-cols-3 items-end gap-2 px-3">
+        <div className="relative mt-6 grid grid-cols-3 items-end gap-2 px-3">
           {podium.map((row, i) => (
             <PodiumSpot
               key={row.userId}
@@ -385,7 +411,7 @@ function RankRow({
       <span className="w-5 shrink-0 text-center text-sm font-semibold tabular-nums text-muted-foreground">
         {place}
       </span>
-      <UserAvatar name={row.name} photoUrl={row.photoUrl} size={34} />
+      <PlayerAvatar name={row.name} photoUrl={row.photoUrl} size={34} />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-baseline justify-between gap-2">
@@ -472,7 +498,7 @@ function StandingCard({
   if (isLoading) return <Skeleton className="h-[74px] rounded-xl" />;
 
   const avatar = me ? (
-    <UserAvatar name={me.name} photoUrl={me.photoUrl} size={36} />
+    <PlayerAvatar name={me.name} photoUrl={me.photoUrl ?? null} size={36} />
   ) : null;
 
   if (!standing) {
@@ -524,11 +550,7 @@ function StandingCard({
       <div className="flex shrink-0 flex-col items-end">
         <span className="flex items-center gap-1 text-xl font-bold leading-tight">
           {inTop && rank <= 3 && (
-            <Crown
-              className="h-4 w-4"
-              style={{ color: MEDALS[rank - 1].color }}
-              fill="currentColor"
-            />
+            <CrownMark metal={METALS[rank - 1]} className="h-4 w-6" />
           )}
           #{fmt(rank)}
         </span>

@@ -1,14 +1,4 @@
 import type { ReactNode } from "react";
-import {
-  Coins,
-  Handshake,
-  Library,
-  Scale,
-  Skull,
-  Sparkles,
-  Swords,
-  type LucideIcon,
-} from "lucide-react";
 
 import type {
   BoardKey,
@@ -103,12 +93,6 @@ export const SPLIT: Record<ColosseumField, { label: string; color: string }> = {
 
 export const SPLIT_ORDER: ColosseumField[] = ["wins", "draws", "loses"];
 
-export const MEDALS = [
-  { label: "Золото", color: "#f5c451" },
-  { label: "Серебро", color: "#cbd5e1" },
-  { label: "Бронза", color: "#e0915a" },
-];
-
 export type Stat = { value: string; label: string };
 
 export type BoardRow = {
@@ -124,7 +108,6 @@ export type BoardRow = {
 
 export type Board = {
   key: BoardKey;
-  Icon: LucideIcon;
   tab: string;
   eyebrow: string;
   title: string;
@@ -162,7 +145,6 @@ function SplitMeta({ row }: { row: ColosseumTopRow }) {
 const colosseumMeta: Record<
   ColosseumField,
   {
-    Icon: LucideIcon;
     title: string;
     description: string;
     unit: [string, string, string];
@@ -170,14 +152,12 @@ const colosseumMeta: Record<
   }
 > = {
   wins: {
-    Icon: Swords,
     title: "Победы в колизее",
     description: "Больше всего побед на арене за всё время.",
     unit: ["победа", "победы", "побед"],
     share: "побед",
   },
   loses: {
-    Icon: Skull,
     title: "Поражения в колизее",
     description:
       "Много поражений — значит много боёв: эти игроки не боятся выходить на арену.",
@@ -185,7 +165,6 @@ const colosseumMeta: Record<
     share: "поражений",
   },
   draws: {
-    Icon: Scale,
     title: "Ничьи в колизее",
     description: "Бои, в которых ни один игрок не смог взять верх.",
     unit: ["ничья", "ничьи", "ничьих"],
@@ -234,7 +213,6 @@ function colosseumBoard(
 
   return {
     key: field,
-    Icon: meta.Icon,
     tab: SPLIT[field].label,
     eyebrow: "Колизей",
     title: meta.title,
@@ -284,7 +262,6 @@ function spendingBoard(
   if (kind === "tries") {
     return {
       key: "tries",
-      Icon: Sparkles,
       tab: "Крутки",
       eyebrow: "Крутки карт",
       title: "Больше всех крутят",
@@ -317,7 +294,6 @@ function spendingBoard(
 
   return {
     key: "coins",
-    Icon: Coins,
     tab: "Монеты",
     eyebrow: "Экономика",
     title: "Больше всех тратят",
@@ -356,7 +332,6 @@ export function buildBoards(data: Leaderboards): Board[] {
   return [
     {
       key: "collection",
-      Icon: Library,
       tab: "Коллекция",
       eyebrow: "Коллекция",
       title: "Лучшие коллекционеры",
@@ -412,7 +387,6 @@ export function buildBoards(data: Leaderboards): Board[] {
     spendingBoard("coins", data.coins, updatedAt),
     {
       key: "traders",
-      Icon: Handshake,
       tab: "Трейдеры",
       eyebrow: "Обмены",
       title: "Самые общительные",
