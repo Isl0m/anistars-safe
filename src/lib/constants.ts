@@ -120,3 +120,5 @@ const defaultRarityChipStyle: RarityChipStyle = {
 export function getRarityChipStyle(name: string): RarityChipStyle {
   return rarityChipStyles[stripRarityEmoji(name)] ?? defaultRarityChipStyle;
 }
+
+export const TOP_SIZE = 10;

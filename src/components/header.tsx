@@ -13,6 +13,7 @@ import {
   Repeat2,
   Settings,
   Store,
+  Trophy,
   User,
   Users,
   Zap,
@@ -48,6 +49,7 @@ const navGroups = [
       { name: "Мой профиль", href: "/profile", Icon: User },
       { name: "Поиск игроков", href: "/profile/search", Icon: Users },
       { name: "Коллекция", href: "/profile/collection", Icon: Library },
+      { name: "Рейтинги", href: "/top", Icon: Trophy },
     ],
   },
   {

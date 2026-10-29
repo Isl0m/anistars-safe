@@ -6,11 +6,13 @@ export const ROUTE_ACCESS_DEFAULTS: RouteAccessMap = {
   "/admin": "admin",
   "/market": "all",
   "/trade": "all",
+  "/top": "admin",
 };
 
 export const MANAGED_ROUTES: { path: string; label: string }[] = [
   { path: "/market", label: "Маркетплейс" },
   { path: "/trade", label: "Трейд" },
+  { path: "/top", label: "Рейтинги" },
 ];
 
 const MANAGED_PATHS = new Set(MANAGED_ROUTES.map((r) => r.path));
