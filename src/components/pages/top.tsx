@@ -1,523 +1,417 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Trophy } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Crown, Trophy } from "lucide-react";
 
+import { api } from "@/lib/api";
 import type {
   ColosseumField,
-  ColosseumTop,
+  ColosseumTopRow,
   Leaderboards,
-  SpendingTop,
+  Standing,
+  Standings,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
+import {
+  buildBoards,
+  fmt,
+  fmtCompact,
+  MEDALS,
+  plural,
+  SPLIT,
+  SPLIT_ORDER,
+  type Board,
+  type BoardRow,
+} from "@/components/top/boards";
+import { useCurrentUser } from "@/hook/use-current-user";
+import { Skeleton } from "@/ui/skeleton";
+
 import { Header } from "../header";
+import { useTelegram } from "../telegram-provider";
 import { UserAvatar } from "../user-avatar";
 
-const ruNumber = new Intl.NumberFormat("ru-RU");
-const ruDecimal = new Intl.NumberFormat("ru-RU", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
+// Hex accent plus alpha, for tints of a board's hue.
+const tint = (hex: string, alpha: number) =>
+  hex +
+  Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, "0");
 
-const fmt = (value: number) => ruNumber.format(value);
-const pct = (part: number, whole: number) =>
-  whole > 0 ? `${ruDecimal.format((part / whole) * 100)}%` : "—";
+const battlesOf = (r: ColosseumTopRow) => r.wins + r.draws + r.loses;
 
-// 1 карта, 2 карты, 5 карт
-function plural(n: number, forms: [string, string, string]) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return forms[0];
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
-  return forms[2];
-}
+// One player's wins, draws and losses as a stacked bar. The ranked field
+// goes first so it starts at the same baseline on every row and its length
+// compares down the list; the other two are dimmed. Total length is the
+// player's battles against the busiest player on the board.
+function SplitBar({
+  row,
+  ranked,
+  scale,
+  className,
+}: {
+  row: ColosseumTopRow;
+  ranked: ColosseumField;
+  scale: number;
+  className?: string;
+}) {
+  const order = [ranked, ...SPLIT_ORDER.filter((f) => f !== ranked)];
+  const width = scale > 0 ? (battlesOf(row) / scale) * 100 : 0;
 
-const MONTHS_GENITIVE = [
-  "января",
-  "февраля",
-  "марта",
-  "апреля",
-  "мая",
-  "июня",
-  "июля",
-  "августа",
-  "сентября",
-  "октября",
-  "ноября",
-  "декабря",
-];
-
-// The bot rolls its daily stats over in Asia/Bangkok, so dates read there too.
-function bangkokParts(date: string) {
-  const d = new Date(new Date(date).getTime() + 7 * 3_600_000);
-  return {
-    day: d.getUTCDate(),
-    month: d.getUTCMonth(),
-    year: d.getUTCFullYear(),
-  };
-}
-
-// «1 апреля 2026»
-function formatDay(date: string) {
-  const { day, month, year } = bangkokParts(date);
-  return `${day} ${MONTHS_GENITIVE[month]} ${year}`;
-}
-
-// «мая 2024», as in «с мая 2024 года»
-function formatMonth(date: string) {
-  const { month, year } = bangkokParts(date);
-  return `${MONTHS_GENITIVE[month]} ${year}`;
-}
-
-// Counted against the snapshot time, not the viewer's clock, so the server
-// and client render the same number.
-function daysBetween(from: string, to: string) {
-  const dayIndex = (date: string) => {
-    const { day, month, year } = bangkokParts(date);
-    return Date.UTC(year, month, day) / 86_400_000;
-  };
-  return dayIndex(to) - dayIndex(from) + 1;
-}
-
-type Stat = { value: ReactNode; label: string };
-
-type Row = {
-  userId: string;
-  name: string;
-  photoUrl: string | null;
-  value: number;
-  detail: ReactNode;
-  side: ReactNode;
-  sideLabel: string;
-};
-
-type Board = {
-  key: string;
-  emoji: string;
-  tab: string;
-  eyebrow: string;
-  title: string;
-  description: ReactNode;
-  column: string;
-  sideColumn: string;
-  // Static class strings so Tailwind keeps them.
-  bar: string;
-  glow: string;
-  chip: string;
-  stats: Stat[];
-  rows: Row[];
-  footnote: ReactNode;
-};
-
-function Wdl({ wins, draws, loses }: ColosseumTop["rows"][number]) {
   return (
-    <span className="tabular-nums">
-      <span className="text-emerald-400">{fmt(wins)}</span>
-      <span className="text-muted-foreground"> / </span>
-      <span className="text-foreground/80">{fmt(draws)}</span>
-      <span className="text-muted-foreground"> / </span>
-      <span className="text-rose-400">{fmt(loses)}</span>
-    </span>
+    <div className={cn("h-1.5 w-full rounded-full bg-white/5", className)}>
+      <div className="flex h-full gap-[2px]" style={{ width: `${width}%` }}>
+        {order
+          .filter((field) => row[field] > 0)
+          .map((field) => (
+            <div
+              key={field}
+              className="h-full first:rounded-l-full last:rounded-r-full"
+              style={{
+                flex: `${row[field]} 1 0`,
+                backgroundColor: SPLIT[field].color,
+                opacity: field === ranked ? 1 : 0.35,
+              }}
+            />
+          ))}
+      </div>
+    </div>
   );
 }
 
-const colosseumMeta: Record<
-  ColosseumField,
-  {
-    emoji: string;
-    tab: string;
-    title: string;
-    description: string;
-    column: string;
-    share: string;
-    bar: string;
-    glow: string;
-    chip: string;
-  }
-> = {
-  wins: {
-    emoji: "⚔️",
-    tab: "Победы",
-    title: "Топ-10 по победам в колизее",
-    description:
-      "Рейтинг по количеству побед в колизее за всё время. Рядом — победы, ничьи и поражения и процент побед от всех боёв игрока.",
-    column: "Побед",
-    share: "побед",
-    bar: "from-rose-500 to-amber-400",
-    glow: "from-rose-600/25",
-    chip: "border-rose-400/50 bg-rose-500/15 text-rose-200",
-  },
-  loses: {
-    emoji: "💀",
-    tab: "Поражения",
-    title: "Топ-10 по поражениям",
-    description:
-      "Рейтинг по количеству поражений в колизее за всё время. Много поражений — значит много боёв: эти игроки не боятся выходить на арену.",
-    column: "Поражений",
-    share: "поражений",
-    bar: "from-violet-500 to-rose-500",
-    glow: "from-violet-600/25",
-    chip: "border-violet-400/50 bg-violet-500/15 text-violet-200",
-  },
-  draws: {
-    emoji: "⚖️",
-    tab: "Ничьи",
-    title: "Топ-10 по ничьим",
-    description:
-      "Рейтинг по количеству ничьих в колизее за всё время. Ничья — когда ни один игрок не смог взять верх.",
-    column: "Ничьих",
-    share: "ничьих",
-    bar: "from-sky-400 to-emerald-400",
-    glow: "from-sky-600/25",
-    chip: "border-sky-400/50 bg-sky-500/15 text-sky-200",
-  },
-};
-
-function colosseumBoard(
-  field: ColosseumField,
-  data: ColosseumTop,
-  updatedAt: string
-): Board {
-  const meta = colosseumMeta[field];
-  const battles = (r: ColosseumTop["rows"][number]) =>
-    r.wins + r.draws + r.loses;
-  const shares = data.rows.map((r) => r[field] / Math.max(battles(r), 1));
-  const bestShare = shares.length ? Math.max(...shares) : 0;
-  const [first, second] = data.rows;
-  const threshold = data.rows.at(-1)?.[field] ?? 0;
-
-  const stats: Record<ColosseumField, Stat[]> = {
-    wins: [
-      { value: fmt(data.total), label: "побед за всё время" },
-      {
-        value: fmt(data.players),
-        label: `${plural(data.players, ["игрок", "игрока", "игроков"])} сражались`,
-      },
-      { value: fmt(threshold), label: "побед нужно для топ-10" },
-      { value: pct(bestShare, 1), label: "лучший винрейт в топе" },
-    ],
-    loses: [
-      { value: fmt(data.total), label: "поражений за всё время" },
-      { value: fmt(threshold), label: "поражений нужно для топ-10" },
-      {
-        value: pct(bestShare, 1),
-        label: "самая высокая доля поражений в топе",
-      },
-      {
-        value: fmt(first ? battles(first) : 0),
-        label: "боёв у лидера",
-      },
-    ],
-    draws: [
-      { value: fmt(data.total), label: "ничьих за всё время" },
-      { value: fmt(threshold), label: "ничьих нужно для топ-10" },
-      { value: pct(bestShare, 1), label: "самая высокая доля ничьих в топе" },
-      {
-        value: fmt(first && second ? first.draws - second.draws : 0),
-        label: "ничьих разрыв между 1 и 2 местом",
-      },
-    ],
-  };
-
-  return {
-    key: field,
-    emoji: meta.emoji,
-    tab: meta.tab,
-    eyebrow: "Колизей",
-    title: meta.title,
-    description: meta.description,
-    column: meta.column,
-    sideColumn: field === "wins" ? "Винрейт" : "Доля",
-    bar: meta.bar,
-    glow: meta.glow,
-    chip: meta.chip,
-    stats: stats[field],
-    rows: data.rows.map((r) => ({
-      ...r,
-      value: r[field],
-      detail: <Wdl {...r} />,
-      side: pct(r[field], battles(r)),
-      sideLabel: meta.share,
-    })),
-    footnote: `П / Н / П — победы, ничьи, поражения. ${
-      field === "wins"
-        ? "Винрейт — доля побед от всех боёв в колизее."
-        : `Доля — процент ${meta.share} от всех боёв игрока в колизее.`
-    } Данные на ${formatDay(updatedAt)}.`,
-  };
+function SplitLegend({ ranked }: { ranked: ColosseumField }) {
+  return (
+    <div className="flex items-center gap-2.5 text-[11px] font-normal normal-case tracking-normal text-muted-foreground">
+      {SPLIT_ORDER.map((field) => (
+        <span key={field} className="flex items-center gap-1">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{
+              backgroundColor: SPLIT[field].color,
+              opacity: field === ranked ? 1 : 0.35,
+            }}
+          />
+          {SPLIT[field].label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
-function spendingBoard(
-  kind: "tries" | "coins",
-  data: SpendingTop,
-  updatedAt: string
-): Board {
-  const since = data.since ? formatDay(data.since) : null;
-  const days = data.since ? daysBetween(data.since, updatedAt) : 0;
-  const threshold = data.rows.at(-1)?.spent ?? 0;
-  const sinceStat: Stat = {
-    value: since ?? "—",
-    label: `начало подсчёта (${fmt(days)} дн.)`,
-  };
-  const sinceNote = since
-    ? `с ${since} года — с этого дня бот ведёт ежедневную статистику; более ранние ${
-        kind === "tries" ? "крутки" : "траты"
-      } не учтены`
-    : "";
-
-  if (kind === "tries") {
-    return {
-      key: "tries",
-      emoji: "🎴",
-      tab: "Крутки",
-      eyebrow: "Крутки карт",
-      title: "Топ-10 по круткам",
-      description: `Рейтинг по количеству потраченных попыток на получение карт — в меню, мульти-крутках и через /pull в чатах.${
-        since ? ` Считается с ${since} года.` : ""
-      }`,
-      column: "Попыток",
-      sideColumn: "В день",
-      bar: "from-amber-400 to-yellow-300",
-      glow: "from-amber-600/25",
-      chip: "border-amber-400/50 bg-amber-500/15 text-amber-200",
-      stats: [
-        { value: fmt(data.total), label: "попыток потрачено всеми" },
-        {
-          value: fmt(data.players),
-          label: `${plural(data.players, ["игрок", "игрока", "игроков"])} крутили карты`,
-        },
-        sinceStat,
-        { value: fmt(threshold), label: "попыток нужно для топ-10" },
-      ],
-      rows: data.rows.map((r) => ({
-        ...r,
-        value: r.spent,
-        detail: `${fmt(r.activeDays)} ${plural(r.activeDays, ["день", "дня", "дней"])} с круткой`,
-        side: ruDecimal.format(r.spent / Math.max(r.activeDays, 1)),
-        sideLabel: "в среднем",
-      })),
-      footnote: `Попытки считаются ${sinceNote}. «В день» — среднее за дни, когда игрок крутил. Данные на ${formatDay(updatedAt)}.`,
-    };
-  }
-
-  return {
-    key: "coins",
-    emoji: "🪙",
-    tab: "Монеты",
-    eyebrow: "Экономика",
-    title: "Топ-10 по потраченным монетам",
-    description: `Рейтинг по количеству монет, потраченных в боте: магазины, улучшения карт, фоны и другие покупки.${
-      since ? ` Считается с ${since} года.` : ""
-    }`,
-    column: "Потрачено 🪙",
-    sideColumn: "Рекорд",
-    bar: "from-yellow-400 to-green-400",
-    glow: "from-yellow-600/25",
-    chip: "border-yellow-400/50 bg-yellow-500/15 text-yellow-200",
-    stats: [
-      { value: `${fmt(data.total)} 🪙`, label: "потрачено всеми игроками" },
-      {
-        value: fmt(data.players),
-        label: `${plural(data.players, ["игрок", "игрока", "игроков"])} тратили монеты`,
-      },
-      sinceStat,
-      { value: fmt(threshold), label: "монет нужно для топ-10" },
-    ],
-    rows: data.rows.map((r) => ({
-      ...r,
-      value: r.spent,
-      detail: `${fmt(r.activeDays)} ${plural(r.activeDays, ["день", "дня", "дней"])} с тратами`,
-      side: fmt(r.bestDay),
-      sideLabel: "🪙 за один день",
-    })),
-    footnote: `Монеты считаются ${sinceNote}. Это та же цифра «Потрачено монет», что игрок видит в /stats. «Рекорд» — больше всего монет за один день. Данные на ${formatDay(updatedAt)}.`,
-  };
+// Share of the leader's value, in the board's hue on a track of the same hue.
+function Meter({
+  value,
+  max,
+  accent,
+}: {
+  value: number;
+  max: number;
+  accent: string;
+}) {
+  return (
+    <div
+      className="h-1.5 w-full rounded-full"
+      style={{ backgroundColor: tint(accent, 0.15) }}
+    >
+      <div
+        className="h-full rounded-full"
+        style={{
+          width: `${max > 0 ? Math.min(value / max, 1) * 100 : 0}%`,
+          backgroundColor: accent,
+        }}
+      />
+    </div>
+  );
 }
 
-function buildBoards(data: Leaderboards): Board[] {
-  const { collection, traders, updatedAt } = data;
-  const collectionThreshold = collection.rows.at(-1)?.cards ?? 0;
-  const tradesSince = traders.since ? formatMonth(traders.since) : null;
-
-  return [
-    {
-      key: "collection",
-      emoji: "🃏",
-      tab: "Коллекция",
-      eyebrow: "Коллекция",
-      title: "Топ-10 коллекционеров",
-      description:
-        "Рейтинг по количеству разных карт в коллекции прямо сейчас. Каждая карта считается один раз — повторки не учитываются.",
-      column: "Разных карт",
-      sideColumn: "Коллекция",
-      bar: "from-blue-500 to-fuchsia-500",
-      glow: "from-indigo-600/25",
-      chip: "border-indigo-400/50 bg-indigo-500/15 text-indigo-200",
-      stats: [
-        {
-          value: fmt(collection.totalCards),
-          label: `${plural(collection.totalCards, ["карта", "карты", "карт"])} всего в игре`,
-        },
-        {
-          value: fmt(collection.players),
-          label: `${plural(collection.players, ["игрок", "игрока", "игроков"])} с картами`,
-        },
-        {
-          value: fmt(collection.medianCards),
-          label: `${plural(collection.medianCards, ["карта", "карты", "карт"])} у типичного игрока`,
-        },
-        {
-          value: fmt(collectionThreshold),
-          label: `${plural(collectionThreshold, ["карта нужна", "карты нужно", "карт нужно"])} для топ-10`,
-        },
-      ],
-      rows: collection.rows.map((r) => ({
-        ...r,
-        value: r.cards,
-        detail: (
-          <span className="flex items-center gap-1.5 tabular-nums">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            {fmt(r.emeralds)} изумр.
-            <span className="text-muted-foreground/60">·</span>
-            <span className="h-2 w-2 rounded-full bg-fuchsia-400" />
-            {fmt(r.chromatics)} хромат.
-          </span>
-        ),
-        side: pct(r.cards, collection.totalCards),
-        sideLabel: "всех карт",
-      })),
-      footnote: `Считаются карты, которые сейчас есть у игрока (обменянные или проданные — не учитываются). «Коллекция» — процент от всех ${fmt(collection.totalCards)} карт в игре, включая ивентовые и улучшенные. Данные на ${formatDay(updatedAt)}.`,
-    },
-    colosseumBoard("wins", data.wins, updatedAt),
-    colosseumBoard("loses", data.loses, updatedAt),
-    colosseumBoard("draws", data.draws, updatedAt),
-    spendingBoard("tries", data.tries, updatedAt),
-    spendingBoard("coins", data.coins, updatedAt),
-    {
-      key: "traders",
-      emoji: "🤝",
-      tab: "Трейдеры",
-      eyebrow: "Статистика обменов",
-      title: "Топ-10 трейдеров",
-      description: (
-        <>
-          Рейтинг по числу{" "}
-          <b className="font-semibold text-foreground">уникальных партнёров</b>{" "}
-          — со сколькими разными игроками ты совершил хотя бы один обмен. Сто
-          обменов с одним другом — это 1 партнёр, а не 100.
-        </>
-      ),
-      column: "Партнёров",
-      sideColumn: "За 30 дней",
-      bar: "from-indigo-500 to-sky-400",
-      glow: "from-indigo-600/25",
-      chip: "border-sky-400/50 bg-sky-500/15 text-sky-200",
-      stats: [
-        {
-          value: fmt(traders.trades),
-          label: `${plural(traders.trades, ["завершённый обмен", "завершённых обмена", "завершённых обменов"])}`,
-        },
-        {
-          value: fmt(traders.players),
-          label: `${plural(traders.players, ["игрок", "игрока", "игроков"])} обменивались`,
-        },
-        {
-          value: fmt(traders.pairs),
-          label: `${plural(traders.pairs, ["уникальная пара", "уникальные пары", "уникальных пар"])} игроков`,
-        },
-        {
-          value: fmt(traders.medianPartners),
-          label: `${plural(traders.medianPartners, ["партнёр", "партнёра", "партнёров"])} у типичного игрока`,
-        },
-      ],
-      rows: traders.rows.map((r) => ({
-        ...r,
-        value: r.partners,
-        detail: `${fmt(r.trades)} ${plural(r.trades, ["обмен", "обмена", "обменов"])} всего`,
-        side: fmt(r.recentPartners),
-        sideLabel: plural(r.recentPartners, [
-          "партнёр",
-          "партнёра",
-          "партнёров",
-        ]),
-      })),
-      footnote: `Учитываются завершённые обмены картами, мульти-обмены и обмены фонами${
-        tradesSince ? ` с ${tradesSince} года` : ""
-      }. «За 30 дней» — сколько разных партнёров было за последний месяц. Данные на ${formatDay(updatedAt)}.`,
-    },
-  ];
+function BoardTabs({
+  boards,
+  active,
+  onSelect,
+}: {
+  boards: Board[];
+  active: string;
+  onSelect: (key: Board["key"]) => void;
+}) {
+  return (
+    <nav className="no-scrollbar flex gap-1.5 overflow-x-auto border-b bg-card px-3 py-2">
+      {boards.map(({ key, tab, Icon, accent }) => {
+        const isActive = key === active;
+        return (
+          <button
+            key={key}
+            onClick={() => onSelect(key)}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              isActive
+                ? "text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground"
+            )}
+            style={
+              isActive
+                ? { borderColor: accent, backgroundColor: tint(accent, 0.15) }
+                : undefined
+            }
+          >
+            <Icon
+              className="h-3.5 w-3.5"
+              style={isActive ? { color: accent } : undefined}
+            />
+            {tab}
+          </button>
+        );
+      })}
+    </nav>
+  );
 }
 
-const medals = [
-  {
-    emoji: "🥇",
-    row: "border-amber-400/40 bg-gradient-to-r from-amber-500/15 to-card",
-  },
-  {
-    emoji: "🥈",
-    row: "border-slate-300/30 bg-gradient-to-r from-slate-400/15 to-card",
-  },
-  {
-    emoji: "🥉",
-    row: "border-orange-600/40 bg-gradient-to-r from-orange-700/15 to-card",
-  },
-];
+// Step heights for 1st, 2nd and 3rd; 1st stands in the middle.
+const STEPS = ["h-[72px]", "h-12", "h-8"];
+const SPOT_COLUMN = ["col-start-2", "col-start-1", "col-start-3"];
 
-function LeaderRow({
+function PodiumSpot({
   row,
   place,
-  leaderValue,
-  bar,
+  board,
+  splitScale,
+  isMine,
 }: {
-  row: Row;
+  row: BoardRow;
   place: number;
-  leaderValue: number;
-  bar: string;
+  board: Board;
+  splitScale: number;
+  isMine: boolean;
 }) {
-  const medal = medals[place - 1];
-  const width = leaderValue > 0 ? (row.value / leaderValue) * 100 : 0;
+  const medal = MEDALS[place - 1];
+  const isFirst = place === 1;
 
   return (
     <Link
       href={`/profile/${row.userId}`}
       className={cn(
-        "flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:border-primary/30",
-        medal?.row
+        "row-start-1 flex min-w-0 flex-col items-center",
+        SPOT_COLUMN[place - 1]
       )}
     >
-      <div className="flex w-7 shrink-0 justify-center">
-        {medal ? (
-          <span className="text-2xl leading-none">{medal.emoji}</span>
-        ) : (
-          <span className="text-lg font-bold tabular-nums text-muted-foreground">
-            {place}
-          </span>
-        )}
+      {isFirst && (
+        <Crown
+          className="mb-1 h-5 w-5"
+          style={{ color: medal.color }}
+          fill="currentColor"
+          aria-label={medal.label}
+        />
+      )}
+      <div className="relative">
+        <div
+          className="rounded-full p-[2px]"
+          style={{ backgroundColor: medal.color }}
+        >
+          <div className="rounded-full bg-card p-[2px]">
+            <UserAvatar
+              name={row.name}
+              photoUrl={row.photoUrl}
+              size={isFirst ? 68 : 52}
+            />
+          </div>
+        </div>
+        <span
+          className="absolute -bottom-2 left-1/2 flex h-5 min-w-5 -translate-x-1/2 items-center justify-center rounded-full px-1 text-[11px] font-bold text-black ring-2 ring-card"
+          style={{ backgroundColor: medal.color }}
+        >
+          {place}
+        </span>
       </div>
 
-      <UserAvatar name={row.name} photoUrl={row.photoUrl} size={36} />
+      <span className="mt-3.5 w-full truncate px-1 text-center text-xs font-semibold">
+        {row.name}
+      </span>
+      {isMine && (
+        <span className="text-[10px] font-medium text-muted-foreground">
+          это ты
+        </span>
+      )}
+      <span
+        className={cn(
+          "mt-0.5 font-bold leading-tight",
+          isFirst ? "text-xl" : "text-base"
+        )}
+      >
+        {fmt(row.value)}
+      </span>
+      <span className="text-center text-[10px] leading-tight text-muted-foreground">
+        <span className="font-medium text-foreground/90">{row.side}</span>
+        <br />
+        {row.sideLabel}
+      </span>
+
+      {row.split && board.ranked ? (
+        <SplitBar
+          row={row.split}
+          ranked={board.ranked}
+          scale={splitScale}
+          className="mt-2 w-4/5"
+        />
+      ) : null}
+
+      <div
+        className={cn(
+          "mt-3 flex w-full items-start justify-center rounded-t-xl border-x border-t pt-1.5",
+          STEPS[place - 1]
+        )}
+        style={{
+          borderColor: tint(medal.color, 0.35),
+          backgroundImage: `linear-gradient(to bottom, ${tint(medal.color, 0.22)}, ${tint(medal.color, 0)})`,
+        }}
+      >
+        <span className="text-sm font-black text-foreground/70">{place}</span>
+      </div>
+    </Link>
+  );
+}
+
+function Stage({
+  board,
+  splitScale,
+  myId,
+}: {
+  board: Board;
+  splitScale: number;
+  myId?: string;
+}) {
+  const podium = board.rows.slice(0, 3);
+  const { Icon, accent } = board;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border bg-card">
+      <div
+        className="pointer-events-none absolute -top-28 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full opacity-25 blur-3xl"
+        style={{ backgroundColor: accent }}
+      />
+
+      <div className="relative flex items-start gap-3 px-4 pt-4">
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: tint(accent, 0.18), color: accent }}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {board.eyebrow} · топ-10
+          </span>
+          <h2 className="text-lg font-bold leading-tight">{board.title}</h2>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {board.description}
+          </p>
+        </div>
+      </div>
+
+      {podium.length > 0 ? (
+        <div className="relative mt-5 grid grid-cols-3 items-end gap-2 px-3">
+          {podium.map((row, i) => (
+            <PodiumSpot
+              key={row.userId}
+              row={row}
+              place={i + 1}
+              board={board}
+              splitScale={splitScale}
+              isMine={row.userId === myId}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="relative flex flex-col items-center gap-3 px-4 py-12 text-center">
+          <div className="rounded-full bg-muted p-4">
+            <Trophy className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium">Рейтинг пока пуст</p>
+            <p className="text-xs text-muted-foreground">
+              Загляните позже — здесь появятся лучшие игроки
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatsGrid({ board }: { board: Board }) {
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
+      {board.stats.map((stat) => (
+        <div key={stat.label} className="flex flex-col gap-0.5 bg-card p-3">
+          <span className="text-base font-bold leading-tight">
+            {stat.value}
+          </span>
+          <span className="text-[11px] leading-snug text-muted-foreground">
+            {stat.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RankRow({
+  row,
+  place,
+  board,
+  leaderValue,
+  splitScale,
+  isMine,
+}: {
+  row: BoardRow;
+  place: number;
+  board: Board;
+  leaderValue: number;
+  splitScale: number;
+  isMine: boolean;
+}) {
+  return (
+    <Link
+      href={`/profile/${row.userId}`}
+      className="relative flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40"
+      style={isMine ? { backgroundColor: tint(board.accent, 0.1) } : undefined}
+    >
+      {isMine && (
+        <span
+          className="absolute inset-y-2 left-0 w-0.5 rounded-r-full"
+          style={{ backgroundColor: board.accent }}
+        />
+      )}
+      <span className="w-5 shrink-0 text-center text-sm font-semibold tabular-nums text-muted-foreground">
+        {place}
+      </span>
+      <UserAvatar name={row.name} photoUrl={row.photoUrl} size={34} />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-sm font-semibold">{row.name}</span>
-          <span className="shrink-0 text-base font-bold tabular-nums">
+          <span className="truncate text-sm font-medium">
+            {row.name}
+            {isMine && (
+              <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                это ты
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 text-sm font-bold tabular-nums">
             {fmt(row.value)}
           </span>
         </div>
 
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn("h-full rounded-full bg-gradient-to-r", bar)}
-            style={{ width: `${width}%` }}
-          />
-        </div>
+        {row.split && board.ranked ? (
+          <SplitBar row={row.split} ranked={board.ranked} scale={splitScale} />
+        ) : (
+          <Meter value={row.value} max={leaderValue} accent={board.accent} />
+        )}
 
         <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-          <span className="min-w-0 truncate">{row.detail}</span>
+          <span className="min-w-0 truncate">{row.meta}</span>
           <span className="shrink-0 tabular-nums">
-            <span className="font-semibold text-foreground">{row.side}</span>{" "}
+            <span className="font-medium text-foreground/90">{row.side}</span>{" "}
             {row.sideLabel}
           </span>
         </div>
@@ -526,24 +420,163 @@ function LeaderRow({
   );
 }
 
+function RankList({
+  board,
+  splitScale,
+  myId,
+}: {
+  board: Board;
+  splitScale: number;
+  myId?: string;
+}) {
+  const rest = board.rows.slice(3);
+  const leaderValue = board.rows[0]?.value ?? 0;
+  if (rest.length === 0) return null;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <span>Места 4–{board.rows.length}</span>
+        {board.ranked && <SplitLegend ranked={board.ranked} />}
+      </div>
+      <div className="divide-y overflow-hidden rounded-xl border bg-card">
+        {rest.map((row, i) => (
+          <RankRow
+            key={row.userId}
+            row={row}
+            place={i + 4}
+            board={board}
+            leaderValue={leaderValue}
+            splitScale={splitScale}
+            isMine={row.userId === myId}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StandingCard({
+  board,
+  standing,
+  isLoading,
+}: {
+  board: Board;
+  standing: Standing | null | undefined;
+  isLoading: boolean;
+}) {
+  const { data: me } = useCurrentUser();
+  const threshold =
+    board.rows.length >= 10 ? (board.rows.at(-1)?.value ?? 0) : 0;
+
+  if (isLoading) return <Skeleton className="h-[74px] rounded-xl" />;
+
+  const avatar = me ? (
+    <UserAvatar name={me.name} photoUrl={me.photoUrl} size={36} />
+  ) : null;
+
+  if (!standing) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border bg-card/95 p-3 shadow-lg backdrop-blur">
+        {avatar}
+        <div className="flex min-w-0 flex-col">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Твоё место
+          </span>
+          <span className="text-sm font-medium">
+            Тебя пока нет в этом рейтинге
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {board.emptyHint}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const { value, rank, players } = standing;
+  const inTop = rank <= 10;
+  const better = Math.floor(((players - rank) / Math.max(players, 1)) * 100);
+  const need = Math.max(threshold - value + 1, 1);
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl border bg-card/95 p-3 shadow-lg backdrop-blur"
+      style={{ borderColor: tint(board.accent, 0.45) }}
+    >
+      {avatar}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {inTop ? "Ты в топ-10" : "Твоё место"}
+        </span>
+        <span className="truncate text-sm font-semibold">
+          {fmt(value)} {plural(value, board.unit)}
+        </span>
+        {!inTop && threshold > 0 && (
+          <div className="flex items-center gap-2">
+            <Meter value={value} max={threshold} accent={board.accent} />
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              ещё {fmtCompact(need)} до топ-10
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-col items-end">
+        <span className="flex items-center gap-1 text-xl font-bold leading-tight">
+          {inTop && rank <= 3 && (
+            <Crown
+              className="h-4 w-4"
+              style={{ color: MEDALS[rank - 1].color }}
+              fill="currentColor"
+            />
+          )}
+          #{fmt(rank)}
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          {rank === 1 ? "лучший результат" : `лучше ${better}% игроков`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const noopSubscribe = () => () => {};
+
+// The Telegram user only exists in the browser; the prerendered page has no
+// viewer. Reading it before hydration finishes would make the first client
+// render differ from the server's.
+function useHydrated() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
+}
+
 export function TopPage({ leaderboards }: { leaderboards: Leaderboards }) {
   const boards = buildBoards(leaderboards);
-  const [active, setActive] = useState(boards[0].key);
+  const [active, setActive] = useState<Board["key"]>(boards[0].key);
   const scrollRef = useRef<HTMLElement>(null);
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const telegram = useTelegram();
+  const userId = useHydrated() ? telegram.userId : undefined;
+
+  const { data: standings, isLoading } = useQuery({
+    queryKey: ["top-standings", userId],
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await api.get<{ standings: Standings }>(`/api/top/me`);
+      return data.standings;
+    },
+  });
 
   const board = boards.find((b) => b.key === active) ?? boards[0];
-  const leaderValue = board.rows[0]?.value ?? 0;
+  const splitScale = Math.max(
+    0,
+    ...board.rows.map((r) => (r.split ? battlesOf(r.split) : 0))
+  );
 
-  useEffect(() => {
-    tabRefs.current[active]?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  }, [active]);
-
-  const selectBoard = (key: string) => {
+  const selectBoard = (key: Board["key"]) => {
     setActive(key);
     scrollRef.current?.scrollTo({ top: 0 });
   };
@@ -551,109 +584,29 @@ export function TopPage({ leaderboards }: { leaderboards: Leaderboards }) {
   return (
     <main className="flex h-full flex-col">
       <Header title="Рейтинги" />
+      <BoardTabs boards={boards} active={active} onSelect={selectBoard} />
 
-      <nav className="no-scrollbar flex gap-2 overflow-x-auto border-b bg-card px-3 py-2">
-        {boards.map((b) => (
-          <button
-            key={b.key}
-            ref={(el) => {
-              tabRefs.current[b.key] = el;
-            }}
-            onClick={() => selectBoard(b.key)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-              b.key === active
-                ? b.chip
-                : "border-border bg-background text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <span>{b.emoji}</span>
-            {b.tab}
-          </button>
-        ))}
-      </nav>
-
-      <section
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-4 pb-[calc(var(--safe-area-bottom)+1.5rem)]"
-      >
-        <div className="flex flex-col gap-4 md:container">
-          <div className="relative overflow-hidden rounded-xl border bg-card p-4">
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent",
-                board.glow
-              )}
-            />
-            <div className="relative flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                AniStars · {board.eyebrow}
-              </span>
-              <h2 className="flex items-center gap-2 text-xl font-bold leading-tight">
-                <span>{board.emoji}</span>
-                {board.title}
-              </h2>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {board.description}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {board.stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="flex flex-col gap-0.5 rounded-xl border bg-card p-3"
-              >
-                <span className="text-lg font-bold tabular-nums leading-tight">
-                  {stat.value}
-                </span>
-                <span className="text-[11px] leading-snug text-muted-foreground">
-                  {stat.label}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <span>Игрок</span>
-              <span>
-                {board.column} · {board.sideColumn}
-              </span>
-            </div>
-
-            {board.rows.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 py-16 text-center">
-                <div className="rounded-full bg-muted p-4">
-                  <Trophy className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">Рейтинг пока пуст</p>
-                  <p className="text-xs text-muted-foreground">
-                    Загляните позже — здесь появятся лучшие игроки
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {board.rows.map((row, i) => (
-                  <LeaderRow
-                    key={row.userId}
-                    row={row}
-                    place={i + 1}
-                    leaderValue={leaderValue}
-                    bar={board.bar}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
+      <section ref={scrollRef} className="relative flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 px-3 pb-4 pt-3">
+          <Stage board={board} splitScale={splitScale} myId={userId} />
+          <StatsGrid board={board} />
+          <RankList board={board} splitScale={splitScale} myId={userId} />
           <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
             {board.footnote}
           </p>
         </div>
+
+        {userId && (
+          <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent pb-[calc(var(--safe-area-bottom)+0.75rem)] pt-6">
+            <div className="mx-auto w-full max-w-2xl px-3">
+              <StandingCard
+                board={board}
+                standing={standings?.[board.key]}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
