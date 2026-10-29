@@ -560,7 +560,11 @@ export function TopPage({ leaderboards }: { leaderboards: Leaderboards }) {
   const telegram = useTelegram();
   const userId = useHydrated() ? telegram.userId : undefined;
 
-  const { data: standings, isLoading } = useQuery({
+  const {
+    data: standings,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["top-standings", userId],
     enabled: !!userId,
     staleTime: 5 * 60_000,
@@ -596,7 +600,10 @@ export function TopPage({ leaderboards }: { leaderboards: Leaderboards }) {
           </p>
         </div>
 
-        {userId && (
+        {/* Without the viewer's standing there is nothing true to say about
+            their place, so a failed request hides the bar rather than
+            reading as «not on this board». */}
+        {userId && !isError && (
           <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent pb-[calc(var(--safe-area-bottom)+0.75rem)] pt-6">
             <div className="mx-auto w-full max-w-2xl px-3">
               <StandingCard
