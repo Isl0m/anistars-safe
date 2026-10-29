@@ -48,10 +48,8 @@ function PlayerAvatar({
       name={name}
       photoUrl={photoUrl}
       size={size}
-      className={cn(
-        !photoUrl && `bg-gradient-to-br text-white ${getGradient(name)}`,
-        className
-      )}
+      className={className}
+      fallbackClassName={`bg-gradient-to-br text-white ${getGradient(name)}`}
     />
   );
 }
@@ -311,7 +309,7 @@ function StandingBar({
 
   return (
     <div className="border-t bg-background">
-      <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 pb-[calc(20px+var(--safe-area-bottom))] pt-3">
+      <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-3">
         {me ? (
           <PlayerAvatar
             name={me.name}
