@@ -308,8 +308,8 @@ function StandingBar({
   }
 
   return (
-    <div className="border-t bg-background">
-      <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-3">
+    <div className="-mb-[var(--safe-area-bottom)] border-t bg-background">
+      <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 pb-[max(12px,calc(var(--safe-area-bottom)-16px))] pt-3">
         {me ? (
           <PlayerAvatar
             name={me.name}
