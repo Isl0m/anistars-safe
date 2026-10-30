@@ -11,7 +11,7 @@ import { MarketPromoSettings } from "@/lib/market-schemas";
 import { Access, MANAGED_ROUTES, RouteAccessMap } from "@/lib/route-access";
 import type { VitalSummaryRow } from "@/lib/queries";
 import { cn } from "@/lib/utils";
-import { VITAL_METRICS, VitalMetric } from "@/lib/vitals";
+import { LOAD_METRICS, LoadMetric, VitalMetric } from "@/lib/vitals";
 
 import { routeAccessKey, useRouteAccessMap } from "@/hook/use-route-access";
 import { Button } from "@/ui/button";
@@ -317,13 +317,13 @@ function MarketPromoForm({ initial }: { initial: MarketPromoSettings }) {
   );
 }
 
-const VITAL_LABELS: Record<VitalMetric, string> = {
+const VITAL_LABELS: Record<LoadMetric, string> = {
   TTFB: "Сервер",
   FCP: "Первый кадр",
   LCP: "Контент",
 };
 
-const VITAL_THRESHOLDS: Record<VitalMetric, [number, number]> = {
+const VITAL_THRESHOLDS: Record<LoadMetric, [number, number]> = {
   TTFB: [800, 1800],
   FCP: [1800, 3000],
   LCP: [2500, 4000],
@@ -334,7 +334,7 @@ const seconds = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 1,
 });
 
-function vitalTone(metric: VitalMetric, value: number) {
+function vitalTone(metric: LoadMetric, value: number) {
   const [good, poor] = VITAL_THRESHOLDS[metric];
   if (value <= good) return "text-green-500";
   if (value <= poor) return "text-amber-500";
@@ -393,7 +393,7 @@ function PageLoadSection() {
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th className="px-3 py-2 font-medium">Страница</th>
                 <th className="px-3 py-2 text-right font-medium">Открытий</th>
-                {VITAL_METRICS.map((metric) => (
+                {LOAD_METRICS.map((metric) => (
                   <th
                     key={metric}
                     className="px-3 py-2 text-right font-medium"
@@ -410,7 +410,7 @@ function PageLoadSection() {
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {metrics.TTFB?.count ?? "—"}
                   </td>
-                  {VITAL_METRICS.map((metric) => {
+                  {LOAD_METRICS.map((metric) => {
                     const row = metrics[metric];
                     return (
                       <td
