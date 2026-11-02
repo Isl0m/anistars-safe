@@ -25,6 +25,7 @@ const OPTIONS: { value: Access; label: string }[] = [
 ];
 
 const marketPromoKey = ["market-promo-settings"] as const;
+const trialTowerKey = ["trial-tower-enabled"] as const;
 
 export default function AdminPage() {
   return (
@@ -32,6 +33,7 @@ export default function AdminPage() {
       <Header title="Админ" />
       <div className="mx-auto w-full max-w-lg space-y-8 overflow-y-auto p-4 md:container">
         <RouteAccessSection />
+        <TrialTowerSection />
         <MarketPromoSection />
         <PageLoadSection />
       </div>
@@ -116,6 +118,92 @@ function RouteAccessSection() {
             </div>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+function TrialTowerSection() {
+  const queryClient = useQueryClient();
+  const { data: enabled } = useQuery({
+    queryKey: trialTowerKey,
+    queryFn: async () => {
+      const { data } = await api.get<{ enabled: boolean }>(
+        "/api/settings/trial-tower"
+      );
+      return data.enabled;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { data } = await api.post<{ enabled: boolean }>(
+        "/api/settings/trial-tower",
+        { enabled: next }
+      );
+      return data.enabled;
+    },
+    onSuccess: (next) => {
+      queryClient.setQueryData(trialTowerKey, next);
+      queryClient.invalidateQueries({ queryKey: routeAccessKey });
+      toast.success(
+        next ? "Башня Испытаний открыта" : "Башня Испытаний закрыта"
+      );
+    },
+    onError: (e) => showApiError(e, "Не удалось изменить Башню Испытаний"),
+  });
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">🗼 Башня Испытаний</h2>
+        <p className="text-sm text-muted-foreground">
+          Закрытая башня пропадает из меню битв в боте, а её страница наград
+          доступна только админам. Админы могут играть в любом случае.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Башня для игроков</p>
+          <p className="text-xs text-muted-foreground">
+            {enabled === undefined
+              ? "Загрузка…"
+              : enabled
+                ? "Открыта"
+                : "Закрыта"}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {mutation.isPending && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          <div className="flex overflow-hidden rounded-md border">
+            {[
+              { value: true, label: "Открыть" },
+              { value: false, label: "Закрыть" },
+            ].map((opt) => (
+              <Button
+                key={String(opt.value)}
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={enabled === undefined || mutation.isPending}
+                onClick={() =>
+                  enabled !== opt.value && mutation.mutate(opt.value)
+                }
+                className={cn(
+                  "rounded-none",
+                  enabled === opt.value &&
+                    "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                )}
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
