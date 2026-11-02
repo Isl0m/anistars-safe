@@ -7,6 +7,7 @@ export const ROUTE_ACCESS_DEFAULTS: RouteAccessMap = {
   "/market": "all",
   "/trade": "all",
   "/top": "admin",
+  "/trial-tower": "admin",
 };
 
 export const MANAGED_ROUTES: { path: string; label: string }[] = [
