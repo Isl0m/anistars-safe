@@ -26,6 +26,9 @@ const OPTIONS: { value: Access; label: string }[] = [
 
 const marketPromoKey = ["market-promo-settings"] as const;
 const trialTowerKey = ["trial-tower-enabled"] as const;
+const eventTowersKey = ["event-towers"] as const;
+
+type EventTower = { id: number; name: string; enabled: boolean };
 
 export default function AdminPage() {
   return (
@@ -34,6 +37,7 @@ export default function AdminPage() {
       <div className="mx-auto w-full max-w-lg space-y-8 overflow-y-auto p-4 md:container">
         <RouteAccessSection />
         <TrialTowerSection />
+        <EventTowersSection />
         <MarketPromoSection />
         <PageLoadSection />
       </div>
@@ -205,6 +209,112 @@ function TrialTowerSection() {
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+function EventTowersSection() {
+  const queryClient = useQueryClient();
+  const { data: towers, isError } = useQuery({
+    queryKey: eventTowersKey,
+    queryFn: async () => {
+      const { data } = await api.get<{ towers: EventTower[] }>(
+        "/api/settings/towers"
+      );
+      return data.towers;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (vars: { id: number; enabled: boolean }) => {
+      const { data } = await api.post<{ towers: EventTower[] }>(
+        "/api/settings/towers",
+        vars
+      );
+      return data.towers;
+    },
+    onSuccess: (next, vars) => {
+      queryClient.setQueryData(eventTowersKey, next);
+      toast.success(vars.enabled ? "Башня открыта" : "Башня закрыта");
+    },
+    onError: (e) => showApiError(e, "Не удалось изменить башню"),
+  });
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Башни событий</h2>
+        <p className="text-sm text-muted-foreground">
+          Закрытая башня пропадает из меню битв, а начатые бои ставятся на паузу
+          и продолжаются после открытия. Админы могут играть в любом случае.
+        </p>
+      </div>
+
+      {isError ? (
+        <p className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Не удалось загрузить башни
+        </p>
+      ) : !towers ? (
+        <div className="flex justify-center rounded-lg border bg-card p-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : towers.length === 0 ? (
+        <p className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Башен пока нет
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {towers.map((tower) => {
+            const pending =
+              mutation.isPending && mutation.variables?.id === tower.id;
+
+            return (
+              <div
+                key={tower.id}
+                className="flex items-center justify-between rounded-lg border bg-card px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm font-medium">{tower.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tower.enabled ? "Открыта" : "Закрыта"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {pending && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <div className="flex overflow-hidden rounded-md border">
+                    {[
+                      { value: true, label: "Открыть" },
+                      { value: false, label: "Закрыть" },
+                    ].map((opt) => (
+                      <Button
+                        key={String(opt.value)}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={mutation.isPending}
+                        onClick={() =>
+                          tower.enabled !== opt.value &&
+                          mutation.mutate({ id: tower.id, enabled: opt.value })
+                        }
+                        className={cn(
+                          "rounded-none",
+                          tower.enabled === opt.value &&
+                            "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

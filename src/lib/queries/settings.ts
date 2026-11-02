@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -15,6 +15,7 @@ import {
 
 import { db } from "@/db";
 import { appSettings, routeAccessSettings } from "@/db/schema/settings";
+import { towers } from "@/db/schema/tower";
 
 export async function getRouteAccessMap(): Promise<RouteAccessMap> {
   const [rows, trialTowerEnabled] = await Promise.all([
@@ -65,6 +66,25 @@ export async function setTrialTowerEnabled(enabled: boolean): Promise<boolean> {
     })
     .where(eq(appSettings.key, TRIAL_TOWER_KEY))
     .returning({ key: appSettings.key });
+  return updated.length > 0;
+}
+
+export async function getEventTowers() {
+  return db
+    .select({ id: towers.id, name: towers.name, enabled: towers.enabled })
+    .from(towers)
+    .orderBy(asc(towers.sortOrder), asc(towers.id));
+}
+
+export async function setEventTowerEnabled(
+  id: number,
+  enabled: boolean
+): Promise<boolean> {
+  const updated = await db
+    .update(towers)
+    .set({ enabled })
+    .where(eq(towers.id, id))
+    .returning({ id: towers.id });
   return updated.length > 0;
 }
 
