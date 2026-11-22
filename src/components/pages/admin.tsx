@@ -27,8 +27,22 @@ const OPTIONS: { value: Access; label: string }[] = [
 const marketPromoKey = ["market-promo-settings"] as const;
 const trialTowerKey = ["trial-tower-enabled"] as const;
 const eventTowersKey = ["event-towers"] as const;
+const shopPagesKey = ["shop-pages"] as const;
 
 type EventTower = { id: number; name: string; enabled: boolean };
+type ShopPage = {
+  id: number;
+  shop: "chromatic" | "event";
+  poster: string;
+  icon: string;
+  enabled: boolean;
+  cards: string[];
+};
+
+const SHOP_NAMES: Record<ShopPage["shop"], string> = {
+  chromatic: "🃏 Хромо. карты",
+  event: "🎃 Ивентовый магазин",
+};
 
 export default function AdminPage() {
   return (
@@ -38,6 +52,7 @@ export default function AdminPage() {
         <RouteAccessSection />
         <TrialTowerSection />
         <EventTowersSection />
+        <ShopPagesSection />
         <MarketPromoSection />
         <PageLoadSection />
       </div>
@@ -302,6 +317,121 @@ function EventTowersSection() {
                         className={cn(
                           "rounded-none",
                           tower.enabled === opt.value &&
+                            "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ShopPagesSection() {
+  const queryClient = useQueryClient();
+  const { data: pages, isError } = useQuery({
+    queryKey: shopPagesKey,
+    queryFn: async () => {
+      const { data } = await api.get<{ pages: ShopPage[] }>(
+        "/api/settings/shop-pages"
+      );
+      return data.pages;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (vars: { id: number; enabled: boolean }) => {
+      const { data } = await api.post<{ pages: ShopPage[] }>(
+        "/api/settings/shop-pages",
+        vars
+      );
+      return data.pages;
+    },
+    onSuccess: (next, vars) => {
+      queryClient.setQueryData(shopPagesKey, next);
+      toast.success(vars.enabled ? "Страница включена" : "Страница выключена");
+    },
+    onError: (e) => showApiError(e, "Не удалось изменить страницу"),
+  });
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold">Страницы магазина</h2>
+        <p className="text-sm text-muted-foreground">
+          Выключенная страница сразу пропадает из хроматического или ивентового
+          магазина в боте, остальные страницы сдвигаются.
+        </p>
+      </div>
+
+      {isError ? (
+        <p className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Не удалось загрузить страницы
+        </p>
+      ) : !pages ? (
+        <div className="flex justify-center rounded-lg border bg-card p-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : pages.length === 0 ? (
+        <p className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground">
+          Страниц пока нет
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {pages.map((page) => {
+            const pending =
+              mutation.isPending && mutation.variables?.id === page.id;
+            const number =
+              pages
+                .filter((p) => p.shop === page.shop)
+                .findIndex((p) => p.id === page.id) + 1;
+
+            return (
+              <div
+                key={page.id}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    {SHOP_NAMES[page.shop]} · {number} {page.icon}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {page.cards.join(", ") || "Нет карт"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {page.enabled ? "Включена" : "Выключена"}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {pending && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <div className="flex overflow-hidden rounded-md border">
+                    {[
+                      { value: true, label: "Вкл" },
+                      { value: false, label: "Выкл" },
+                    ].map((opt) => (
+                      <Button
+                        key={String(opt.value)}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={mutation.isPending}
+                        onClick={() =>
+                          page.enabled !== opt.value &&
+                          mutation.mutate({ id: page.id, enabled: opt.value })
+                        }
+                        className={cn(
+                          "rounded-none",
+                          page.enabled === opt.value &&
                             "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                         )}
                       >

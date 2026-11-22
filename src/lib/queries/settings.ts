@@ -14,7 +14,9 @@ import {
 } from "@/lib/route-access";
 
 import { db } from "@/db";
+import { tCards } from "@/db/schema/card";
 import { appSettings, routeAccessSettings } from "@/db/schema/settings";
+import { shopPageCards, shopPages } from "@/db/schema/shop";
 import { towers } from "@/db/schema/tower";
 
 export async function getRouteAccessMap(): Promise<RouteAccessMap> {
@@ -85,6 +87,42 @@ export async function setEventTowerEnabled(
     .set({ enabled })
     .where(eq(towers.id, id))
     .returning({ id: towers.id });
+  return updated.length > 0;
+}
+
+export async function getShopPages() {
+  const [pages, cards] = await Promise.all([
+    db
+      .select({
+        id: shopPages.id,
+        shop: shopPages.shop,
+        poster: shopPages.poster,
+        icon: shopPages.icon,
+        enabled: shopPages.isActive,
+      })
+      .from(shopPages)
+      .orderBy(asc(shopPages.shop), asc(shopPages.position), asc(shopPages.id)),
+    db
+      .select({ pageId: shopPageCards.pageId, name: tCards.name })
+      .from(shopPageCards)
+      .innerJoin(tCards, eq(tCards.id, shopPageCards.cardId))
+      .orderBy(asc(shopPageCards.position), asc(shopPageCards.id)),
+  ]);
+  return pages.map((page) => ({
+    ...page,
+    cards: cards.filter((c) => c.pageId === page.id).map((c) => c.name),
+  }));
+}
+
+export async function setShopPageEnabled(
+  id: number,
+  enabled: boolean
+): Promise<boolean> {
+  const updated = await db
+    .update(shopPages)
+    .set({ isActive: enabled })
+    .where(eq(shopPages.id, id))
+    .returning({ id: shopPages.id });
   return updated.length > 0;
 }
 
